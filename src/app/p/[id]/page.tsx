@@ -223,8 +223,8 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
 
       {/* Editable filters */}
       <div className="bg-slate-800 border border-slate-800 rounded-xl p-4 mb-6">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
-          <div className="col-span-2 md:col-span-1">
+        <div className="flex gap-4 items-end flex-wrap">
+          <div className="min-w-[220px]">
             <label className="block text-xs text-slate-500 mb-1">Departure</label>
             <input
               type="datetime-local"
