@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 """
-Generate sailing routes using:
-1. Coastline extracted from bathymetry (depth=0 contour)
-2. Headland detection (prominence along coastline)
-3. Waypoint placement at headlands (target 10m depth)
-4. A* routing on depth grid through headland waypoints
-5. Depth contour GeoJSON for map display
+Generate sailing routes using visibility-graph approach:
+1. Try straight line between ports
+2. If line crosses land, find the headland blocking it
+3. Place a waypoint offshore from that headland
+4. Recurse: try straight lines to/from the new waypoint
+Result: shortest path with minimal waypoints, clearing all headlands.
 """
 
-import json, os, heapq
+import json, os
 import numpy as np
 from osgeo import gdal
-from shapely.geometry import LineString, Point, MultiLineString
-from shapely.ops import linemerge
+from shapely.geometry import LineString, Point
 
 gdal.UseExceptions()
 
 TIFF_PATH = "/tmp/emodnet.tiff"
 OUTPUT_DIR = "public/data"
+SAFETY_MARGIN = 0.008   # ~0.5 NM safety clearance from land (in degrees)
+MAX_RECURSION = 8
 
 PORTS = [
     ("Gijón",           43.5453, -5.6621),
@@ -40,19 +41,146 @@ PORTS = [
 ]
 
 
-def load_tiff():
-    ds = gdal.Open(TIFF_PATH)
-    band = ds.GetRasterBand(1)
-    data = band.ReadAsArray().astype(np.float32)
-    gt = ds.GetGeoTransform()
-    nodata = band.GetNoDataValue()
-    if nodata is not None:
-        data[data == nodata] = 0
-    data[data > 0] = 0
-    return data, gt
+class DepthGrid:
+    def __init__(self, tiff_path):
+        ds = gdal.Open(tiff_path)
+        band = ds.GetRasterBand(1)
+        self.data = band.ReadAsArray().astype(np.float32)
+        gt = ds.GetGeoTransform()
+        self.xmin = gt[0]
+        self.xres = gt[1]
+        self.ymax = gt[3]
+        self.yres = abs(gt[5])
+        self.rows, self.cols = self.data.shape
+        nodata = band.GetNoDataValue()
+        if nodata is not None:
+            self.data[self.data == nodata] = 0
+        self.data[self.data > 0] = 0  # land = 0
+
+    def depth_at(self, lat, lon):
+        c = int((lon - self.xmin) / self.xres)
+        r = int((self.ymax - lat) / self.yres)
+        if 0 <= r < self.rows and 0 <= c < self.cols:
+            return float(self.data[r, c])
+        return 0.0
+
+    def is_water(self, lat, lon, min_depth=-3):
+        return self.depth_at(lat, lon) < min_depth
+
+    def line_crosses_land(self, lat1, lon1, lat2, lon2, n_samples=100):
+        """Check if a straight line crosses land. Returns list of land points."""
+        land_points = []
+        for i in range(n_samples + 1):
+            t = i / n_samples
+            lat = lat1 + t * (lat2 - lat1)
+            lon = lon1 + t * (lon2 - lon1)
+            if not self.is_water(lat, lon):
+                land_points.append((lat, lon, t))
+        return land_points
+
+    def find_headland_tip(self, lat1, lon1, lat2, lon2, land_points):
+        """
+        Given a line that crosses land, find the most prominent land point
+        (the headland tip that must be rounded).
+        Returns (lat, lon) of the headland tip.
+        """
+        if not land_points:
+            return None
+
+        # The headland tip is the land point furthest from the straight line
+        line = LineString([(lon1, lat1), (lon2, lat2)])
+        max_dist = 0
+        tip = None
+        for lat, lon, t in land_points:
+            pt = Point(lon, lat)
+            dist = line.distance(pt)
+            if dist > max_dist:
+                max_dist = dist
+                tip = (lat, lon)
+        return tip
+
+    def find_safe_waypoint(self, tip_lat, tip_lon, from_lat, from_lon, to_lat, to_lon):
+        """
+        Place a waypoint offshore from a headland tip.
+        Direction: perpendicular to the from→to line, on the sea side.
+        """
+        # Direction from midpoint of from→to to the tip
+        mid_lat = (from_lat + to_lat) / 2
+        mid_lon = (from_lon + to_lon) / 2
+        dir_lat = tip_lat - mid_lat
+        dir_lon = tip_lon - mid_lon
+        norm = (dir_lat**2 + dir_lon**2) ** 0.5
+        if norm == 0:
+            return None
+        dir_lat /= norm
+        dir_lon /= norm
+
+        # Search outward from tip along this direction
+        for offset in range(1, 50):
+            step = SAFETY_MARGIN * offset / 3
+            wp_lat = tip_lat + dir_lat * step
+            wp_lon = tip_lon + dir_lon * step
+            if self.is_water(wp_lat, wp_lon, min_depth=-5):
+                # Verify we have good clearance — check a small area
+                clear = True
+                for dlat in [-SAFETY_MARGIN/2, 0, SAFETY_MARGIN/2]:
+                    for dlon in [-SAFETY_MARGIN/2, 0, SAFETY_MARGIN/2]:
+                        if not self.is_water(wp_lat + dlat, wp_lon + dlon, min_depth=-3):
+                            clear = False
+                            break
+                    if not clear:
+                        break
+                if clear:
+                    return (wp_lat, wp_lon)
+
+        # Fallback: just go further out
+        for offset in range(10, 80):
+            step = SAFETY_MARGIN * offset / 2
+            wp_lat = tip_lat + dir_lat * step
+            wp_lon = tip_lon + dir_lon * step
+            if self.is_water(wp_lat, wp_lon, min_depth=-5):
+                return (wp_lat, wp_lon)
+
+        return None
 
 
-# ========== STEP 1: CONTOURS ==========
+def build_route(grid, start, end, depth=0):
+    """
+    Recursive visibility-graph routing:
+    1. Try straight line from start to end
+    2. If it crosses land, find the headland
+    3. Place waypoint offshore from headland
+    4. Route start→waypoint and waypoint→end recursively
+    """
+    lat1, lon1 = start
+    lat2, lon2 = end
+
+    if depth > MAX_RECURSION:
+        return [start, end]
+
+    land_points = grid.line_crosses_land(lat1, lon1, lat2, lon2, n_samples=200)
+
+    if not land_points:
+        # Clear line — no land crossing
+        return [start, end]
+
+    # Find the headland tip
+    tip = grid.find_headland_tip(lat1, lon1, lat2, lon2, land_points)
+    if tip is None:
+        return [start, end]
+
+    # Place waypoint offshore from tip
+    wp = grid.find_safe_waypoint(tip[0], tip[1], lat1, lon1, lat2, lon2)
+    if wp is None:
+        return [start, end]
+
+    # Recurse: route through waypoint
+    left = build_route(grid, start, wp, depth + 1)
+    right = build_route(grid, wp, end, depth + 1)
+
+    # Merge (avoid duplicate waypoint)
+    return left + right[1:]
+
 
 def gen_contours():
     import subprocess
@@ -62,7 +190,6 @@ def gen_contours():
         "-fl", "-200", "-100", "-50", "-20", "-10", "-5",
         TIFF_PATH, tmp, "-f", "GeoJSON"
     ], check=True, capture_output=True)
-
     with open(tmp) as f:
         data = json.load(f)
     for feat in data["features"]:
@@ -84,349 +211,30 @@ def gen_contours():
     print(f"  Contours: {len(data['features'])} features, {os.path.getsize(out)//1024} KB")
 
 
-# ========== STEP 2: EXTRACT COASTLINE + FIND HEADLANDS ==========
+if __name__ == "__main__":
+    print("=== Loading bathymetry ===")
+    grid = DepthGrid(TIFF_PATH)
+    print(f"  Grid: {grid.rows}x{grid.cols}")
 
-def extract_coastline(data, gt):
-    """Extract depth=0 contour as coastline using GDAL."""
-    import subprocess, tempfile
-    # Write a temp tiff with just land mask
-    tmp_contour = "/tmp/coastline_contour.geojson"
-    subprocess.run([
-        "gdal_contour", "-a", "depth", "-fl", "0",
-        TIFF_PATH, tmp_contour, "-f", "GeoJSON"
-    ], check=True, capture_output=True)
+    print("\n=== Generating contours ===")
+    gen_contours()
 
-    with open(tmp_contour) as f:
-        gj = json.load(f)
-
-    lines = []
-    for feat in gj["features"]:
-        geom = feat["geometry"]
-        if geom["type"] == "LineString":
-            lines.append(LineString(geom["coordinates"]))
-        elif geom["type"] == "MultiLineString":
-            for coords in geom["coordinates"]:
-                lines.append(LineString(coords))
-
-    # Merge into continuous lines
-    merged = linemerge(lines)
-    if isinstance(merged, LineString):
-        coastlines = [merged]
-    elif isinstance(merged, MultiLineString):
-        coastlines = list(merged.geoms)
-    else:
-        coastlines = list(merged)
-
-    # Keep only substantial coastlines (>50 points)
-    coastlines = [c for c in coastlines if len(c.coords) > 50]
-    coastlines.sort(key=lambda c: c.length, reverse=True)
-    print(f"  Coastlines: {len(coastlines)} segments, longest: {len(coastlines[0].coords) if coastlines else 0} pts")
-    return coastlines
-
-
-def find_headlands(coastlines, search_radius_deg=0.02, min_prominence_deg=0.005):
-    """
-    Find headlands (capes) by measuring how much each point "protrudes"
-    relative to its neighbors along the coastline.
-    """
-    headlands = []
-
-    for coast in coastlines:
-        coords = list(coast.coords)
-        n = len(coords)
-        if n < 20:
-            continue
-
-        # Compute prominence for each point
-        prominences = []
-        span = max(5, int(search_radius_deg / 0.002))  # ~10 points at 0.002 deg res
-
-        for i in range(span, n - span):
-            pt = Point(coords[i])
-            pt_left = Point(coords[i - span])
-            pt_right = Point(coords[i + span])
-            baseline = LineString([pt_left, pt_right])
-            prom = baseline.distance(pt)
-            prominences.append((i, prom, coords[i]))
-
-        # Find local maxima of prominence
-        for j in range(1, len(prominences) - 1):
-            idx, prom, coord = prominences[j]
-            if prom < min_prominence_deg:
-                continue
-            # Must be local maximum
-            if prom >= prominences[j-1][1] and prom >= prominences[j+1][1]:
-                # Compute outward normal
-                pt_left = np.array(coords[idx - span])
-                pt_right = np.array(coords[idx + span])
-                pt_cur = np.array(coord)
-                midpoint = (pt_left + pt_right) / 2
-                direction = pt_cur - midpoint
-                norm = np.linalg.norm(direction)
-                if norm > 0:
-                    direction = direction / norm
-
-                headlands.append({
-                    'lon': coord[0],
-                    'lat': coord[1],
-                    'prominence': prom,
-                    'direction': direction.tolist(),  # unit vector pointing "out to sea"
-                })
-
-    # Cluster nearby headlands (keep the most prominent within 0.02 deg)
-    clustered = []
-    used = set()
-    headlands.sort(key=lambda h: -h['prominence'])
-    for i, h in enumerate(headlands):
-        if i in used:
-            continue
-        clustered.append(h)
-        for j in range(i+1, len(headlands)):
-            if j in used:
-                continue
-            dist = ((h['lon'] - headlands[j]['lon'])**2 + (h['lat'] - headlands[j]['lat'])**2) ** 0.5
-            if dist < 0.02:
-                used.add(j)
-
-    print(f"  Headlands found: {len(clustered)}")
-    for h in clustered:
-        print(f"    {h['lat']:.4f}N {abs(h['lon']):.4f}W prom={h['prominence']:.4f}")
-    return clustered
-
-
-# ========== STEP 3: PLACE WAYPOINTS AT HEADLANDS ==========
-
-def place_headland_waypoints(headlands, data, gt):
-    """Place waypoints at 10m depth offshore from each headland."""
-    xmin, xres, _, ymax, _, yres_neg = gt
-    yres = abs(yres_neg)
-    rows, cols = data.shape
-
-    def depth_at_ll(lat, lon):
-        c = int((lon - xmin) / xres)
-        r = int((ymax - lat) / yres)
-        if 0 <= r < rows and 0 <= c < cols:
-            return data[r, c]
-        return 0
-
-    waypoints = []
-    for h in headlands:
-        direction = np.array(h['direction'])
-        tip = np.array([h['lon'], h['lat']])
-
-        # Search outward from headland tip for ~10m depth
-        best = None
-        for offset_m in range(200, 5000, 50):  # 200m to 5km
-            offset_deg = offset_m / 111000  # rough m->deg
-            candidate = tip + direction * offset_deg
-            depth = depth_at_ll(candidate[1], candidate[0])
-
-            if depth < -5:  # at least 5m deep
-                if best is None or abs(depth - (-10)) < abs(best[2] - (-10)):
-                    best = (candidate[0], candidate[1], depth)
-                if depth <= -10:  # reached 10m, good enough
-                    break
-
-        if best:
-            waypoints.append({
-                'lat': round(best[1], 5),
-                'lon': round(best[0], 5),
-                'depth': round(best[2], 1),
-                'headland_lat': h['lat'],
-                'headland_lon': h['lon'],
-                'prominence': h['prominence'],
-            })
-            print(f"    WP at {best[1]:.4f}N {abs(best[0]):.4f}W depth={best[2]:.1f}m")
-
-    return waypoints
-
-
-# ========== STEP 4: A* ROUTING WITH MANDATORY HEADLAND WPs ==========
-
-def compute_routes(data, gt, headland_wps):
-    rows, cols = data.shape
-    xmin, xres, _, ymax, _, yres_neg = gt
-    yres = abs(yres_neg)
-
-    def ll_to_rc(lat, lon):
-        c = int((lon - xmin) / xres)
-        r = int((ymax - lat) / yres)
-        return max(0, min(r, rows-1)), max(0, min(c, cols-1))
-
-    def rc_to_ll(r, c):
-        return (round(ymax - r * yres - yres/2, 5),
-                round(xmin + c * xres + xres/2, 5))
-
-    def find_deep_water(r, c):
-        """Find nearest cell with depth < -8m (avoids dead-end bays)."""
-        if 0 <= r < rows and 0 <= c < cols and data[r, c] < -8:
-            return r, c
-        for radius in range(1, 100):
-            best = None; best_d = 0
-            for dr in range(-radius, radius+1):
-                for dc in range(-radius, radius+1):
-                    if abs(dr) != radius and abs(dc) != radius:
-                        continue
-                    nr, nc = r + dr, c + dc
-                    if 0 <= nr < rows and 0 <= nc < cols and data[nr, nc] < -8:
-                        if data[nr, nc] < best_d:
-                            best_d = data[nr, nc]
-                            best = (nr, nc)
-            if best:
-                return best
-        return r, c
-
-    DIRS = [(-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)]
-
-    def astar(start_ll, end_ll, max_iter=500000):
-        sr, sc = find_deep_water(*ll_to_rc(*start_ll))
-        er, ec = find_deep_water(*ll_to_rc(*end_ll))
-
-        open_set = [(0.0, sr, sc)]
-        g_score = np.full((rows, cols), np.inf, dtype=np.float32)
-        g_score[sr, sc] = 0
-        came_r = np.full((rows, cols), -1, dtype=np.int16)
-        came_c = np.full((rows, cols), -1, dtype=np.int16)
-        visited = np.zeros((rows, cols), dtype=bool)
-        iters = 0
-
-        while open_set and iters < max_iter:
-            f, cr, cc = heapq.heappop(open_set)
-            if visited[cr, cc]:
-                continue
-            visited[cr, cc] = True
-            iters += 1
-
-            if abs(cr - er) <= 1 and abs(cc - ec) <= 1:
-                path = [end_ll]
-                r, c = cr, cc
-                while came_r[r, c] >= 0:
-                    path.append(rc_to_ll(r, c))
-                    pr, pc = int(came_r[r, c]), int(came_c[r, c])
-                    r, c = pr, pc
-                path.append(start_ll)
-                path.reverse()
-                return simplify_path(path)
-
-            for dr, dc in DIRS:
-                nr, nc = cr + dr, cc + dc
-                if nr < 0 or nr >= rows or nc < 0 or nc >= cols or visited[nr, nc]:
-                    continue
-                d = data[nr, nc]
-                if d >= -2:
-                    continue
-
-                move = 1.414 if (dr != 0 and dc != 0) else 1.0
-
-                # Cost function matching Navionics-style preferences
-                if d >= -5:     depth_pen = 5.0    # very shallow — high penalty
-                elif d >= -8:   depth_pen = 2.0    # shallow
-                elif d >= -12:  depth_pen = 0.0    # ideal 8-12m
-                elif d >= -20:  depth_pen = 0.5    # acceptable
-                elif d >= -50:  depth_pen = 1.0    # getting offshore
-                else:           depth_pen = 2.0    # way offshore
-
-                new_g = g_score[cr, cc] + move + depth_pen
-                if new_g < g_score[nr, nc]:
-                    g_score[nr, nc] = new_g
-                    h = ((nr - er)**2 + (nc - ec)**2) ** 0.5
-                    heapq.heappush(open_set, (new_g + h, nr, nc))
-                    came_r[nr, nc] = cr
-                    came_c[nr, nc] = cc
-
-        print(f"    WARNING: no route ({iters} iters)")
-        return [start_ll, end_ll]
-
-    def simplify_path(path, tolerance=0.002):
-        if len(path) <= 2:
-            return path
-        start = np.array(path[0])
-        end = np.array(path[-1])
-        line = end - start
-        line_len = np.linalg.norm(line)
-        if line_len == 0:
-            return [path[0], path[-1]]
-        max_dist = 0; max_idx = 0
-        for i in range(1, len(path) - 1):
-            p = np.array(path[i])
-            d = abs((line[0]*(start[1]-p[1]) - line[1]*(start[0]-p[0]))) / line_len
-            if d > max_dist:
-                max_dist = d; max_idx = i
-        if max_dist > tolerance:
-            left = simplify_path(path[:max_idx+1], tolerance)
-            right = simplify_path(path[max_idx:], tolerance)
-            return left[:-1] + right
-        return [path[0], path[-1]]
-
-    # For each pair of consecutive ports, find headland waypoints between them
-    # and route through them
+    print("\n=== Computing routes (visibility graph) ===")
     routes = {}
-    for pi in range(len(PORTS) - 1):
-        name_from, lat_from, lon_from = PORTS[pi]
-        name_to, lat_to, lon_to = PORTS[pi + 1]
+    for i in range(len(PORTS) - 1):
+        name_from, lat_from, lon_from = PORTS[i]
+        name_to, lat_to, lon_to = PORTS[i + 1]
         key = f"{name_from} \u2192 {name_to}"
         print(f"  {key}...", end=" ", flush=True)
 
-        # Find headland waypoints between these two ports
-        # (between their longitudes, roughly)
-        lon_lo = min(lon_from, lon_to) - 0.05
-        lon_hi = max(lon_from, lon_to) + 0.05
-        lat_lo = min(lat_from, lat_to) - 0.05
-        lat_hi = max(lat_from, lat_to) + 0.05
-
-        intermediate_wps = [
-            (wp['lat'], wp['lon']) for wp in headland_wps
-            if lon_lo <= wp['lon'] <= lon_hi and lat_lo <= wp['lat'] <= lat_hi
-        ]
-
-        # Sort intermediates along the route direction
-        if intermediate_wps:
-            # Sort by longitude (coast goes E→W, so descending for western ports)
-            if lon_to < lon_from:
-                intermediate_wps.sort(key=lambda p: -p[1])  # E→W: descending lon
-            else:
-                intermediate_wps.sort(key=lambda p: p[1])
-
-        # Build checkpoints: start → headland WPs → end
-        checkpoints = [(lat_from, lon_from)] + intermediate_wps + [(lat_to, lon_to)]
-
-        full_path = []
-        for ci in range(len(checkpoints) - 1):
-            seg = astar(checkpoints[ci], checkpoints[ci + 1])
-            if full_path and seg:
-                seg = seg[1:]  # avoid duplicate join point
-            full_path.extend(seg)
-
-        routes[key] = full_path
-        print(f"{len(full_path)} pts ({len(intermediate_wps)} headland WPs)")
+        path = build_route(grid, (lat_from, lon_from), (lat_to, lon_to))
+        routes[key] = path
+        n_wp = len(path) - 2  # minus start and end
+        print(f"{len(path)} pts ({n_wp} intermediate WPs)")
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     out = f"{OUTPUT_DIR}/routes.json"
     with open(out, "w") as f:
         json.dump(routes, f, separators=(",", ":"))
-    print(f"  Routes: {len(routes)} segments, {os.path.getsize(out)//1024} KB")
-
-
-# ========== MAIN ==========
-
-if __name__ == "__main__":
-    print("=== Loading bathymetry ===")
-    data, gt = load_tiff()
-    print(f"  Grid: {data.shape[0]}x{data.shape[1]}")
-
-    print("\n=== Generating contours ===")
-    gen_contours()
-
-    print("\n=== Extracting coastline ===")
-    coastlines = extract_coastline(data, gt)
-
-    print("\n=== Finding headlands ===")
-    headlands = find_headlands(coastlines)
-
-    print("\n=== Placing waypoints at headlands ===")
-    headland_wps = place_headland_waypoints(headlands, data, gt)
-
-    print("\n=== Computing A* routes ===")
-    compute_routes(data, gt, headland_wps)
-
+    print(f"\n  Routes: {len(routes)} segments, {os.path.getsize(out)//1024} KB")
     print("\nDone!")
