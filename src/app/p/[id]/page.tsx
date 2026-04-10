@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, use } from "react";
+import { useState, useEffect, useCallback, useRef, use } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { ForecastEntry } from "@/lib/weather";
 
@@ -44,6 +45,7 @@ function verdictLabel(v: string) {
 
 export default function PassagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [passage, setPassage] = useState<Passage | null>(null);
   const [forecasts, setForecasts] = useState<Record<string, ForecastEntry[]> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,6 +96,31 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     if (passage) loadForecasts();
   }, [passage, loadForecasts]);
+
+  // Auto-save filters to DB (debounced)
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const initialLoad = useRef(true);
+
+  useEffect(() => {
+    if (!passage || initialLoad.current) {
+      initialLoad.current = false;
+      return;
+    }
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      fetch("/api/passage", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, departure, speed, mode, model }),
+      });
+    }, 500);
+  }, [departure, speed, mode, model, id, passage]);
+
+  async function handleDelete() {
+    if (!confirm("Delete this passage?")) return;
+    await fetch(`/api/passage?id=${id}`, { method: "DELETE" });
+    router.push("/");
+  }
 
   if (error) return <div className="max-w-4xl mx-auto p-12 text-red-400">Error: {error}</div>;
   if (!passage) return <div className="max-w-4xl mx-auto p-12 text-slate-400">Loading passage...</div>;
@@ -183,6 +210,12 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
               className="px-4 py-2 border border-slate-700 rounded-lg text-sm text-slate-300 hover:border-green-500 transition-colors"
             >
               Share Link
+            </button>
+            <button
+              onClick={handleDelete}
+              className="px-4 py-2 border border-red-500/50 rounded-lg text-sm text-red-400 hover:bg-red-500 hover:text-white transition-colors"
+            >
+              Delete
             </button>
           </div>
         </div>

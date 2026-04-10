@@ -63,3 +63,53 @@ export async function GET(req: NextRequest) {
 
   return NextResponse.json(passage);
 }
+
+export async function PATCH(req: NextRequest) {
+  const body = await req.json();
+  const { id, departure, speed, mode, model } = body;
+
+  if (!id) {
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  }
+
+  const passage = await prisma.passage.findFirst({
+    where: { OR: [{ shortId: id }, { id }] },
+  });
+
+  if (!passage) {
+    return NextResponse.json({ error: "Passage not found" }, { status: 404 });
+  }
+
+  const updated = await prisma.passage.update({
+    where: { id: passage.id },
+    data: {
+      ...(departure !== undefined && { departure: new Date(departure) }),
+      ...(speed !== undefined && { speed }),
+      ...(mode !== undefined && { mode }),
+      ...(model !== undefined && { model }),
+    },
+  });
+
+  return NextResponse.json(updated);
+}
+
+export async function DELETE(req: NextRequest) {
+  const id = req.nextUrl.searchParams.get("id");
+
+  if (!id) {
+    return NextResponse.json({ error: "id required" }, { status: 400 });
+  }
+
+  const passage = await prisma.passage.findFirst({
+    where: { OR: [{ shortId: id }, { id }] },
+  });
+
+  if (!passage) {
+    return NextResponse.json({ error: "Passage not found" }, { status: 404 });
+  }
+
+  await prisma.passageWaypoint.deleteMany({ where: { passageId: passage.id } });
+  await prisma.passage.delete({ where: { id: passage.id } });
+
+  return NextResponse.json({ ok: true });
+}
