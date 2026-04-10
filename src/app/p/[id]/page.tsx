@@ -164,6 +164,10 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
               <span>Speed: {speed}kt</span>
             </div>
           </div>
+          <div className="text-right">
+            <div className="text-sm font-semibold text-slate-300">Bossanova</div>
+            <div className="text-xs text-slate-500">Hallberg-Rassy Monsun 31</div>
+          </div>
           <div className="flex gap-2">
             <Link href="/" className="px-4 py-2 border border-slate-700 rounded-lg text-sm text-slate-300 hover:border-blue-500 transition-colors">
               ← Home
