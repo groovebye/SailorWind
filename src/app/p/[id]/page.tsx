@@ -292,83 +292,80 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
         <>
           <h2 className="text-base font-semibold mb-2" style={{ color: "var(--text-heading)" }}>Passage Summary</h2>
 
-          <table className="w-full text-xs border-collapse">
+          <table className="text-xs border-collapse">
             <thead>
               <tr className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>
                 <th className="text-left px-1.5 py-1" style={{ background: "var(--bg-card)" }}>Waypoint</th>
                 <th className="text-left px-1.5 py-1" style={{ background: "var(--bg-card)" }}>ETA</th>
-                <th className="px-1 py-1.5 w-8" style={{ background: "var(--bg-card)" }}></th>
+                <th className="px-1 py-1" style={{ background: "var(--bg-card)" }}></th>
                 <th className="text-left px-1.5 py-1" style={{ background: "var(--bg-card)" }}>Wind (kt)</th>
-                <th className="text-center px-1.5 py-1 w-14" style={{ background: "var(--bg-card)" }}>Gusts</th>
+                <th className="text-center px-1.5 py-1" style={{ background: "var(--bg-card)" }}>Gusts</th>
                 <th className="text-left px-1.5 py-1" style={{ background: "var(--bg-card)" }}>Waves</th>
                 <th className="text-left px-1.5 py-1" style={{ background: "var(--bg-card)" }}>Swell</th>
-                <th className="text-center px-1.5 py-1 w-16" style={{ background: "var(--bg-card)" }}>Verdict</th>
+                <th className="text-right px-1.5 py-1" style={{ background: "var(--bg-card)" }}>Verdict</th>
               </tr>
             </thead>
+            <tbody>
+              {legs.flatMap((leg, li) => {
+                const legWps = passage.waypoints.filter(
+                  (w) => w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
+                         w.port.coastlineNm <= leg.to.port.coastlineNm + 0.1
+                );
+                const fromTz = tzForPort(leg.from.port.lon);
+                const toTz = tzForPort(leg.to.port.lon);
+
+                return [
+                  <tr key={`leg-${li}`}>
+                    <td colSpan={8} className="text-xs font-semibold px-1.5 py-1" style={{ background: "var(--bg-card)", color: "var(--text-heading)", borderBottom: `1px solid var(--border-light)`, borderTop: li > 0 ? `1px solid var(--border-light)` : undefined }}>
+                      {mode === "daily" ? `Day ${li + 1}: ` : `Leg ${li + 1}: `}{leg.from.port.name} &rarr; {leg.to.port.name} ({leg.nm} NM, ~{leg.hours.toFixed(1)}h) — {fmtLocal(leg.departTime, fromTz)} &rarr; {fmtLocal(leg.arriveTime, toTz)}
+                    </td>
+                  </tr>,
+                  ...legWps.map((wp) => {
+                    const eta = getWaypointETA(wp);
+                    const tz = tzForPort(wp.port.lon);
+                    const wpF = forecasts[wp.port.name] || [];
+                    const f = closestForecast(wpF, eta);
+
+                    return (
+                      <tr key={wp.port.id} style={{ borderBottom: `1px solid var(--row-border)` }} className="hover:opacity-90">
+                        <td className="px-1.5 py-1 font-semibold whitespace-nowrap" style={{ color: wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--text-secondary)" }}>
+                          {wp.port.name}
+                          {wp.isStop && <span className="text-[9px] ml-1 px-0.5 rounded" style={{ border: `1px solid var(--text-green)`, color: "var(--text-green)" }}>STOP</span>}
+                          {wp.isCape && <span className="text-[9px] ml-1 font-bold" style={{ color: "var(--text-yellow)" }}>CAPE</span>}
+                        </td>
+                        <td className="px-1.5 py-1 text-[11px] whitespace-nowrap" style={{ color: "var(--text-blue-light)" }}>{fmtLocal(eta, tz)}</td>
+                        {f ? (
+                          <>
+                            <td className="px-1 py-1 text-center">{WEATHER_EMOJI[f.weather] || ""}</td>
+                            <td className="px-1.5 py-1 whitespace-nowrap">
+                              <span className="inline-block" style={{ color: "var(--text-yellow)", transform: `rotate(${f.windDirDeg}deg)` }}>&darr;</span>
+                              {" "}{Math.round(f.windKt)} B{bftNum(f.beaufort)}
+                            </td>
+                            <td className="px-1.5 py-1 text-center">{Math.round(f.gustKt)}</td>
+                            <td className="px-1.5 py-1 whitespace-nowrap">
+                              <span className="inline-block" style={{ transform: `rotate(${f.waveDirDeg}deg)` }}>&darr;</span>
+                              {" "}{f.waveM}m / {f.wavePeriodS}s
+                            </td>
+                            <td className="px-1.5 py-1 whitespace-nowrap">
+                              <span className="inline-block" style={{ transform: `rotate(${f.swellDirDeg}deg)` }}>&darr;</span>
+                              {" "}{f.swellM}m / {f.swellPeriodS}s
+                            </td>
+                            <td className="px-1.5 py-1 text-right">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={vc(f.verdict)}>
+                                {verdictLabel(f.verdict)}
+                              </span>
+                            </td>
+                          </>
+                        ) : (
+                          <td colSpan={6} className="px-1.5 py-1" style={{ color: "var(--text-muted)" }}>No data</td>
+                        )}
+                      </tr>
+                    );
+                  }),
+                ];
+              })}
+            </tbody>
           </table>
-
-          {legs.map((leg, li) => {
-            const legWps = passage.waypoints.filter(
-              (w) => w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
-                     w.port.coastlineNm <= leg.to.port.coastlineNm + 0.1
-            );
-            const fromTz = tzForPort(leg.from.port.lon);
-            const toTz = tzForPort(leg.to.port.lon);
-
-            return (
-              <div key={li} className="mb-1">
-                <div className="text-xs font-semibold px-1.5 py-1" style={{ background: "var(--bg-card)", color: "var(--text-heading)", borderBottom: `1px solid var(--border-light)` }}>
-                  {mode === "daily" ? `Day ${li + 1}: ` : `Leg ${li + 1}: `}{leg.from.port.name} &rarr; {leg.to.port.name} ({leg.nm} NM, ~{leg.hours.toFixed(1)}h) — {fmtLocal(leg.departTime, fromTz)} &rarr; {fmtLocal(leg.arriveTime, toTz)}
-                </div>
-                <table className="w-full text-xs border-collapse">
-                  <tbody>
-                    {legWps.map((wp) => {
-                      const eta = getWaypointETA(wp);
-                      const tz = tzForPort(wp.port.lon);
-                      const wpF = forecasts[wp.port.name] || [];
-                      const f = closestForecast(wpF, eta);
-
-                      return (
-                        <tr key={wp.port.id} style={{ borderBottom: `1px solid var(--row-border)` }} className="hover:opacity-90">
-                          <td className="px-1.5 py-1 font-semibold" style={{ color: wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--text-secondary)" }}>
-                            {wp.port.name}
-                            {wp.isStop && <span className="text-[9px] ml-1 px-0.5 rounded" style={{ border: `1px solid var(--text-green)`, color: "var(--text-green)" }}>STOP</span>}
-                            {wp.isCape && <span className="text-[9px] ml-1 font-bold" style={{ color: "var(--text-yellow)" }}>CAPE</span>}
-                          </td>
-                          <td className="px-1.5 py-1 text-[11px]" style={{ color: "var(--text-blue-light)" }}>{fmtLocal(eta, tz)}</td>
-                          {f ? (
-                            <>
-                              <td className="px-1 py-1.5 text-center w-8">{WEATHER_EMOJI[f.weather] || ""}</td>
-                              <td className="px-1.5 py-1">
-                                <span className="inline-block" style={{ color: "var(--text-yellow)", transform: `rotate(${f.windDirDeg}deg)` }}>&darr;</span>
-                                {" "}{Math.round(f.windKt)} B{bftNum(f.beaufort)}
-                              </td>
-                              <td className="px-1.5 py-1 text-center w-14">{Math.round(f.gustKt)}</td>
-                              <td className="px-1.5 py-1">
-                                <span className="inline-block" style={{ transform: `rotate(${f.waveDirDeg}deg)` }}>&darr;</span>
-                                {" "}{f.waveM}m / {f.wavePeriodS}s
-                              </td>
-                              <td className="px-1.5 py-1">
-                                <span className="inline-block" style={{ transform: `rotate(${f.swellDirDeg}deg)` }}>&darr;</span>
-                                {" "}{f.swellM}m / {f.swellPeriodS}s
-                              </td>
-                              <td className="px-1.5 py-1 text-center w-16">
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={vc(f.verdict)}>
-                                  {verdictLabel(f.verdict)}
-                                </span>
-                              </td>
-                            </>
-                          ) : (
-                            <td colSpan={6} className="px-1.5 py-1" style={{ color: "var(--text-muted)" }}>No data</td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })}
 
           {/* Detailed Forecast */}
           <h2 className="text-base font-semibold mb-2 mt-6" style={{ color: "var(--text-heading)" }}>Detailed Forecast by Waypoint</h2>
