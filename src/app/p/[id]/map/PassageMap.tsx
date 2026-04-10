@@ -157,13 +157,42 @@ function buildPopupContent(wp: WaypointWithData): string {
   return html;
 }
 
-/** Look up pre-computed A* route between two ports */
+// Ordered list of all ports — must match the order in routes.json
+const ALL_PORTS = [
+  "Gijón", "Candás", "Cabo Peñas", "Luanco", "Avilés", "Cudillero",
+  "Luarca", "Navia", "Ribadeo", "Foz", "Viveiro", "Estaca de Bares",
+  "Cabo Ortegal", "Cariño", "Cedeira", "Ferrol", "La Coruña",
+];
+
+/**
+ * Find route between any two ports by chaining through intermediate
+ * consecutive-pair routes. E.g. Gijón→Cabo Peñas = Gijón→Candás + Candás→Cabo Peñas
+ */
 function findRoute(
   routes: Record<string, [number, number][]>,
   fromName: string, toName: string
 ): [number, number][] | null {
-  const key = `${fromName} \u2192 ${toName}`;
-  return routes[key] || null;
+  // Direct lookup
+  const directKey = `${fromName} \u2192 ${toName}`;
+  if (routes[directKey]) return routes[directKey];
+
+  // Chain through intermediate ports
+  const fromIdx = ALL_PORTS.indexOf(fromName);
+  const toIdx = ALL_PORTS.indexOf(toName);
+  if (fromIdx < 0 || toIdx < 0 || fromIdx >= toIdx) return null;
+
+  const chain: [number, number][] = [];
+  for (let i = fromIdx; i < toIdx; i++) {
+    const key = `${ALL_PORTS[i]} \u2192 ${ALL_PORTS[i + 1]}`;
+    const seg = routes[key];
+    if (!seg || seg.length === 0) return null; // broken chain
+    if (chain.length > 0) {
+      chain.push(...seg.slice(1)); // skip duplicate join point
+    } else {
+      chain.push(...seg);
+    }
+  }
+  return chain.length > 0 ? chain : null;
 }
 
 export default function PassageMap({ waypoints, legs, theme }: { waypoints: WaypointWithData[]; legs: Leg[]; theme: string }) {
