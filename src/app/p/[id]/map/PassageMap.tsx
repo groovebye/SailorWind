@@ -1,10 +1,11 @@
 "use client";
 
-import { MapContainer, TileLayer, WMSTileLayer, Polyline, CircleMarker, Popup, Tooltip, useMap, GeoJSON } from "react-leaflet";
+import { MapContainer, TileLayer, WMSTileLayer, Polyline, CircleMarker, Popup, Tooltip, useMap, GeoJSON as GeoJSONLayer } from "react-leaflet";
 import { useEffect, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { ForecastEntry } from "@/lib/weather";
+import type { FeatureCollection } from "geojson";
 
 interface Port {
   id: string; name: string; slug: string; lat: number; lon: number; type: string;
@@ -167,7 +168,7 @@ function findRoute(
 
 export default function PassageMap({ waypoints, legs, theme }: { waypoints: WaypointWithData[]; legs: Leg[]; theme: string }) {
   const [routes, setRoutes] = useState<Record<string, [number, number][]> | null>(null);
-  const [contours, setContours] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [contours, setContours] = useState<FeatureCollection | null>(null);
 
   useEffect(() => {
     fetch("/data/routes.json").then(r => r.json()).then(setRoutes).catch(() => {});
@@ -254,7 +255,7 @@ export default function PassageMap({ waypoints, legs, theme }: { waypoints: Wayp
 
       {/* Local depth contour lines (5m, 10m, 20m, 50m, 100m, 200m) */}
       {contours && (
-        <GeoJSON
+        <GeoJSONLayer
           data={contours}
           style={(feature) => {
             const depth = feature?.properties?.depth || 50;
