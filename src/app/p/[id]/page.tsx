@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { ForecastEntry } from "@/lib/weather";
+import { useTheme } from "@/lib/theme";
 
 const WEATHER_EMOJI: Record<string, string> = {
   sun: "\u2600\uFE0F", partly: "\u26C5", cloudy: "\u2601\uFE0F",
@@ -42,9 +43,9 @@ function fmtTimeLocal(d: Date, tz: string) {
 }
 
 function verdictColor(v: string) {
-  if (v === "GO") return "text-green-400 bg-green-400/10";
-  if (v.startsWith("CAUTION")) return "text-yellow-400 bg-yellow-400/10";
-  return "text-red-400 bg-red-400/10";
+  if (v === "GO") return "go";
+  if (v.startsWith("CAUTION")) return "caution";
+  return "nogo";
 }
 
 function verdictLabel(v: string) {
@@ -55,15 +56,10 @@ function verdictLabel(v: string) {
 
 function bftNum(b: string) { return b.replace("F", ""); }
 
-// Column width classes for consistent alignment across all legs
-const COL = {
-  wp: "w-[18%]", eta: "w-[18%]", wx: "w-[4%]",
-  wind: "w-[14%]", gust: "w-[8%]", wave: "w-[14%]", swell: "w-[14%]", verdict: "w-[10%]",
-};
-
 export default function PassagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const { theme, toggle: toggleTheme } = useTheme();
   const [passage, setPassage] = useState<Passage | null>(null);
   const [forecasts, setForecasts] = useState<Record<string, ForecastEntry[]> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -129,8 +125,8 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
     router.push("/");
   }
 
-  if (error) return <div className="max-w-4xl mx-auto p-12 text-red-400">Error: {error}</div>;
-  if (!passage) return <div className="max-w-4xl mx-auto p-12 text-slate-400">Loading...</div>;
+  if (error) return <div className="max-w-4xl mx-auto p-12" style={{ color: "var(--text-red)" }}>Error: {error}</div>;
+  if (!passage) return <div className="max-w-4xl mx-auto p-12" style={{ color: "var(--text-secondary)" }}>Loading...</div>;
 
   const stops = passage.waypoints.filter((w) => w.isStop);
   const legs: { from: Waypoint; to: Waypoint; nm: number; departTime: Date; arriveTime: Date; hours: number }[] = [];
@@ -181,40 +177,52 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
 
   const totalSailing = legs.reduce((s, l) => s + l.hours, 0);
 
+  const vc = (v: string) => {
+    const t = verdictColor(v);
+    return { color: `var(--text-${t === "go" ? "green" : t === "caution" ? "yellow" : "red"})`, background: `var(--accent-${t})` };
+  };
+
   return (
-    <div className="max-w-[1400px] mx-auto px-4 py-4">
+    <div className="max-w-[1200px] mx-auto px-4 py-4">
       {/* Header */}
-      <header className="bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 rounded-xl px-5 py-4 mb-4">
+      <header style={{ background: `linear-gradient(to right, var(--bg-header-from), var(--bg-header-to))`, border: `1px solid var(--border)` }} className="rounded-xl px-5 py-4 mb-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-lg font-bold text-blue-400">
+            <h1 className="text-lg font-bold" style={{ color: "var(--text-heading)" }}>
               &#9973; {passage.name || "Passage"}
             </h1>
-            <div className="text-xs text-slate-400 mt-0.5 space-x-3">
+            <div className="text-xs mt-0.5 space-x-3" style={{ color: "var(--text-secondary)" }}>
               <span>{model.toUpperCase()}</span>
               <span>{totalSailing.toFixed(0)}h sailing</span>
               <span>{speed}kt</span>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-sm font-semibold text-slate-300">Bossanova</div>
-            <div className="text-xs text-slate-500">Hallberg-Rassy Monsun 31</div>
+            <div className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Bossanova</div>
+            <div className="text-sm" style={{ color: "var(--text-muted)" }}>Hallberg-Rassy Monsun 31</div>
           </div>
           <div className="flex items-center gap-1">
-            <Link href="/" className="group flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all" title="Home">
+            <Link href="/" className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Home">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955a1.126 1.126 0 011.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
               <span className="text-xs hidden sm:inline">Home</span>
             </Link>
-            <Link href={`/p/${id}/map`} className="group flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all" title="Map">
+            <Link href={`/p/${id}/map`} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Map">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" /></svg>
               <span className="text-xs hidden sm:inline">Map</span>
             </Link>
-            <button onClick={() => loadForecasts(true)} className="group flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition-all" title="Reload forecasts">
+            <button onClick={() => loadForecasts(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Reload">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M20.984 4.356v4.993" /></svg>
               <span className="text-xs hidden sm:inline">Reload</span>
             </button>
-            <div className="w-px h-5 bg-slate-700 mx-1" />
-            <button onClick={handleDelete} className="group flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-all" title="Delete passage">
+            <button onClick={toggleTheme} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Toggle theme">
+              {theme === "dark" ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" /></svg>
+              )}
+            </button>
+            <div className="w-px h-5 mx-1" style={{ background: "var(--border)" }} />
+            <button onClick={handleDelete} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-muted)" }} title="Delete">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
             </button>
           </div>
@@ -222,31 +230,35 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
       </header>
 
       {/* Filters */}
-      <div className="bg-slate-800 border border-slate-800 rounded-xl px-4 py-3 mb-4">
+      <div style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }} className="rounded-xl px-4 py-3 mb-4">
         <div className="flex gap-4 items-end flex-wrap">
           <div>
-            <label className="block text-[10px] text-slate-500 mb-0.5">Departure</label>
+            <label className="block text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>Departure</label>
             <input type="datetime-local" value={departure} onChange={(e) => setDeparture(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded px-2.5 h-9 text-sm focus:border-blue-500 focus:outline-none" />
+              style={{ background: "var(--bg-input)", border: `1px solid var(--border)`, color: "var(--text-primary)" }}
+              className="rounded px-2.5 h-9 text-sm focus:outline-none" />
           </div>
           <div>
-            <label className="block text-[10px] text-slate-500 mb-0.5">Speed (kt)</label>
+            <label className="block text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>Speed (kt)</label>
             <input type="number" value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value) || 5)}
               min={1} max={15} step={0.5}
-              className="w-20 bg-slate-900 border border-slate-700 rounded px-2.5 h-9 text-sm focus:border-blue-500 focus:outline-none" />
+              style={{ background: "var(--bg-input)", border: `1px solid var(--border)`, color: "var(--text-primary)" }}
+              className="w-20 rounded px-2.5 h-9 text-sm focus:outline-none" />
           </div>
           <div>
-            <label className="block text-[10px] text-slate-500 mb-0.5">Mode</label>
+            <label className="block text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>Mode</label>
             <select value={mode} onChange={(e) => setMode(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded px-2.5 h-9 text-sm focus:border-blue-500 focus:outline-none">
+              style={{ background: "var(--bg-input)", border: `1px solid var(--border)`, color: "var(--text-primary)" }}
+              className="rounded px-2.5 h-9 text-sm focus:outline-none">
               <option value="daily">Daily stops</option>
               <option value="nonstop">Non-stop</option>
             </select>
           </div>
           <div>
-            <label className="block text-[10px] text-slate-500 mb-0.5">Model</label>
+            <label className="block text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>Model</label>
             <select value={model} onChange={(e) => setModel(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded px-2.5 h-9 text-sm focus:border-blue-500 focus:outline-none">
+              style={{ background: "var(--bg-input)", border: `1px solid var(--border)`, color: "var(--text-primary)" }}
+              className="rounded px-2.5 h-9 text-sm focus:outline-none">
               <option value="ecmwf_ifs025">ECMWF IFS 0.25&deg;</option>
               <option value="icon_eu">ICON-EU</option>
               <option value="gfs_seamless">GFS</option>
@@ -262,10 +274,10 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
           const fromTz = tzForPort(l.from.port.lon);
           const toTz = tzForPort(l.to.port.lon);
           return (
-            <div key={i} className="bg-slate-800 border border-slate-800 rounded-lg px-3 py-2 flex-1 min-w-[200px]">
-              <div className="font-semibold text-blue-400 text-sm">{mode === "daily" ? `Day ${i + 1}: ` : ""}{l.from.port.name} &rarr; {l.to.port.name}</div>
-              <div className="text-xs text-slate-500">{l.nm} NM, ~{l.hours.toFixed(1)}h</div>
-              <div className="text-xs text-green-400 mt-0.5">{fmtLocal(l.departTime, fromTz)} &rarr; {fmtLocal(l.arriveTime, toTz)}</div>
+            <div key={i} style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }} className="rounded-lg px-3 py-2 flex-1 min-w-[180px]">
+              <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{mode === "daily" ? `Day ${i + 1}: ` : ""}{l.from.port.name} &rarr; {l.to.port.name}</div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>{l.nm} NM, ~{l.hours.toFixed(1)}h</div>
+              <div className="text-xs mt-0.5" style={{ color: "var(--text-green)" }}>{fmtLocal(l.departTime, fromTz)} &rarr; {fmtLocal(l.arriveTime, toTz)}</div>
             </div>
           );
         })}
@@ -273,25 +285,24 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
 
       {loading ? (
         <div className="text-center py-12">
-          <div className="w-8 h-8 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-slate-400 text-sm">Fetching forecasts...</p>
+          <div className="w-8 h-8 border-2 rounded-full animate-spin mx-auto mb-3" style={{ borderColor: "var(--border)", borderTopColor: "var(--text-heading)" }} />
+          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Fetching forecasts...</p>
         </div>
       ) : forecasts && (
         <>
-          <h2 className="text-base font-semibold text-blue-400 mb-2">Passage Summary</h2>
+          <h2 className="text-base font-semibold mb-2" style={{ color: "var(--text-heading)" }}>Passage Summary</h2>
 
-          {/* Single shared header */}
-          <table className="w-full text-xs border-collapse table-fixed">
+          <table className="w-full text-xs border-collapse">
             <thead>
-              <tr className="text-[10px] text-slate-500 uppercase">
-                <th className={`text-left px-2 py-1.5 bg-slate-800/50 ${COL.wp}`}>Waypoint</th>
-                <th className={`text-left px-2 py-1.5 bg-slate-800/50 ${COL.eta}`}>ETA</th>
-                <th className={`px-2 py-1.5 bg-slate-800/50 ${COL.wx}`}></th>
-                <th className={`text-left px-2 py-1.5 bg-slate-800/50 ${COL.wind}`}>Wind (kt)</th>
-                <th className={`text-center px-2 py-1.5 bg-slate-800/50 ${COL.gust}`}>Gusts</th>
-                <th className={`text-left px-2 py-1.5 bg-slate-800/50 ${COL.wave}`}>Waves</th>
-                <th className={`text-left px-2 py-1.5 bg-slate-800/50 ${COL.swell}`}>Swell</th>
-                <th className={`text-center px-2 py-1.5 bg-slate-800/50 ${COL.verdict}`}>Verdict</th>
+              <tr className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>
+                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Waypoint</th>
+                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>ETA</th>
+                <th className="px-1 py-1.5 w-8" style={{ background: "var(--bg-card)" }}></th>
+                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Wind (kt)</th>
+                <th className="text-center px-2 py-1.5 w-14" style={{ background: "var(--bg-card)" }}>Gusts</th>
+                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Waves</th>
+                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Swell</th>
+                <th className="text-center px-2 py-1.5 w-16" style={{ background: "var(--bg-card)" }}>Verdict</th>
               </tr>
             </thead>
           </table>
@@ -306,10 +317,10 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
 
             return (
               <div key={li} className="mb-1">
-                <div className="bg-slate-800 text-blue-400 text-xs font-semibold px-2 py-1.5 border-b border-slate-700/50">
+                <div className="text-xs font-semibold px-2 py-1.5" style={{ background: "var(--bg-card)", color: "var(--text-heading)", borderBottom: `1px solid var(--border-light)` }}>
                   {mode === "daily" ? `Day ${li + 1}: ` : `Leg ${li + 1}: `}{leg.from.port.name} &rarr; {leg.to.port.name} ({leg.nm} NM, ~{leg.hours.toFixed(1)}h) — {fmtLocal(leg.departTime, fromTz)} &rarr; {fmtLocal(leg.arriveTime, toTz)}
                 </div>
-                <table className="w-full text-xs border-collapse table-fixed">
+                <table className="w-full text-xs border-collapse">
                   <tbody>
                     {legWps.map((wp) => {
                       const eta = getWaypointETA(wp);
@@ -318,39 +329,37 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                       const f = closestForecast(wpF, eta);
 
                       return (
-                        <tr key={wp.port.id} className="border-b border-slate-800/50 hover:bg-blue-500/5">
-                          <td className={`px-2 py-1.5 font-semibold ${COL.wp} ${
-                            wp.isCape ? "text-yellow-400" : wp.isStop ? "text-green-400" : "text-slate-400"
-                          }`}>
+                        <tr key={wp.port.id} style={{ borderBottom: `1px solid var(--row-border)` }} className="hover:opacity-90">
+                          <td className="px-2 py-1.5 font-semibold" style={{ color: wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--text-secondary)" }}>
                             {wp.port.name}
-                            {wp.isStop && <span className="text-[9px] ml-1 border border-green-500 text-green-500 px-0.5 rounded">STOP</span>}
-                            {wp.isCape && <span className="text-[9px] ml-1 text-yellow-400 font-bold">CAPE</span>}
+                            {wp.isStop && <span className="text-[9px] ml-1 px-0.5 rounded" style={{ border: `1px solid var(--text-green)`, color: "var(--text-green)" }}>STOP</span>}
+                            {wp.isCape && <span className="text-[9px] ml-1 font-bold" style={{ color: "var(--text-yellow)" }}>CAPE</span>}
                           </td>
-                          <td className={`px-2 py-1.5 text-blue-300 text-[11px] ${COL.eta}`}>{fmtLocal(eta, tz)}</td>
+                          <td className="px-2 py-1.5 text-[11px]" style={{ color: "var(--text-blue-light)" }}>{fmtLocal(eta, tz)}</td>
                           {f ? (
                             <>
-                              <td className={`px-2 py-1.5 text-center ${COL.wx}`}>{WEATHER_EMOJI[f.weather] || ""}</td>
-                              <td className={`px-2 py-1.5 ${COL.wind}`}>
-                                <span className="inline-block text-yellow-400" style={{ transform: `rotate(${f.windDirDeg}deg)` }}>&darr;</span>
+                              <td className="px-1 py-1.5 text-center w-8">{WEATHER_EMOJI[f.weather] || ""}</td>
+                              <td className="px-2 py-1.5">
+                                <span className="inline-block" style={{ color: "var(--text-yellow)", transform: `rotate(${f.windDirDeg}deg)` }}>&darr;</span>
                                 {" "}{Math.round(f.windKt)} B{bftNum(f.beaufort)}
                               </td>
-                              <td className={`px-2 py-1.5 text-center ${COL.gust}`}>{Math.round(f.gustKt)}</td>
-                              <td className={`px-2 py-1.5 ${COL.wave}`}>
+                              <td className="px-2 py-1.5 text-center w-14">{Math.round(f.gustKt)}</td>
+                              <td className="px-2 py-1.5">
                                 <span className="inline-block" style={{ transform: `rotate(${f.waveDirDeg}deg)` }}>&darr;</span>
                                 {" "}{f.waveM}m / {f.wavePeriodS}s
                               </td>
-                              <td className={`px-2 py-1.5 ${COL.swell}`}>
+                              <td className="px-2 py-1.5">
                                 <span className="inline-block" style={{ transform: `rotate(${f.swellDirDeg}deg)` }}>&darr;</span>
                                 {" "}{f.swellM}m / {f.swellPeriodS}s
                               </td>
-                              <td className={`px-2 py-1.5 text-center ${COL.verdict}`}>
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${verdictColor(f.verdict)}`}>
+                              <td className="px-2 py-1.5 text-center w-16">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={vc(f.verdict)}>
                                   {verdictLabel(f.verdict)}
                                 </span>
                               </td>
                             </>
                           ) : (
-                            <td colSpan={6} className="px-2 py-1.5 text-slate-500">No data</td>
+                            <td colSpan={6} className="px-2 py-1.5" style={{ color: "var(--text-muted)" }}>No data</td>
                           )}
                         </tr>
                       );
@@ -362,7 +371,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
           })}
 
           {/* Detailed Forecast */}
-          <h2 className="text-base font-semibold text-blue-400 mb-2 mt-6">Detailed Forecast by Waypoint</h2>
+          <h2 className="text-base font-semibold mb-2 mt-6" style={{ color: "var(--text-heading)" }}>Detailed Forecast by Waypoint</h2>
           {passage.waypoints.map((wp) => {
             const allF = forecasts[wp.port.name] || [];
             const eta = getWaypointETA(wp);
@@ -387,35 +396,32 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
             }
 
             const isCollapsed = !wp.isStop && !wp.isCape;
+            const borderColor = wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--border-light)";
 
             return (
-              <details key={wp.port.id} open={!isCollapsed} className={`group mb-2 rounded-lg border overflow-hidden ${
-                wp.isCape ? "border-yellow-500/30" : wp.isStop ? "border-green-500/30" : "border-slate-800"
-              }`}>
-                <summary className="px-3 py-2 cursor-pointer bg-slate-800 hover:bg-slate-750 flex items-center gap-2 select-none">
-                  <svg className="w-3.5 h-3.5 text-slate-500 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <details key={wp.port.id} open={!isCollapsed} className="group mb-2 rounded-lg overflow-hidden" style={{ border: `1px solid ${borderColor}30` }}>
+                <summary className="px-3 py-2 cursor-pointer flex items-center gap-2 select-none" style={{ background: "var(--bg-card)" }}>
+                  <svg className="w-3.5 h-3.5 transition-transform group-open:rotate-90" style={{ color: "var(--text-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
-                  <span className={`font-semibold text-sm ${
-                    wp.isCape ? "text-yellow-400" : wp.isStop ? "text-green-400" : "text-slate-400"
-                  }`}>
+                  <span className="font-semibold text-sm" style={{ color: wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--text-secondary)" }}>
                     {wp.port.name}
                   </span>
-                  <span className="text-[11px] text-slate-500">ETA: {fmtLocal(eta, tz)}</span>
-                  <span className="text-[11px] text-slate-600 ml-auto">{dayF.length} entries</span>
+                  <span className="text-[11px]" style={{ color: "var(--text-muted)" }}>ETA: {fmtLocal(eta, tz)}</span>
+                  <span className="text-[11px] ml-auto" style={{ color: "var(--text-muted)" }}>{dayF.length} entries</span>
                 </summary>
-                <div className="bg-slate-800">
+                <div style={{ background: "var(--bg-card)" }}>
                   {dayF.length > 0 ? (
-                    <table className="w-full text-xs table-fixed">
+                    <table className="w-full text-xs">
                       <thead>
-                        <tr className="text-[10px] text-slate-500 uppercase">
-                          <th className="text-left px-2 py-1.5 w-[10%]">Time</th>
-                          <th className="px-2 py-1.5 w-[4%]"></th>
-                          <th className="text-left px-2 py-1.5 w-[16%]">Wind (kt)</th>
-                          <th className="text-center px-2 py-1.5 w-[8%]">Gusts</th>
-                          <th className="text-left px-2 py-1.5 w-[16%]">Waves</th>
-                          <th className="text-left px-2 py-1.5 w-[16%]">Swell</th>
-                          <th className="text-center px-2 py-1.5 w-[10%]">Verdict</th>
+                        <tr className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>
+                          <th className="text-left px-2 py-1.5 w-16">Time</th>
+                          <th className="px-1 py-1.5 w-8"></th>
+                          <th className="text-left px-2 py-1.5">Wind (kt)</th>
+                          <th className="text-center px-2 py-1.5 w-14">Gusts</th>
+                          <th className="text-left px-2 py-1.5">Waves</th>
+                          <th className="text-left px-2 py-1.5">Swell</th>
+                          <th className="text-center px-2 py-1.5 w-16">Verdict</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -423,14 +429,14 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                           const dt = new Date(f.time);
                           const diffH = Math.abs(dt.getTime() - eta.getTime()) / 3600000;
                           return (
-                            <tr key={f.time} className={`border-b border-slate-800/30 ${diffH < 2 ? "bg-blue-500/10" : ""}`}>
-                              <td className="px-2 py-1">{fmtTimeLocal(dt, tz)}</td>
-                              <td className="px-2 py-1 text-center">{WEATHER_EMOJI[f.weather] || ""}</td>
+                            <tr key={f.time} style={{ borderBottom: `1px solid var(--row-border)`, background: diffH < 2 ? "var(--highlight-row)" : undefined }}>
+                              <td className="px-2 py-1 w-16">{fmtTimeLocal(dt, tz)}</td>
+                              <td className="px-1 py-1 text-center w-8">{WEATHER_EMOJI[f.weather] || ""}</td>
                               <td className="px-2 py-1">
-                                <span className="inline-block text-yellow-400" style={{ transform: `rotate(${f.windDirDeg}deg)` }}>&darr;</span>
+                                <span className="inline-block" style={{ color: "var(--text-yellow)", transform: `rotate(${f.windDirDeg}deg)` }}>&darr;</span>
                                 {" "}{Math.round(f.windKt)} B{bftNum(f.beaufort)}
                               </td>
-                              <td className="px-2 py-1 text-center">{Math.round(f.gustKt)}</td>
+                              <td className="px-2 py-1 text-center w-14">{Math.round(f.gustKt)}</td>
                               <td className="px-2 py-1">
                                 <span className="inline-block" style={{ transform: `rotate(${f.waveDirDeg}deg)` }}>&darr;</span>
                                 {" "}{f.waveM}m / {f.wavePeriodS}s
@@ -439,8 +445,8 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                                 <span className="inline-block" style={{ transform: `rotate(${f.swellDirDeg}deg)` }}>&darr;</span>
                                 {" "}{f.swellM}m / {f.swellPeriodS}s
                               </td>
-                              <td className="px-2 py-1 text-center">
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${verdictColor(f.verdict)}`}>
+                              <td className="px-2 py-1 text-center w-16">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={vc(f.verdict)}>
                                   {verdictLabel(f.verdict)}
                                 </span>
                               </td>
@@ -450,7 +456,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                       </tbody>
                     </table>
                   ) : (
-                    <div className="px-3 py-2 text-slate-500 text-xs">No forecast data</div>
+                    <div className="px-3 py-2 text-xs" style={{ color: "var(--text-muted)" }}>No forecast data</div>
                   )}
                 </div>
               </details>
@@ -459,7 +465,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
         </>
       )}
 
-      <div className="text-center text-[10px] text-slate-600 mt-6 pt-4 border-t border-slate-800">
+      <div className="text-center text-[10px] mt-6 pt-4" style={{ color: "var(--text-muted)", borderTop: `1px solid var(--border-light)` }}>
         Planning aid only. Cross-check with AEMET, Meteogalicia, and real-time conditions before departure.
       </div>
     </div>

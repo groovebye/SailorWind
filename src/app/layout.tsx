@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
+import { ThemeProvider } from "@/lib/theme";
 import "./globals.css";
 
 const mono = JetBrains_Mono({
@@ -18,9 +19,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${mono.variable} dark`}>
-      <body className="min-h-screen bg-slate-900 text-slate-200 font-mono">
-        {children}
+    <html lang="en" className={`${mono.variable} dark`} suppressHydrationWarning>
+      <body className="min-h-screen font-mono">
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );
