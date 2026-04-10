@@ -1,10 +1,11 @@
 "use client";
 
-import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Polyline, CircleMarker, Popup, Tooltip, useMap, LayersControl } from "react-leaflet";
 import { useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { ForecastEntry } from "@/lib/weather";
+import { getRouteShape } from "@/lib/coastline";
 
 interface Port {
   id: string; name: string; slug: string; lat: number; lon: number; type: string;
@@ -28,6 +29,7 @@ const COLORS: Record<string, { fill: string; stroke: string }> = {
 
 const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png";
+const OPENSEAMAP_TILES = "https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png";
 
 function bftNum(b: string) { return b.replace("F", ""); }
 
@@ -164,31 +166,52 @@ function buildPopupContent(wp: WaypointWithData): string {
 export default function PassageMap({ waypoints, legs, theme }: { waypoints: WaypointWithData[]; legs: Leg[]; theme: string }) {
   const positions = waypoints.map((w) => [w.port.lat, w.port.lon] as [number, number]);
 
-  // Route line: through stops and capes in order
-  const routePositions = waypoints
-    .filter((w) => w.isStop || w.isCape)
-    .map((w) => [w.port.lat, w.port.lon] as [number, number]);
-
-  // Color route segments by worst verdict on that leg
+  // Build route shape using coastline points for each leg
   const legSegments: { positions: [number, number][]; color: string; label: string }[] = [];
-  for (const leg of legs) {
+  const allRoutePositions: [number, number][] = [];
+
+  for (let li = 0; li < legs.length; li++) {
+    const leg = legs[li];
+    // Get all waypoints in this leg, build shape through them
     const legWps = waypoints.filter(
+      (w) => (w.isStop || w.isCape) &&
+             w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
+             w.port.coastlineNm <= leg.to.port.coastlineNm + 0.1
+    ).sort((a, b) => a.port.coastlineNm - b.port.coastlineNm);
+
+    // Build detailed shape through consecutive waypoints
+    const segPositions: [number, number][] = [];
+    for (let i = 0; i < legWps.length - 1; i++) {
+      const shape = getRouteShape(
+        legWps[i].port.lat, legWps[i].port.lon,
+        legWps[i + 1].port.lat, legWps[i + 1].port.lon,
+      );
+      // Avoid duplicating the join point
+      if (i > 0) shape.shift();
+      segPositions.push(...shape);
+    }
+    if (segPositions.length === 0 && legWps.length >= 2) {
+      segPositions.push(
+        [legWps[0].port.lat, legWps[0].port.lon],
+        [legWps[legWps.length - 1].port.lat, legWps[legWps.length - 1].port.lon],
+      );
+    }
+
+    // Determine worst verdict on this leg
+    const allLegWps = waypoints.filter(
       (w) => w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
              w.port.coastlineNm <= leg.to.port.coastlineNm + 0.1
     );
-    const routeWps = legWps.filter(w => w.isStop || w.isCape);
-    const segPositions = routeWps.map(w => [w.port.lat, w.port.lon] as [number, number]);
-
-    // Determine worst verdict on this leg
     let worst = "GO";
-    for (const w of legWps) {
+    for (const w of allLegWps) {
       if (w.forecast) {
         if (w.forecast.verdict.startsWith("NO")) worst = "NO-GO";
         else if (w.forecast.verdict.startsWith("CAUTION") && worst !== "NO-GO") worst = "CAUTION";
       }
     }
     const color = worst === "GO" ? "#4ade80" : worst === "CAUTION" ? "#facc15" : "#f87171";
-    legSegments.push({ positions: segPositions, color, label: `Leg ${legs.indexOf(leg) + 1}: ${worst}` });
+    legSegments.push({ positions: segPositions, color, label: `Leg ${li + 1}: ${worst}` });
+    allRoutePositions.push(...segPositions);
   }
 
   const tileUrl = theme === "light" ? LIGHT_TILES : DARK_TILES;
@@ -204,18 +227,27 @@ export default function PassageMap({ waypoints, legs, theme }: { waypoints: Wayp
       <FitBounds positions={positions} />
 
       <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/">CARTO</a>'
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>'
         url={tileUrl}
       />
 
-      {/* Route line — full route dashed */}
-      <Polyline
-        positions={routePositions}
-        pathOptions={{ color: "#3b82f6", weight: 1.5, opacity: 0.3, dashArray: "4 4" }}
+      {/* OpenSeaMap nautical overlay — buoys, lights, depth contours */}
+      <TileLayer
+        url={OPENSEAMAP_TILES}
+        attribution='&copy; <a href="https://www.openseamap.org">OpenSeaMap</a>'
+        opacity={0.8}
       />
 
-      {/* Colored leg segments */}
-      {legSegments.map((seg, i) => (
+      {/* Full route — faint dashed line */}
+      {allRoutePositions.length > 1 && (
+        <Polyline
+          positions={allRoutePositions}
+          pathOptions={{ color: "#3b82f6", weight: 1.5, opacity: 0.2, dashArray: "4 4" }}
+        />
+      )}
+
+      {/* Colored leg segments following coastline */}
+      {legSegments.map((seg, i) => seg.positions.length > 1 && (
         <Polyline
           key={`leg-${i}`}
           positions={seg.positions}
