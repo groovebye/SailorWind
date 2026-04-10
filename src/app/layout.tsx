@@ -10,7 +10,7 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "SailorWind — Passage Planner",
-  description: "Weather-aware sailing passage planner",
+  description: "Weather-aware passage planner for Bossanova - Hallberg Rassy Monsun 31",
 };
 
 export default function RootLayout({
