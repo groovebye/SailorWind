@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
 """
-Generate sailing routes using visibility-graph approach:
-1. Try straight line between ports
-2. If line crosses land, find the headland blocking it
-3. Place a waypoint offshore from that headland
-4. Recurse: try straight lines to/from the new waypoint
-Result: shortest path with minimal waypoints, clearing all headlands.
+Generate sailing routes: straight lines + headland avoidance.
+
+Key insight: ports are ON LAND in EMODnet grid (~200m resolution).
+So first we find the nearest open-water point for each port,
+then route between the open-water points using visibility checks.
 """
 
-import json, os
+import json, os, math
 import numpy as np
 from osgeo import gdal
-from shapely.geometry import LineString, Point
 
 gdal.UseExceptions()
 
 TIFF_PATH = "/tmp/emodnet.tiff"
 OUTPUT_DIR = "public/data"
-SAFETY_MARGIN = 0.008   # ~0.5 NM safety clearance from land (in degrees)
-MAX_RECURSION = 8
 
 PORTS = [
     ("Gijón",           43.5453, -5.6621),
@@ -55,7 +51,7 @@ class DepthGrid:
         nodata = band.GetNoDataValue()
         if nodata is not None:
             self.data[self.data == nodata] = 0
-        self.data[self.data > 0] = 0  # land = 0
+        self.data[self.data > 0] = 0
 
     def depth_at(self, lat, lon):
         c = int((lon - self.xmin) / self.xres)
@@ -64,122 +60,149 @@ class DepthGrid:
             return float(self.data[r, c])
         return 0.0
 
-    def is_water(self, lat, lon, min_depth=-3):
-        return self.depth_at(lat, lon) < min_depth
+    def is_sea(self, lat, lon):
+        return self.depth_at(lat, lon) < -3
 
-    def line_crosses_land(self, lat1, lon1, lat2, lon2, n_samples=100):
-        """Check if a straight line crosses land. Returns list of land points."""
-        land_points = []
-        for i in range(n_samples + 1):
-            t = i / n_samples
-            lat = lat1 + t * (lat2 - lat1)
-            lon = lon1 + t * (lon2 - lon1)
-            if not self.is_water(lat, lon):
-                land_points.append((lat, lon, t))
-        return land_points
+    def is_deep_sea(self, lat, lon):
+        """At least 8m depth and surrounded by water."""
+        if self.depth_at(lat, lon) >= -8:
+            return False
+        # Check small neighborhood
+        for d in [-0.003, 0, 0.003]:
+            for e in [-0.003, 0, 0.003]:
+                if self.depth_at(lat + d, lon + e) >= -3:
+                    return False
+        return True
 
-    def find_headland_tip(self, lat1, lon1, lat2, lon2, land_points):
-        """
-        Given a line that crosses land, find the most prominent land point
-        (the headland tip that must be rounded).
-        Returns (lat, lon) of the headland tip.
-        """
-        if not land_points:
-            return None
+    def find_sea_point(self, lat, lon):
+        """Find nearest open-water point with good depth."""
+        if self.is_deep_sea(lat, lon):
+            return (lat, lon)
+        # Search outward in concentric circles
+        for radius_steps in range(1, 80):
+            dist = radius_steps * 0.003  # ~330m steps
+            best = None
+            best_depth = 0
+            for angle in range(0, 360, 10):
+                a = math.radians(angle)
+                nlat = lat + dist * math.cos(a)
+                nlon = lon + dist * math.sin(a)
+                d = self.depth_at(nlat, nlon)
+                if d < -8 and d < best_depth:
+                    # Check it's not a narrow channel
+                    if self.is_deep_sea(nlat, nlon):
+                        best_depth = d
+                        best = (nlat, nlon)
+            if best:
+                return best
+        return (lat, lon)  # fallback
 
-        # The headland tip is the land point furthest from the straight line
-        line = LineString([(lon1, lat1), (lon2, lat2)])
-        max_dist = 0
-        tip = None
-        for lat, lon, t in land_points:
-            pt = Point(lon, lat)
-            dist = line.distance(pt)
-            if dist > max_dist:
-                max_dist = dist
-                tip = (lat, lon)
-        return tip
+    def line_hits_land(self, lat1, lon1, lat2, lon2, steps=200):
+        """
+        Check if line crosses land. Returns None if clear,
+        or (lat, lon, fraction) of the MIDDLE of the land obstacle.
+        """
+        lats = np.linspace(lat1, lat2, steps)
+        lons = np.linspace(lon1, lon2, steps)
 
-    def find_safe_waypoint(self, tip_lat, tip_lon, from_lat, from_lon, to_lat, to_lon):
+        land_start = None
+        land_end = None
+        for i in range(steps):
+            if not self.is_sea(lats[i], lons[i]):
+                if land_start is None:
+                    land_start = i
+                land_end = i
+
+        if land_start is None:
+            return None  # clear!
+
+        mid = (land_start + land_end) // 2
+        return (lats[mid], lons[mid], mid / steps)
+
+    def find_bypass(self, land_lat, land_lon, from_lat, from_lon, to_lat, to_lon):
         """
-        Place a waypoint offshore from a headland tip.
-        Direction: perpendicular to the from→to line, on the sea side.
+        Find a waypoint to bypass a land obstacle.
+        Try both perpendicular directions, pick the one that works.
         """
-        # Direction from midpoint of from→to to the tip
-        mid_lat = (from_lat + to_lat) / 2
-        mid_lon = (from_lon + to_lon) / 2
-        dir_lat = tip_lat - mid_lat
-        dir_lon = tip_lon - mid_lon
-        norm = (dir_lat**2 + dir_lon**2) ** 0.5
+        dlat = to_lat - from_lat
+        dlon = to_lon - from_lon
+        norm = math.sqrt(dlat**2 + dlon**2)
         if norm == 0:
             return None
-        dir_lat /= norm
-        dir_lon /= norm
+        # Perpendicular directions
+        perps = [
+            (-dlon / norm, dlat / norm),   # left
+            (dlon / norm, -dlat / norm),   # right
+        ]
 
-        # Search outward from tip along this direction
-        for offset in range(1, 50):
-            step = SAFETY_MARGIN * offset / 3
-            wp_lat = tip_lat + dir_lat * step
-            wp_lon = tip_lon + dir_lon * step
-            if self.is_water(wp_lat, wp_lon, min_depth=-5):
-                # Verify we have good clearance — check a small area
-                clear = True
-                for dlat in [-SAFETY_MARGIN/2, 0, SAFETY_MARGIN/2]:
-                    for dlon in [-SAFETY_MARGIN/2, 0, SAFETY_MARGIN/2]:
-                        if not self.is_water(wp_lat + dlat, wp_lon + dlon, min_depth=-3):
-                            clear = False
-                            break
-                    if not clear:
-                        break
-                if clear:
-                    return (wp_lat, wp_lon)
-
-        # Fallback: just go further out
-        for offset in range(10, 80):
-            step = SAFETY_MARGIN * offset / 2
-            wp_lat = tip_lat + dir_lat * step
-            wp_lon = tip_lon + dir_lon * step
-            if self.is_water(wp_lat, wp_lon, min_depth=-5):
-                return (wp_lat, wp_lon)
+        for perp in perps:
+            for dist_steps in range(4, 50):
+                dist = dist_steps * 0.004  # ~440m steps
+                nlat = land_lat + perp[0] * dist
+                nlon = land_lon + perp[1] * dist
+                if self.is_deep_sea(nlat, nlon):
+                    return (nlat, nlon)
 
         return None
 
 
-def build_route(grid, start, end, depth=0):
+def build_route(grid, port_start, port_end):
     """
-    Recursive visibility-graph routing:
-    1. Try straight line from start to end
-    2. If it crosses land, find the headland
-    3. Place waypoint offshore from headland
-    4. Route start→waypoint and waypoint→end recursively
+    Build route:
+    1. Find open-water points near each port
+    2. Try straight line between them
+    3. If land blocking, add bypass waypoint, repeat
     """
-    lat1, lon1 = start
-    lat2, lon2 = end
+    sea_start = grid.find_sea_point(*port_start)
+    sea_end = grid.find_sea_point(*port_end)
 
-    if depth > MAX_RECURSION:
-        return [start, end]
+    path = [sea_start, sea_end]
 
-    land_points = grid.line_crosses_land(lat1, lon1, lat2, lon2, n_samples=200)
+    for iteration in range(15):
+        new_path = [path[0]]
+        changed = False
 
-    if not land_points:
-        # Clear line — no land crossing
-        return [start, end]
+        for i in range(len(path) - 1):
+            p1 = path[i]
+            p2 = path[i + 1]
 
-    # Find the headland tip
-    tip = grid.find_headland_tip(lat1, lon1, lat2, lon2, land_points)
-    if tip is None:
-        return [start, end]
+            hit = grid.line_hits_land(p1[0], p1[1], p2[0], p2[1])
 
-    # Place waypoint offshore from tip
-    wp = grid.find_safe_waypoint(tip[0], tip[1], lat1, lon1, lat2, lon2)
-    if wp is None:
-        return [start, end]
+            if hit is None:
+                new_path.append(p2)
+            else:
+                changed = True
+                land_lat, land_lon, _ = hit
+                bypass = grid.find_bypass(land_lat, land_lon,
+                                          p1[0], p1[1], p2[0], p2[1])
+                if bypass:
+                    new_path.append(bypass)
+                new_path.append(p2)
 
-    # Recurse: route through waypoint
-    left = build_route(grid, start, wp, depth + 1)
-    right = build_route(grid, wp, end, depth + 1)
+        path = new_path
+        if not changed:
+            break
 
-    # Merge (avoid duplicate waypoint)
-    return left + right[1:]
+    # Add actual port coords as first/last
+    final = [port_start] + path + [port_end]
+
+    # Deduplicate close points
+    cleaned = [final[0]]
+    for p in final[1:]:
+        if abs(p[0] - cleaned[-1][0]) > 0.0005 or abs(p[1] - cleaned[-1][1]) > 0.0005:
+            cleaned.append(p)
+
+    return cleaned
+
+
+def verify_route(grid, path):
+    """Count land crossings in route (excluding first/last port segments)."""
+    crossings = 0
+    # Skip first segment (port→sea) and last (sea→port)
+    for i in range(1, len(path) - 2):
+        if grid.line_hits_land(path[i][0], path[i][1], path[i+1][0], path[i+1][1]):
+            crossings += 1
+    return crossings
 
 
 def gen_contours():
@@ -216,25 +239,95 @@ if __name__ == "__main__":
     grid = DepthGrid(TIFF_PATH)
     print(f"  Grid: {grid.rows}x{grid.cols}")
 
+    print("\n=== Finding sea points for ports ===")
+    sea_pts = {}
+    for name, lat, lon in PORTS:
+        sp = grid.find_sea_point(lat, lon)
+        d = grid.depth_at(*sp)
+        dist_nm = math.sqrt((sp[0]-lat)**2 + (sp[1]-lon)**2) * 60
+        sea_pts[name] = sp
+        print(f"  {name:20s} → {sp[0]:.4f}N {abs(sp[1]):.4f}W  depth={d:.0f}m  ({dist_nm:.1f}NM from port)")
+
     print("\n=== Generating contours ===")
     gen_contours()
 
-    print("\n=== Computing routes (visibility graph) ===")
-    routes = {}
-    for i in range(len(PORTS) - 1):
-        name_from, lat_from, lon_from = PORTS[i]
-        name_to, lat_to, lon_to = PORTS[i + 1]
-        key = f"{name_from} \u2192 {name_to}"
-        print(f"  {key}...", end=" ", flush=True)
+    # Manual overrides for complex rías where auto-routing fails
+    MANUAL_ROUTES = {
+        "Cedeira → Ferrol": [
+            (43.6600, -8.0567),  # Cedeira
+            (43.6682, -8.0793),  # sea point
+            (43.700, -8.060),    # out of ría
+            (43.720, -8.090),    # offshore
+            (43.700, -8.140),    # heading S
+            (43.670, -8.180),    # approaching Ferrol
+            (43.630, -8.210),    # ría entrance
+            (43.560, -8.225),    # into ría
+            (43.510, -8.233),    # Ferrol approach
+            (43.4833, -8.2333),  # Ferrol
+        ],
+        "Ferrol → La Coruña": [
+            (43.4833, -8.2333),  # Ferrol
+            (43.510, -8.233),    # out of Ferrol
+            (43.560, -8.225),    # ría exit
+            (43.630, -8.210),    # offshore
+            (43.640, -8.250),    # heading SW
+            (43.600, -8.300),    #
+            (43.550, -8.340),    #
+            (43.490, -8.370),    #
+            (43.440, -8.390),    #
+            (43.400, -8.400),    # approach La Coruña
+            (43.3700, -8.4000),  # La Coruña
+        ],
+        "Ribadeo → Foz": [
+            (43.5350, -7.0417),  # Ribadeo
+            (43.558, -7.034),    # out of ría
+            (43.575, -7.060),    # offshore
+            (43.580, -7.120),    #
+            (43.585, -7.180),    #
+            (43.580, -7.220),    #
+            (43.570, -7.250),    # approach Foz
+            (43.5717, -7.2550),  # Foz
+        ],
+        "Foz → Viveiro": [
+            (43.5717, -7.2550),  # Foz
+            (43.580, -7.260),    # offshore
+            (43.600, -7.300),    #
+            (43.620, -7.340),    #
+            (43.650, -7.390),    #
+            (43.670, -7.430),    #
+            (43.690, -7.480),    #
+            (43.700, -7.530),    #
+            (43.705, -7.570),    # Viveiro ría mouth
+            (43.6617, -7.5950),  # Viveiro
+        ],
+    }
 
-        path = build_route(grid, (lat_from, lon_from), (lat_to, lon_to))
-        routes[key] = path
-        n_wp = len(path) - 2  # minus start and end
-        print(f"{len(path)} pts ({n_wp} intermediate WPs)")
+    print("\n=== Computing routes ===")
+    routes = {}
+    all_ok = True
+    for i in range(len(PORTS) - 1):
+        name_from = PORTS[i][0]
+        name_to = PORTS[i + 1][0]
+        key = f"{name_from} \u2192 {name_to}"
+
+        if key in MANUAL_ROUTES:
+            path = MANUAL_ROUTES[key]
+        else:
+            path = build_route(grid,
+                               (PORTS[i][1], PORTS[i][2]),
+                               (PORTS[i+1][1], PORTS[i+1][2]))
+
+        crossings = verify_route(grid, path)
+        status = "✓" if crossings == 0 else f"✗ {crossings} land"
+        if crossings > 0:
+            all_ok = False
+        print(f"  {key:35s} {len(path):3d} pts  {status}")
+
+        routes[key] = [(round(lat, 5), round(lon, 5)) for lat, lon in path]
 
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     out = f"{OUTPUT_DIR}/routes.json"
     with open(out, "w") as f:
         json.dump(routes, f, separators=(",", ":"))
-    print(f"\n  Routes: {len(routes)} segments, {os.path.getsize(out)//1024} KB")
-    print("\nDone!")
+    print(f"\n  {'ALL CLEAR!' if all_ok else 'Some routes still cross land'}")
+    print(f"  Total: {os.path.getsize(out)//1024} KB")
