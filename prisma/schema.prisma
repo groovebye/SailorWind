@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Ports & Marinas ──────────────────────────────────────────────
+
+model Port {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  lat       Float
+  lon       Float
+  type      PortType
+  country   String
+  region    String?
+
+  // Facilities
+  fuel      Boolean  @default(false)
+  water     Boolean  @default(false)
+  electric  Boolean  @default(false)
+  repairs   Boolean  @default(false)
+  customs   Boolean  @default(false)
+
+  // Metadata
+  shelter   String?  // "good", "moderate", "poor"
+  maxDraft  Float?   // meters
+  vhfCh    String?
+  website   String?
+  notes     String?
+
+  // Coastline ordering (distance in NM from a reference point along coast)
+  // Used to order ports between two points and estimate distances
+  coastSegment  String   // e.g. "biscay-north", "galicia-west", "portugal"
+  coastlineNm   Float    // cumulative NM along this segment
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  passagePorts  PassagePort[]
+  waypointsOf   PassageWaypoint[]
+
+  @@index([coastSegment, coastlineNm])
+  @@index([country])
+  @@index([lat, lon])
+}
+
+enum PortType {
+  marina
+  port
+  anchorage
+  cape
+}
+
+// ── Passages ─────────────────────────────────────────────────────
+
+model Passage {
+  id          String   @id @default(cuid())
+  shortId     String   @unique @default(cuid()) // for shareable URLs
+  name        String?
+
+  departure   DateTime
+  speed       Float    @default(5.0)
+  mode        PassageMode @default(daily)
+  model       String   @default("ecmwf_ifs025")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ports       PassagePort[]
+  waypoints   PassageWaypoint[]
+}
+
+enum PassageMode {
+  daily
+  nonstop
+}
+
+// Junction: which ports are start/end of this passage
+model PassagePort {
+  id         String  @id @default(cuid())
+  passage    Passage @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  passageId  String
+  port       Port    @relation(fields: [portId], references: [id])
+  portId     String
+  role       String  // "start", "end"
+
+  @@unique([passageId, role])
+}
+
+// All waypoints/stops in order for a passage
+model PassageWaypoint {
+  id         String  @id @default(cuid())
+  passage    Passage @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  passageId  String
+  port       Port    @relation(fields: [portId], references: [id])
+  portId     String
+
+  sortOrder  Int
+  isStop     Boolean @default(false) // true = overnight stop (leg boundary)
+  isCape     Boolean @default(false) // auto-included for weather monitoring
+
+  @@unique([passageId, sortOrder])
+  @@index([passageId])
+}

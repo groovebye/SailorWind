@@ -1,0 +1,226 @@
+const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
+const MARINE_URL = "https://marine-api.open-meteo.com/v1/marine";
+
+export type WeatherModel =
+  | "ecmwf_ifs025"
+  | "gfs_seamless"
+  | "icon_eu"
+  | "icon_seamless"
+  | "arome_france";
+
+export interface ForecastEntry {
+  time: string;
+  windKt: number;
+  windDirDeg: number;
+  windDir: string;
+  beaufort: string;
+  gustKt: number;
+  waveM: number;
+  wavePeriodS: number;
+  waveDirDeg: number;
+  waveDir: string;
+  swellM: number;
+  swellPeriodS: number;
+  swellDirDeg: number;
+  swellDir: string;
+  precipMm: number;
+  cloudPct: number;
+  weather: string;
+  verdict: string;
+}
+
+// ── In-memory cache ──────────────────────────────────────────────
+
+const cache = new Map<string, { data: RawData; ts: number }>();
+const CACHE_TTL = 3 * 3600 * 1000; // 3 hours
+
+interface RawData {
+  weather: Record<string, unknown>;
+  marine: Record<string, unknown>;
+}
+
+function cacheKey(lat: number, lon: number, model: string) {
+  return `${model}_${lat.toFixed(4)}_${lon.toFixed(4)}`;
+}
+
+// ── Helpers ──────────────────────────────────────────────────────
+
+const COMPASS = [
+  "N","NNE","NE","ENE","E","ESE","SE","SSE",
+  "S","SSW","SW","WSW","W","WNW","NW","NNW",
+];
+function dirName(deg: number) {
+  return COMPASS[Math.round(deg / 22.5) % 16];
+}
+
+function kmhToKt(kmh: number) {
+  return kmh * 0.539957;
+}
+
+function beaufort(kt: number): string {
+  const t: [number, string][] = [
+    [1,"F0"],[4,"F1"],[7,"F2"],[11,"F3"],[17,"F4"],[22,"F5"],
+    [28,"F6"],[34,"F7"],[41,"F8"],[48,"F9"],[56,"F10"],[64,"F11"],
+  ];
+  for (const [limit, label] of t) if (kt < limit) return label;
+  return "F12";
+}
+
+function wmoToWeather(code: number): string {
+  if (code <= 1) return "sun";
+  if (code === 2) return "partly";
+  if (code === 3) return "cloudy";
+  if (code === 45 || code === 48) return "fog";
+  if ([51, 53, 56, 61].includes(code)) return "rain";
+  if ([55, 57, 63, 65, 66, 67].includes(code)) return "heavy_rain";
+  if ([71, 73, 75, 77, 80, 81, 82, 85, 86].includes(code)) return "rain";
+  if ([95, 96, 99].includes(code)) return "storm";
+  return "partly";
+}
+
+function goNogo(
+  windKt: number,
+  gustKt: number,
+  waveM: number,
+  isCape: boolean
+): string {
+  const issues: string[] = [];
+  const wCaution = isCape ? 15 : 20;
+  const wNogo = isCape ? 25 : 30;
+  const waveCaution = isCape ? 2.0 : 2.5;
+  const waveNogo = isCape ? 3.0 : 3.5;
+  const gNogo = isCape ? 30 : 35;
+
+  if (windKt > wNogo) issues.push(`Wind ${windKt.toFixed(0)}kt DANGEROUS`);
+  else if (windKt > wCaution) issues.push(`Wind ${windKt.toFixed(0)}kt strong`);
+  if (gustKt > gNogo) issues.push(`Gusts ${gustKt.toFixed(0)}kt DANGEROUS`);
+  if (waveM > waveNogo) issues.push(`Waves ${waveM.toFixed(1)}m DANGEROUS`);
+  else if (waveM > waveCaution) issues.push(`Waves ${waveM.toFixed(1)}m rough`);
+  if (isCape && windKt > 15) issues.push("CAPE acceleration zone");
+
+  if (!issues.length) return "GO";
+  if (issues.some((i) => i.includes("DANGEROUS")))
+    return "NO-GO: " + issues.join("; ");
+  return "CAUTION: " + issues.join("; ");
+}
+
+// ── API fetch ────────────────────────────────────────────────────
+
+async function fetchRaw(
+  lat: number,
+  lon: number,
+  model: WeatherModel,
+  force: boolean
+): Promise<RawData> {
+  const key = cacheKey(lat, lon, model);
+
+  if (!force) {
+    const cached = cache.get(key);
+    if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
+  }
+
+  const [weatherRes, marineRes] = await Promise.all([
+    fetch(
+      `${FORECAST_URL}?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,cloud_cover,weather_code&timezone=UTC&forecast_days=10&models=${model}`
+    ),
+    fetch(
+      `${MARINE_URL}?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=UTC&forecast_days=10`
+    ),
+  ]);
+
+  if (!weatherRes.ok) throw new Error(`Weather API: ${weatherRes.status}`);
+  if (!marineRes.ok) throw new Error(`Marine API: ${marineRes.status}`);
+
+  const data: RawData = {
+    weather: await weatherRes.json(),
+    marine: await marineRes.json(),
+  };
+
+  cache.set(key, { data, ts: Date.now() });
+  return data;
+}
+
+// ── Main export ──────────────────────────────────────────────────
+
+export async function fetchForecast(
+  lat: number,
+  lon: number,
+  model: WeatherModel = "ecmwf_ifs025",
+  isCape: boolean = false,
+  force: boolean = false
+): Promise<ForecastEntry[]> {
+  const raw = await fetchRaw(lat, lon, model, force);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const w = (raw.weather as any).hourly;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const m = (raw.marine as any).hourly;
+
+  const timesW: string[] = w.time ?? [];
+  const timesM: string[] = m.time ?? [];
+
+  // Build marine lookup
+  const marineLookup = new Map<string, {
+    waveH: number; waveP: number; waveD: number;
+    swellH: number; swellP: number; swellD: number;
+  }>();
+
+  let lastMarine = { waveH: 0, waveP: 0, waveD: 0, swellH: 0, swellP: 0, swellD: 0 };
+
+  for (let i = 0; i < timesM.length; i++) {
+    const wh = m.wave_height?.[i];
+    const sh = m.swell_wave_height?.[i];
+    if (wh == null && sh == null) continue;
+    const entry = {
+      waveH: wh ?? 0, waveP: m.wave_period?.[i] ?? 0, waveD: m.wave_direction?.[i] ?? 0,
+      swellH: sh ?? 0, swellP: m.swell_wave_period?.[i] ?? 0, swellD: m.swell_wave_direction?.[i] ?? 0,
+    };
+    marineLookup.set(timesM[i], entry);
+    lastMarine = entry;
+  }
+
+  const entries: ForecastEntry[] = [];
+
+  for (let i = 0; i < timesW.length; i++) {
+    const dt = new Date(timesW[i] + "Z");
+    if (dt.getUTCHours() % 3 !== 0) continue;
+
+    const windKmh = w.wind_speed_10m?.[i] ?? 0;
+    const windDeg = w.wind_direction_10m?.[i] ?? 0;
+    const gustKmh = w.wind_gusts_10m?.[i] ?? 0;
+    const precip = w.precipitation?.[i] ?? 0;
+    const cloud = w.cloud_cover?.[i] ?? 0;
+    const wmo = w.weather_code?.[i] ?? 0;
+
+    const wKt = kmhToKt(windKmh);
+    const gKt = kmhToKt(gustKmh);
+    const mr = marineLookup.get(timesW[i]) ?? lastMarine;
+
+    entries.push({
+      time: dt.toISOString(),
+      windKt: Math.round(wKt * 10) / 10,
+      windDirDeg: Math.round(windDeg),
+      windDir: dirName(windDeg),
+      beaufort: beaufort(wKt),
+      gustKt: Math.round(gKt * 10) / 10,
+      waveM: Math.round(mr.waveH * 10) / 10,
+      wavePeriodS: Math.round(mr.waveP),
+      waveDirDeg: Math.round(mr.waveD),
+      waveDir: dirName(mr.waveD),
+      swellM: Math.round(mr.swellH * 10) / 10,
+      swellPeriodS: Math.round(mr.swellP),
+      swellDirDeg: Math.round(mr.swellD),
+      swellDir: dirName(mr.swellD),
+      precipMm: Math.round(precip * 100) / 100,
+      cloudPct: Math.round(cloud),
+      weather: wmoToWeather(wmo),
+      verdict: goNogo(wKt, gKt, mr.waveH, isCape),
+    });
+  }
+
+  return entries;
+}
+
+export function clearCache() {
+  cache.clear();
+}
