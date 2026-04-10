@@ -198,8 +198,8 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
             </div>
           </div>
           <div className="text-right">
-            <div className="text-base font-bold" style={{ color: "var(--text-primary)" }}>Bossanova</div>
-            <div className="text-sm" style={{ color: "var(--text-muted)" }}>Hallberg-Rassy Monsun 31</div>
+            <div className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>Bossanova</div>
+            <div className="text-base" style={{ color: "var(--text-muted)" }}>Hallberg-Rassy Monsun 31</div>
           </div>
           <div className="flex items-center gap-1">
             <Link href="/" className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Home">
@@ -277,7 +277,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
             <div key={i} style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }} className="rounded-lg px-3 py-2 flex-1 min-w-[180px]">
               <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{mode === "daily" ? `Day ${i + 1}: ` : ""}{l.from.port.name} &rarr; {l.to.port.name}</div>
               <div className="text-xs" style={{ color: "var(--text-muted)" }}>{l.nm} NM, ~{l.hours.toFixed(1)}h</div>
-              <div className="text-xs mt-0.5" style={{ color: "var(--text-green)" }}>{fmtLocal(l.departTime, fromTz)} &rarr; {fmtLocal(l.arriveTime, toTz)}</div>
+              <div className="text-xs mt-0.5" style={{ color: "var(--text-green)" }}>{fmtLocal(l.departTime, fromTz)} &rarr; {fmtTimeLocal(l.arriveTime, toTz)}</div>
             </div>
           );
         })}
@@ -295,14 +295,14 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>
-                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Waypoint</th>
-                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>ETA</th>
+                <th className="text-left px-1.5 py-1" style={{ background: "var(--bg-card)" }}>Waypoint</th>
+                <th className="text-left px-1.5 py-1" style={{ background: "var(--bg-card)" }}>ETA</th>
                 <th className="px-1 py-1.5 w-8" style={{ background: "var(--bg-card)" }}></th>
-                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Wind (kt)</th>
-                <th className="text-center px-2 py-1.5 w-14" style={{ background: "var(--bg-card)" }}>Gusts</th>
-                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Waves</th>
-                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Swell</th>
-                <th className="text-center px-2 py-1.5 w-16" style={{ background: "var(--bg-card)" }}>Verdict</th>
+                <th className="text-left px-1.5 py-1" style={{ background: "var(--bg-card)" }}>Wind (kt)</th>
+                <th className="text-center px-1.5 py-1 w-14" style={{ background: "var(--bg-card)" }}>Gusts</th>
+                <th className="text-left px-1.5 py-1" style={{ background: "var(--bg-card)" }}>Waves</th>
+                <th className="text-left px-1.5 py-1" style={{ background: "var(--bg-card)" }}>Swell</th>
+                <th className="text-center px-1.5 py-1 w-16" style={{ background: "var(--bg-card)" }}>Verdict</th>
               </tr>
             </thead>
           </table>
@@ -317,7 +317,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
 
             return (
               <div key={li} className="mb-1">
-                <div className="text-xs font-semibold px-2 py-1.5" style={{ background: "var(--bg-card)", color: "var(--text-heading)", borderBottom: `1px solid var(--border-light)` }}>
+                <div className="text-xs font-semibold px-1.5 py-1" style={{ background: "var(--bg-card)", color: "var(--text-heading)", borderBottom: `1px solid var(--border-light)` }}>
                   {mode === "daily" ? `Day ${li + 1}: ` : `Leg ${li + 1}: `}{leg.from.port.name} &rarr; {leg.to.port.name} ({leg.nm} NM, ~{leg.hours.toFixed(1)}h) — {fmtLocal(leg.departTime, fromTz)} &rarr; {fmtLocal(leg.arriveTime, toTz)}
                 </div>
                 <table className="w-full text-xs border-collapse">
@@ -330,36 +330,36 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
 
                       return (
                         <tr key={wp.port.id} style={{ borderBottom: `1px solid var(--row-border)` }} className="hover:opacity-90">
-                          <td className="px-2 py-1.5 font-semibold" style={{ color: wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--text-secondary)" }}>
+                          <td className="px-1.5 py-1 font-semibold" style={{ color: wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--text-secondary)" }}>
                             {wp.port.name}
                             {wp.isStop && <span className="text-[9px] ml-1 px-0.5 rounded" style={{ border: `1px solid var(--text-green)`, color: "var(--text-green)" }}>STOP</span>}
                             {wp.isCape && <span className="text-[9px] ml-1 font-bold" style={{ color: "var(--text-yellow)" }}>CAPE</span>}
                           </td>
-                          <td className="px-2 py-1.5 text-[11px]" style={{ color: "var(--text-blue-light)" }}>{fmtLocal(eta, tz)}</td>
+                          <td className="px-1.5 py-1 text-[11px]" style={{ color: "var(--text-blue-light)" }}>{fmtLocal(eta, tz)}</td>
                           {f ? (
                             <>
                               <td className="px-1 py-1.5 text-center w-8">{WEATHER_EMOJI[f.weather] || ""}</td>
-                              <td className="px-2 py-1.5">
+                              <td className="px-1.5 py-1">
                                 <span className="inline-block" style={{ color: "var(--text-yellow)", transform: `rotate(${f.windDirDeg}deg)` }}>&darr;</span>
                                 {" "}{Math.round(f.windKt)} B{bftNum(f.beaufort)}
                               </td>
-                              <td className="px-2 py-1.5 text-center w-14">{Math.round(f.gustKt)}</td>
-                              <td className="px-2 py-1.5">
+                              <td className="px-1.5 py-1 text-center w-14">{Math.round(f.gustKt)}</td>
+                              <td className="px-1.5 py-1">
                                 <span className="inline-block" style={{ transform: `rotate(${f.waveDirDeg}deg)` }}>&darr;</span>
                                 {" "}{f.waveM}m / {f.wavePeriodS}s
                               </td>
-                              <td className="px-2 py-1.5">
+                              <td className="px-1.5 py-1">
                                 <span className="inline-block" style={{ transform: `rotate(${f.swellDirDeg}deg)` }}>&darr;</span>
                                 {" "}{f.swellM}m / {f.swellPeriodS}s
                               </td>
-                              <td className="px-2 py-1.5 text-center w-16">
+                              <td className="px-1.5 py-1 text-center w-16">
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={vc(f.verdict)}>
                                   {verdictLabel(f.verdict)}
                                 </span>
                               </td>
                             </>
                           ) : (
-                            <td colSpan={6} className="px-2 py-1.5" style={{ color: "var(--text-muted)" }}>No data</td>
+                            <td colSpan={6} className="px-1.5 py-1" style={{ color: "var(--text-muted)" }}>No data</td>
                           )}
                         </tr>
                       );
@@ -415,13 +415,13 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>
-                          <th className="text-left px-2 py-1.5 w-16">Time</th>
+                          <th className="text-left px-1.5 py-1 w-16">Time</th>
                           <th className="px-1 py-1.5 w-8"></th>
-                          <th className="text-left px-2 py-1.5">Wind (kt)</th>
-                          <th className="text-center px-2 py-1.5 w-14">Gusts</th>
-                          <th className="text-left px-2 py-1.5">Waves</th>
-                          <th className="text-left px-2 py-1.5">Swell</th>
-                          <th className="text-center px-2 py-1.5 w-16">Verdict</th>
+                          <th className="text-left px-1.5 py-1">Wind (kt)</th>
+                          <th className="text-center px-1.5 py-1 w-14">Gusts</th>
+                          <th className="text-left px-1.5 py-1">Waves</th>
+                          <th className="text-left px-1.5 py-1">Swell</th>
+                          <th className="text-center px-1.5 py-1 w-16">Verdict</th>
                         </tr>
                       </thead>
                       <tbody>
