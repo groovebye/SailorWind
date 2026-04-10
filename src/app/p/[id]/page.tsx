@@ -199,6 +199,9 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
             <Link href="/" className="px-4 py-2 border border-slate-700 rounded-lg text-sm text-slate-300 hover:border-blue-500 transition-colors">
               ← Home
             </Link>
+            <Link href={`/p/${id}/map`} className="px-4 py-2 border border-slate-700 rounded-lg text-sm text-slate-300 hover:border-blue-500 transition-colors">
+              Map
+            </Link>
             <button onClick={() => loadForecasts(false)} className="px-4 py-2 border border-blue-500 rounded-lg text-sm text-blue-400 hover:bg-blue-500 hover:text-white transition-colors">
               Refresh
             </button>
