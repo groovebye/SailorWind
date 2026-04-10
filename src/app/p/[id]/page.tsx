@@ -98,7 +98,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
   }, [passage, loadForecasts]);
 
   // Auto-save filters to DB (debounced)
-  const saveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const initialLoad = useRef(true);
 
   useEffect(() => {
