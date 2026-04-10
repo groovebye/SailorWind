@@ -307,7 +307,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
             return (
               <div key={li} className="mb-1">
                 <div className="bg-slate-800 text-blue-400 text-xs font-semibold px-2 py-1.5 border-b border-slate-700/50">
-                  {mode === "daily" ? `Day ${li + 1} — ` : ""}Leg {li + 1}: {leg.from.port.name} &rarr; {leg.to.port.name} ({leg.nm} NM, ~{leg.hours.toFixed(1)}h) — {fmtLocal(leg.departTime, fromTz)} &rarr; {fmtLocal(leg.arriveTime, toTz)}
+                  {mode === "daily" ? `Day ${li + 1}: ` : `Leg ${li + 1}: `}{leg.from.port.name} &rarr; {leg.to.port.name} ({leg.nm} NM, ~{leg.hours.toFixed(1)}h) — {fmtLocal(leg.departTime, fromTz)} &rarr; {fmtLocal(leg.arriveTime, toTz)}
                 </div>
                 <table className="w-full text-xs border-collapse table-fixed">
                   <tbody>
