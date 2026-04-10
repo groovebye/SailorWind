@@ -231,6 +231,13 @@ export default function PassageMap({ waypoints, legs, theme }: { waypoints: Wayp
         url={tileUrl}
       />
 
+      {/* EMODnet Bathymetry — depth contours and coloring */}
+      <TileLayer
+        url="https://tiles.emodnet-bathymetry.eu/2020/baselayer/web_mercator/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://emodnet.ec.europa.eu">EMODnet Bathymetry</a>'
+        opacity={0.4}
+      />
+
       {/* OpenSeaMap nautical overlay — buoys, lights, depth contours */}
       <TileLayer
         url={OPENSEAMAP_TILES}
