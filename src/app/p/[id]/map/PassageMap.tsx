@@ -178,23 +178,24 @@ export default function PassageMap({ waypoints, legs, theme }: { waypoints: Wayp
   const positions = waypoints.map((w) => [w.port.lat, w.port.lon] as [number, number]);
 
   // Build leg segments using pre-computed routes
+  // Routes are keyed by consecutive port pairs (e.g. "Gijón → Candás")
+  // so we must chain through ALL waypoints in the passage, not just stops/capes
   const legSegments: { positions: [number, number][]; color: string; label: string }[] = [];
 
   for (let li = 0; li < legs.length; li++) {
     const leg = legs[li];
+    // Get ALL waypoints in this leg (not just stops/capes)
     const legWps = waypoints.filter(
-      (w) => (w.isStop || w.isCape) &&
-             w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
+      (w) => w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
              w.port.coastlineNm <= leg.to.port.coastlineNm + 0.1
     ).sort((a, b) => a.port.coastlineNm - b.port.coastlineNm);
 
-    // Build route through consecutive waypoints using pre-computed paths
+    // Chain routes through consecutive waypoints
     const segPositions: [number, number][] = [];
     for (let i = 0; i < legWps.length - 1; i++) {
       const route = routes ? findRoute(routes, legWps[i].port.name, legWps[i + 1].port.name) : null;
       if (route && route.length > 1) {
         if (segPositions.length > 0) {
-          // Skip first point to avoid duplication
           segPositions.push(...route.slice(1));
         } else {
           segPositions.push(...route);
