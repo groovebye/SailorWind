@@ -206,12 +206,6 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
               Force Refresh
             </button>
             <button
-              onClick={() => { navigator.clipboard.writeText(window.location.href); }}
-              className="px-4 py-2 border border-slate-700 rounded-lg text-sm text-slate-300 hover:border-green-500 transition-colors"
-            >
-              Share Link
-            </button>
-            <button
               onClick={handleDelete}
               className="px-4 py-2 border border-red-500/50 rounded-lg text-sm text-red-400 hover:bg-red-500 hover:text-white transition-colors"
             >
@@ -224,13 +218,13 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
       {/* Editable filters */}
       <div className="bg-slate-800 border border-slate-800 rounded-xl p-4 mb-6">
         <div className="flex gap-4 items-end flex-wrap">
-          <div className="min-w-[220px]">
+          <div>
             <label className="block text-xs text-slate-500 mb-1">Departure</label>
             <input
               type="datetime-local"
               value={departure}
               onChange={(e) => setDeparture(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-3 h-10 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
           <div>
@@ -240,7 +234,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
               value={speed}
               onChange={(e) => setSpeed(parseFloat(e.target.value) || 5)}
               min={1} max={15} step={0.5}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="w-20 bg-slate-900 border border-slate-700 rounded-lg px-3 h-10 text-sm focus:border-blue-500 focus:outline-none"
             />
           </div>
           <div>
@@ -248,7 +242,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
             <select
               value={mode}
               onChange={(e) => setMode(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-3 h-10 text-sm focus:border-blue-500 focus:outline-none"
             >
               <option value="daily">Daily stops</option>
               <option value="nonstop">Non-stop</option>
@@ -259,7 +253,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
             <select
               value={model}
               onChange={(e) => { setModel(e.target.value); }}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="bg-slate-900 border border-slate-700 rounded-lg px-3 h-10 text-sm focus:border-blue-500 focus:outline-none"
             >
               <option value="ecmwf_ifs025">ECMWF IFS 0.25°</option>
               <option value="icon_eu">ICON-EU</option>
