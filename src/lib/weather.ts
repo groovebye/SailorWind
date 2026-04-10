@@ -119,17 +119,25 @@ async function fetchRaw(
     if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
   }
 
-  const [weatherRes, marineRes] = await Promise.all([
-    fetch(
-      `${FORECAST_URL}?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,cloud_cover,weather_code&timezone=UTC&forecast_days=10&models=${model}`
-    ),
-    fetch(
-      `${MARINE_URL}?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=UTC&forecast_days=10`
-    ),
-  ]);
+  async function fetchWithRetry(url: string, label: string, retries = 3): Promise<Response> {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
+      const res = await fetch(url);
+      if (res.ok) return res;
+      if (res.status === 429 && attempt < retries - 1) continue;
+      throw new Error(`${label}: ${res.status}`);
+    }
+    throw new Error(`${label}: max retries`);
+  }
 
-  if (!weatherRes.ok) throw new Error(`Weather API: ${weatherRes.status}`);
-  if (!marineRes.ok) throw new Error(`Marine API: ${marineRes.status}`);
+  const weatherRes = await fetchWithRetry(
+    `${FORECAST_URL}?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,cloud_cover,weather_code&timezone=UTC&forecast_days=10&models=${model}`,
+    "Weather API"
+  );
+  const marineRes = await fetchWithRetry(
+    `${MARINE_URL}?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=UTC&forecast_days=10`,
+    "Marine API"
+  );
 
   const data: RawData = {
     weather: await weatherRes.json(),

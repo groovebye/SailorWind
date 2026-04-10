@@ -22,14 +22,10 @@ export async function POST(req: NextRequest) {
 
   const result: Record<string, Awaited<ReturnType<typeof fetchForecast>>> = {};
 
-  // Fetch all in parallel (Open-Meteo has generous limits)
-  const promises = waypoints.map(async (wp) => {
-    const data = await fetchForecast(wp.lat, wp.lon, model, wp.isCape ?? false, force);
-    result[wp.name] = data;
-  });
-
   try {
-    await Promise.all(promises);
+    for (const wp of waypoints) {
+      result[wp.name] = await fetchForecast(wp.lat, wp.lon, model, wp.isCape ?? false, force);
+    }
     return NextResponse.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Unknown error";
