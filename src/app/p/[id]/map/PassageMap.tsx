@@ -231,7 +231,20 @@ export default function PassageMap({ waypoints, legs, theme }: { waypoints: Wayp
         url={tileUrl}
       />
 
-      {/* EMODnet Bathymetry — depth contour lines with labels */}
+      {/* EMODnet Bathymetry — colored depth raster (shows shallow areas) */}
+      <WMSTileLayer
+        url="https://ows.emodnet-bathymetry.eu/wms"
+        params={{
+          layers: "emodnet:mean_multicolour",
+          format: "image/png",
+          transparent: true,
+          version: "1.3.0",
+        }}
+        attribution='&copy; <a href="https://emodnet.ec.europa.eu">EMODnet</a>'
+        opacity={theme === "dark" ? 0.35 : 0.25}
+      />
+
+      {/* EMODnet depth contour lines */}
       <WMSTileLayer
         url="https://ows.emodnet-bathymetry.eu/wms"
         params={{
@@ -240,8 +253,8 @@ export default function PassageMap({ waypoints, legs, theme }: { waypoints: Wayp
           transparent: true,
           version: "1.3.0",
         }}
-        attribution='&copy; <a href="https://emodnet.ec.europa.eu">EMODnet</a>'
-        opacity={0.6}
+        attribution=''
+        opacity={0.7}
       />
 
       {/* OpenSeaMap nautical overlay — buoys, lights, marks */}
