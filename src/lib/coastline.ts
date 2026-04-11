@@ -18,6 +18,8 @@ export interface RoutePort {
   lon: number;
 }
 
+type ManualRouteKey = `${string}__${string}`;
+
 const NAV_POINTS = {
   "Gijón": [43.5453, -5.6621],
   "Candás": [43.5883, -5.7617],
@@ -172,6 +174,60 @@ function buildGraph(): Map<PointId, Array<{ to: PointId; cost: number }>> {
 
 const ROUTING_GRAPH = buildGraph();
 
+const MANUAL_ROUTE_OVERRIDES: Partial<Record<ManualRouteKey, LatLon[]>> = {
+  "Cudillero__Cabo Peñas Rounding": [
+    [43.5633, -6.1500],
+    [43.5700, -6.1650],
+    [43.5850, -6.1100],
+    [43.6100, -6.0100],
+    [43.6450, -5.9050],
+    [43.6750, -5.8500],
+  ],
+  "Avilés__Cabo Peñas Rounding": [
+    [43.5917, -5.9250],
+    [43.6050, -5.9300],
+    [43.6200, -5.9200],
+    [43.6450, -5.9050],
+    [43.6750, -5.8500],
+  ],
+  "Cabo Peñas Rounding__Candás": [
+    [43.6750, -5.8500],
+    [43.6500, -5.8100],
+    [43.6200, -5.7500],
+    [43.6000, -5.7480],
+    [43.5940, -5.7560],
+    [43.5883, -5.7617],
+  ],
+  "Cabo Peñas Rounding__Gijón": [
+    [43.6750, -5.8500],
+    [43.6500, -5.8100],
+    [43.6200, -5.7500],
+    [43.5850, -5.7050],
+    [43.5650, -5.6600],
+    [43.5550, -5.6460],
+    [43.5470, -5.6480],
+    [43.5453, -5.6621],
+  ],
+};
+
+function manualRouteKey(from: string, to: string): ManualRouteKey {
+  return `${from}__${to}`;
+}
+
+function reverseRoute(points: LatLon[]): LatLon[] {
+  return [...points].reverse();
+}
+
+function manualRoute(from: string, to: string): LatLon[] | null {
+  const forward = MANUAL_ROUTE_OVERRIDES[manualRouteKey(from, to)];
+  if (forward) return forward;
+
+  const backward = MANUAL_ROUTE_OVERRIDES[manualRouteKey(to, from)];
+  if (backward) return reverseRoute(backward);
+
+  return null;
+}
+
 function shortestPath(from: PointId, to: PointId): PointId[] | null {
   const queue = new Set<PointId>(Object.keys(NAV_POINTS) as PointId[]);
   const best = new Map<PointId, number>();
@@ -236,6 +292,11 @@ function dedupe(points: LatLon[]): LatLon[] {
 }
 
 export function buildSeaRoute(from: RoutePort, to: RoutePort): LatLon[] {
+  const handcrafted = manualRoute(from.name, to.name);
+  if (handcrafted) {
+    return dedupe(handcrafted);
+  }
+
   const fromId = from.name as PointId;
   const toId = to.name as PointId;
 

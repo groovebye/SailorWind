@@ -196,8 +196,19 @@ The model is intentionally explicit:
 - nodes are placed at headlands, offshore turning points, and port/ría entry points
 - edges define the allowed safe connections between those nodes
 - `buildSeaRoute()` runs shortest-path routing on that graph
+- for especially tricky headland corridors, `buildSeaRoute()` can override the graph with a handcrafted passage geometry
 - intermediate marinas and ports remain ETA/weather markers, but they do not bend the route line
 - this keeps each cape rounded once on the correct side instead of chaining many pairwise stop-to-stop sub-routes
+
+### Handcrafted Headland Corridors
+
+Some coastal sections are too nuanced for a sparse generic graph. In those places the live map uses manually authored passage geometry with a few deliberate turning points:
+
+- harbor exit / entry points stay aligned with the breakwater or channel
+- the cape is rounded at one dedicated offshore point, not at the lighthouse tip itself
+- long legs are kept as single straight offshore segments where practical
+
+The first explicit corridor of this kind is `Cudillero/Avilés -> Cabo Peñas -> Candás/Gijón`. It is drawn from fixed safe-looking passage points instead of a raw shortest-path across the graph.
 
 **Leg rendering:**
 - The master route is split visually only at route-defining anchors (typically capes)
