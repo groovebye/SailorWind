@@ -75,12 +75,10 @@ class DepthGrid:
         return True
 
     def find_sea_point(self, lat, lon):
-        """Find nearest open-water point with good depth."""
-        if self.is_deep_sea(lat, lon):
-            return (lat, lon)
-        # Search outward in concentric circles
-        for radius_steps in range(1, 80):
-            dist = radius_steps * 0.003  # ~330m steps
+        """Find nearest WELL-OFFSHORE point with good depth (>15m)."""
+        # Search outward, require depth > 15m and open water around
+        for radius_steps in range(1, 100):
+            dist = radius_steps * 0.003
             best = None
             best_depth = 0
             for angle in range(0, 360, 10):
@@ -88,14 +86,22 @@ class DepthGrid:
                 nlat = lat + dist * math.cos(a)
                 nlon = lon + dist * math.sin(a)
                 d = self.depth_at(nlat, nlon)
-                if d < -8 and d < best_depth:
-                    # Check it's not a narrow channel
+                if d < -12 and d < best_depth:
                     if self.is_deep_sea(nlat, nlon):
                         best_depth = d
                         best = (nlat, nlon)
             if best:
                 return best
-        return (lat, lon)  # fallback
+        # Fallback: any water
+        for radius_steps in range(1, 100):
+            dist = radius_steps * 0.003
+            for angle in range(0, 360, 10):
+                a = math.radians(angle)
+                nlat = lat + dist * math.cos(a)
+                nlon = lon + dist * math.sin(a)
+                if self.is_deep_sea(nlat, nlon):
+                    return (nlat, nlon)
+        return (lat, lon)
 
     def line_hits_land(self, lat1, lon1, lat2, lon2, steps=200):
         """
@@ -121,29 +127,37 @@ class DepthGrid:
 
     def find_bypass(self, land_lat, land_lon, from_lat, from_lon, to_lat, to_lon):
         """
-        Find a waypoint to bypass a land obstacle.
-        Try both perpendicular directions, pick the one that works.
+        Find a waypoint WELL OFFSHORE to bypass a land obstacle.
+        Search all directions, find shortest path to deep water,
+        then add generous safety margin.
         """
-        dlat = to_lat - from_lat
-        dlon = to_lon - from_lon
-        norm = math.sqrt(dlat**2 + dlon**2)
-        if norm == 0:
-            return None
-        # Perpendicular directions
-        perps = [
-            (-dlon / norm, dlat / norm),   # left
-            (dlon / norm, -dlat / norm),   # right
-        ]
+        best_wp = None
+        best_dist = float('inf')
 
-        for perp in perps:
-            for dist_steps in range(4, 50):
-                dist = dist_steps * 0.004  # ~440m steps
-                nlat = land_lat + perp[0] * dist
-                nlon = land_lon + perp[1] * dist
-                if self.is_deep_sea(nlat, nlon):
-                    return (nlat, nlon)
+        for angle_deg in range(0, 360, 5):
+            angle = math.radians(angle_deg)
+            cos_a = math.cos(angle)
+            sin_a = math.sin(angle)
 
-        return None
+            # March outward until deep water
+            for step in range(3, 80):
+                dist = step * 0.003
+                nlat = land_lat + cos_a * dist
+                nlon = land_lon + sin_a * dist
+                d = self.depth_at(nlat, nlon)
+
+                if d < -10:
+                    # Add 1 NM extra clearance past the coast edge
+                    extra = 0.015
+                    wp_lat = nlat + cos_a * extra
+                    wp_lon = nlon + sin_a * extra
+
+                    if self.is_deep_sea(wp_lat, wp_lon) and dist < best_dist:
+                        best_dist = dist
+                        best_wp = (wp_lat, wp_lon)
+                    break
+
+        return best_wp
 
 
 def build_route(grid, port_start, port_end):
