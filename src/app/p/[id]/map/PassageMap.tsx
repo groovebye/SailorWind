@@ -157,6 +157,19 @@ function buildPopupContent(wp: WaypointWithData): string {
   return html;
 }
 
+function routeAnchorForWaypoint(w: WaypointWithData): { name: string; lat: number; lon: number } {
+  if (w.port.name === "Cabo Peñas") {
+    return { name: "Cabo Peñas Rounding", lat: 43.675, lon: -5.850 };
+  }
+  if (w.port.name === "Estaca de Bares") {
+    return { name: "Estaca de Bares Rounding", lat: 43.825, lon: -7.685 };
+  }
+  if (w.port.name === "Cabo Ortegal") {
+    return { name: "Cabo Ortegal Rounding", lat: 43.810, lon: -7.880 };
+  }
+  return { name: w.port.name, lat: w.port.lat, lon: w.port.lon };
+}
+
 export default function PassageMap({ waypoints, theme }: { waypoints: WaypointWithData[]; theme: string }) {
   const [contours, setContours] = useState<FeatureCollection | null>(null);
 
@@ -177,17 +190,11 @@ export default function PassageMap({ waypoints, theme }: { waypoints: WaypointWi
   for (let i = 0; i < routeAnchors.length - 1; i++) {
     const from = routeAnchors[i];
     const to = routeAnchors[i + 1];
+    const fromAnchor = routeAnchorForWaypoint(from);
+    const toAnchor = routeAnchorForWaypoint(to);
     const segPositions = buildSeaRoute(
-      {
-        name: from.port.name,
-        lat: from.port.lat,
-        lon: from.port.lon,
-      },
-      {
-        name: to.port.name,
-        lat: to.port.lat,
-        lon: to.port.lon,
-      }
+      fromAnchor,
+      toAnchor
     );
 
     const minNm = Math.min(from.port.coastlineNm, to.port.coastlineNm) - 0.1;
