@@ -211,9 +211,9 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" /></svg>
               <span className="text-xs hidden sm:inline">Map</span>
             </Link>
-            <button onClick={() => loadForecasts(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Reload">
+            <button onClick={() => loadForecasts(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Update forecasts">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M20.984 4.356v4.993" /></svg>
-              <span className="text-xs hidden sm:inline">Reload</span>
+              <span className="text-xs hidden sm:inline">Update</span>
             </button>
             <button onClick={toggleTheme} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Toggle theme">
               {theme === "dark" ? (
@@ -269,17 +269,18 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
         </div>
       </div>
 
-      {/* Legs overview */}
+      {/* Legs overview — clickable tiles */}
       <div className="flex gap-2 flex-wrap mb-4">
         {legs.map((l, i) => {
           const fromTz = tzForPort(l.from.port.lon);
           const toTz = tzForPort(l.to.port.lon);
           return (
-            <div key={i} style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }} className="rounded-lg px-3 py-2 flex-1 min-w-[180px]">
+            <Link key={i} href={`/p/${id}/leg/${i}`} style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }} className="rounded-lg px-3 py-2 flex-1 min-w-[180px] hover:opacity-80 transition-opacity cursor-pointer">
               <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{mode === "daily" ? `Day ${i + 1}: ` : ""}{l.from.port.name} &rarr; {l.to.port.name}</div>
               <div className="text-xs" style={{ color: "var(--text-muted)" }}>{l.nm} NM, ~{l.hours.toFixed(1)}h</div>
               <div className="text-xs mt-0.5" style={{ color: "var(--text-green)" }}>{fmtLocal(l.departTime, fromTz)} &rarr; {fmtTimeLocal(l.arriveTime, toTz)}</div>
-            </div>
+              <div className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Tap for details &#8594;</div>
+            </Link>
           );
         })}
       </div>

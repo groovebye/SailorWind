@@ -1,0 +1,17 @@
+-- AlterTable
+ALTER TABLE "Port" ADD COLUMN     "accessCodes" TEXT,
+ADD COLUMN     "approachDescription" TEXT,
+ADD COLUMN     "approachNotes" TEXT,
+ADD COLUMN     "berthCount" INTEGER,
+ADD COLUMN     "email" TEXT,
+ADD COLUMN     "groceryStores" JSONB,
+ADD COLUMN     "marinaHours" TEXT,
+ADD COLUMN     "marinaName" TEXT,
+ADD COLUMN     "maxLength" DOUBLE PRECISION,
+ADD COLUMN     "orcaNotes" TEXT,
+ADD COLUMN     "orcaRisk" TEXT,
+ADD COLUMN     "passageNotes" TEXT,
+ADD COLUMN     "phone" TEXT,
+ADD COLUMN     "restaurants" JSONB,
+ADD COLUMN     "visitorBerths" INTEGER,
+ADD COLUMN     "yachtShops" JSONB;

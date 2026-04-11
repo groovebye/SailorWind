@@ -31,7 +31,31 @@ model Port {
   maxDraft  Float?   // meters
   vhfCh    String?
   website   String?
+  phone     String?
+  email     String?
   notes     String?
+
+  // Marina details
+  marinaName     String?
+  marinaHours    String?   // "Mon-Sun 09:00-21:00"
+  berthCount     Int?
+  visitorBerths  Int?
+  maxLength      Float?    // meters
+  accessCodes    String?   // "Showers: 1234, WC: 5678"
+  approachNotes  String?   // "Enter on red buoy, 3m min depth"
+
+  // Nearby services (JSON arrays)
+  restaurants    Json?     // [{name, rating, cuisine, phone, hours, address, description}]
+  yachtShops     Json?     // [{name, phone, hours, address, description}]
+  groceryStores  Json?     // [{name, phone, hours, address, description}]
+
+  // Safety
+  orcaRisk       String?   // "none" | "low" | "medium" | "high"
+  orcaNotes      String?
+
+  // Passage descriptions for legs ending at this port
+  approachDescription String? // detailed approach text
+  passageNotes        String? // general sailing notes for this area
 
   // Coastline ordering (distance in NM from a reference point along coast)
   // Used to order ports between two points and estimate distances
