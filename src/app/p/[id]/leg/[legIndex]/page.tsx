@@ -81,41 +81,35 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     fetch(`/api/passage?id=${id}`).then(r => r.json()).then(setPassage);
   }, [id]);
 
-  if (!passage) return <div className="h-screen flex items-center justify-center" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>Loading...</div>;
-
-  // Compute legs
-  const stops = passage.waypoints.filter(w => w.isStop);
-  const depDate = new Date(passage.departure);
-  let currentTime = depDate.getTime();
-  const depHour = depDate.getUTCHours();
-
-  interface Leg { from: Waypoint; to: Waypoint; nm: number; departTime: Date; arriveTime: Date; hours: number; }
-  const legs: Leg[] = [];
-  for (let i = 0; i < stops.length - 1; i++) {
-    const nm = stops[i + 1].port.coastlineNm - stops[i].port.coastlineNm;
-    const hours = nm / passage.speed;
-    const departTime = new Date(currentTime);
-    const arriveTime = new Date(currentTime + hours * 3600000);
-    legs.push({ from: stops[i], to: stops[i + 1], nm, departTime, arriveTime, hours });
-    if (passage.mode === "daily" && i < stops.length - 2) {
-      const nextDay = new Date(arriveTime);
-      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-      nextDay.setUTCHours(depHour, 0, 0, 0);
-      if (nextDay.getTime() < arriveTime.getTime()) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-      currentTime = nextDay.getTime();
-    } else {
-      currentTime = arriveTime.getTime();
+  // Compute legs from passage data
+  const stops = passage?.waypoints.filter(w => w.isStop) || [];
+  const legs: { from: Waypoint; to: Waypoint; nm: number; departTime: Date; arriveTime: Date; hours: number }[] = [];
+  if (passage) {
+    const depDate = new Date(passage.departure);
+    let currentTime = depDate.getTime();
+    const depHour = depDate.getUTCHours();
+    for (let i = 0; i < stops.length - 1; i++) {
+      const nm = stops[i + 1].port.coastlineNm - stops[i].port.coastlineNm;
+      const hours = nm / passage.speed;
+      const departTime = new Date(currentTime);
+      const arriveTime = new Date(currentTime + hours * 3600000);
+      legs.push({ from: stops[i], to: stops[i + 1], nm, departTime, arriveTime, hours });
+      if (passage.mode === "daily" && i < stops.length - 2) {
+        const nextDay = new Date(arriveTime);
+        nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+        nextDay.setUTCHours(depHour, 0, 0, 0);
+        if (nextDay.getTime() < arriveTime.getTime()) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+        currentTime = nextDay.getTime();
+      } else {
+        currentTime = arriveTime.getTime();
+      }
     }
   }
 
-  const leg = legs[legIndex];
-  if (!leg) return <div className="p-8" style={{ color: "var(--text-red)" }}>Leg {legIndex} not found</div>;
+  const leg = legs[legIndex] || null;
+  const dest = leg?.to.port || null;
 
-  const fromTz = tzForPort(leg.from.port.lon);
-  const toTz = tzForPort(leg.to.port.lon);
-  const dest = leg.to.port;
-
-  // Fetch webcams for destination
+  // Fetch webcams for destination — MUST be before any early return
   useEffect(() => {
     if (dest) {
       fetch(`/api/webcams?lat=${dest.lat}&lon=${dest.lon}&radius=25`)
@@ -124,6 +118,12 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         .catch(() => {});
     }
   }, [dest?.lat, dest?.lon]);
+
+  if (!passage) return <div className="h-screen flex items-center justify-center" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>Loading...</div>;
+  if (!leg) return <div className="p-8" style={{ color: "var(--text-red)" }}>Leg {legIndex} not found</div>;
+
+  const fromTz = tzForPort(leg.from.port.lon);
+  const toTz = tzForPort(leg.to.port.lon);
 
   // Get all waypoints in this leg
   const legWps = passage.waypoints.filter(
