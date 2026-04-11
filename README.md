@@ -73,7 +73,7 @@ sailplanner-next/
 
 ### Overview
 
-The map displays sailing routes between ports with weather data overlays. Route geometry is built at runtime from a simplified offshore corridor in `src/lib/coastline.ts`, while EMODnet data is still used for contour overlays.
+The map displays sailing routes between ports with weather data overlays. Route geometry is built at runtime from a hand-authored coastal routing graph in `src/lib/coastline.ts`, while EMODnet data is still used for contour overlays.
 
 ### Architecture
 
@@ -84,7 +84,7 @@ EMODnet GeoTIFF (WCS download)
         ↓
  public/data/contours.json     ← depth contour lines
 
-src/lib/coastline.ts           ← offshore corridor + port approaches
+src/lib/coastline.ts           ← routing graph (headlands, offshore legs, port/ría branches)
         ↓
  PassageMap.tsx                ← builds leg geometry at runtime
 ```
@@ -112,7 +112,7 @@ At ~200m resolution, **all ports resolve to land pixels** (depth=0) in the EMODn
 
 ### Legacy Route Generator (`scripts/gen-route-data.py`)
 
-This script describes the old experimental pair-by-pair route generation based directly on bathymetry. It is still useful context for why the original routes produced zigzags, but the live map now uses the simplified corridor model in `src/lib/coastline.ts`.
+This script describes the old experimental pair-by-pair route generation based directly on bathymetry. It is still useful context for why the original routes produced zigzags, but the live map now uses the hand-authored routing graph in `src/lib/coastline.ts`.
 
 **Class: `DepthGrid`** — loads the GeoTIFF and provides:
 - `depth_at(lat, lon)` → float (negative = depth, 0 = land)
@@ -189,14 +189,15 @@ Produces GeoJSON with LineString features, each with `depth` property (made posi
 
 Leg lines are built directly from the leg's start/end ports via `buildSeaRoute()` in `src/lib/coastline.ts`.
 
-The model is intentionally simple:
-- one offshore corridor with the main turning points
-- short spur routes for ports and rías
-- path simplification so long coastal sections stay as long, straight legs
+The model is intentionally explicit:
+- nodes are placed at headlands, offshore turning points, and port/ría entry points
+- edges define the allowed safe connections between those nodes
+- `buildSeaRoute()` runs shortest-path routing on that graph
+- this keeps each cape rounded once on the correct side instead of chaining many pairwise sub-routes
 
 **Leg rendering:**
-- Each passage leg filters all waypoints within that leg's coastlineNm range
-- Routes are chained through consecutive waypoints in the leg
+- Each leg line is built once from the start port to the end port
+- Intermediate waypoints remain forecast markers, but they do not force the line to detour through every harbor
 - Leg line color = worst verdict among all leg waypoints:
   - Green (#4ade80) = all GO
   - Yellow (#facc15) = any CAUTION
