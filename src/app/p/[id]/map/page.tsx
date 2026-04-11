@@ -141,7 +141,6 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
       <div className="flex-1">
         <PassageMap
           waypoints={waypointsWithData}
-          legs={legs}
           theme={theme}
         />
       </div>

@@ -187,18 +187,21 @@ Produces GeoJSON with LineString features, each with `depth` property (made posi
 
 **Route rendering:**
 
-Leg lines are built directly from the leg's start/end ports via `buildSeaRoute()` in `src/lib/coastline.ts`.
+The visible route line is built as a master route for the whole passage. Geometry uses:
+- first passage point
+- cape waypoints
+- final passage point
 
 The model is intentionally explicit:
 - nodes are placed at headlands, offshore turning points, and port/ría entry points
 - edges define the allowed safe connections between those nodes
 - `buildSeaRoute()` runs shortest-path routing on that graph
-- this keeps each cape rounded once on the correct side instead of chaining many pairwise sub-routes
+- intermediate marinas and ports remain ETA/weather markers, but they do not bend the route line
+- this keeps each cape rounded once on the correct side instead of chaining many pairwise stop-to-stop sub-routes
 
 **Leg rendering:**
-- Each leg line is built once from the start port to the end port
-- Intermediate waypoints remain forecast markers, but they do not force the line to detour through every harbor
-- Leg line color = worst verdict among all leg waypoints:
+- The master route is split visually only at route-defining anchors (typically capes)
+- Segment color = worst verdict among all waypoints in that coastline interval:
   - Green (#4ade80) = all GO
   - Yellow (#facc15) = any CAUTION
   - Red (#f87171) = any NO-GO

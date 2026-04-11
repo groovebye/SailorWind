@@ -19,7 +19,6 @@ interface Waypoint { port: Port; isStop: boolean; isCape: boolean; sortOrder: nu
 interface WaypointWithData extends Waypoint {
   eta: Date; tz: string; forecast: ForecastEntry | null; allForecasts: ForecastEntry[];
 }
-interface Leg { from: Waypoint; to: Waypoint; nm: number; departTime: Date; arriveTime: Date; hours: number; }
 
 const COLORS: Record<string, { fill: string; stroke: string }> = {
   cape:      { fill: "#facc15", stroke: "#a16207" },
@@ -158,7 +157,7 @@ function buildPopupContent(wp: WaypointWithData): string {
   return html;
 }
 
-export default function PassageMap({ waypoints, legs, theme }: { waypoints: WaypointWithData[]; legs: Leg[]; theme: string }) {
+export default function PassageMap({ waypoints, theme }: { waypoints: WaypointWithData[]; theme: string }) {
   const [contours, setContours] = useState<FeatureCollection | null>(null);
 
   useEffect(() => {
@@ -167,39 +166,49 @@ export default function PassageMap({ waypoints, legs, theme }: { waypoints: Wayp
 
   const positions = waypoints.map((w) => [w.port.lat, w.port.lon] as [number, number]);
 
-  // Build each leg directly from its start/end ports using the simplified
-  // offshore corridor. Intermediate ports stay as forecast markers, but the
-  // leg line itself no longer snakes through every harbor.
-  const legSegments: { positions: [number, number][]; color: string; label: string }[] = [];
+  // Geometry is defined only by passage endpoints and capes. Intermediate
+  // stopovers remain forecast markers, but they do not bend the route line.
+  const routeAnchors = waypoints.filter((w, index) =>
+    index === 0 || index === waypoints.length - 1 || w.isCape
+  );
 
-  for (let li = 0; li < legs.length; li++) {
-    const leg = legs[li];
+  const routeSegments: { positions: [number, number][]; color: string; label: string }[] = [];
+
+  for (let i = 0; i < routeAnchors.length - 1; i++) {
+    const from = routeAnchors[i];
+    const to = routeAnchors[i + 1];
     const segPositions = buildSeaRoute(
       {
-        name: leg.from.port.name,
-        lat: leg.from.port.lat,
-        lon: leg.from.port.lon,
+        name: from.port.name,
+        lat: from.port.lat,
+        lon: from.port.lon,
       },
       {
-        name: leg.to.port.name,
-        lat: leg.to.port.lat,
-        lon: leg.to.port.lon,
+        name: to.port.name,
+        lat: to.port.lat,
+        lon: to.port.lon,
       }
     );
 
-    const allLegWps = waypoints.filter(
-      (w) => w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
-             w.port.coastlineNm <= leg.to.port.coastlineNm + 0.1
+    const minNm = Math.min(from.port.coastlineNm, to.port.coastlineNm) - 0.1;
+    const maxNm = Math.max(from.port.coastlineNm, to.port.coastlineNm) + 0.1;
+    const segmentWps = waypoints.filter(
+      (w) => w.port.coastlineNm >= minNm && w.port.coastlineNm <= maxNm
     );
+
     let worst = "GO";
-    for (const w of allLegWps) {
-      if (w.forecast) {
-        if (w.forecast.verdict.startsWith("NO")) worst = "NO-GO";
-        else if (w.forecast.verdict.startsWith("CAUTION") && worst !== "NO-GO") worst = "CAUTION";
-      }
+    for (const w of segmentWps) {
+      if (!w.forecast) continue;
+      if (w.forecast.verdict.startsWith("NO")) worst = "NO-GO";
+      else if (w.forecast.verdict.startsWith("CAUTION") && worst !== "NO-GO") worst = "CAUTION";
     }
+
     const color = worst === "GO" ? "#4ade80" : worst === "CAUTION" ? "#facc15" : "#f87171";
-    legSegments.push({ positions: segPositions, color, label: `Leg ${li + 1}: ${worst}` });
+    routeSegments.push({
+      positions: segPositions,
+      color,
+      label: `${from.port.name} → ${to.port.name}: ${worst}`,
+    });
   }
 
   const tileUrl = theme === "light" ? LIGHT_TILES : DARK_TILES;
@@ -266,8 +275,8 @@ export default function PassageMap({ waypoints, legs, theme }: { waypoints: Wayp
         opacity={0.8}
       />
 
-      {/* Colored leg segments — A* routed paths */}
-      {legSegments.map((seg, i) => seg.positions.length > 1 && (
+      {/* Colored route segments — one continuous passage geometry split only at capes */}
+      {routeSegments.map((seg, i) => seg.positions.length > 1 && (
         <Polyline
           key={`leg-${i}`}
           positions={seg.positions}
