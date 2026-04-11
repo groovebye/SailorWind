@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { ForecastEntry } from "@/lib/weather";
+import { buildSeaRoute } from "@/lib/coastline";
 import type { FeatureCollection } from "geojson";
 
 interface Port {
@@ -157,86 +158,34 @@ function buildPopupContent(wp: WaypointWithData): string {
   return html;
 }
 
-// Ordered list of all ports — must match the order in routes.json
-const ALL_PORTS = [
-  "Gijón", "Candás", "Cabo Peñas", "Luanco", "Avilés", "Cudillero",
-  "Luarca", "Navia", "Ribadeo", "Foz", "Viveiro", "Estaca de Bares",
-  "Cabo Ortegal", "Cariño", "Cedeira", "Ferrol", "La Coruña",
-];
-
-/**
- * Find route between any two ports by chaining through intermediate
- * consecutive-pair routes. E.g. Gijón→Cabo Peñas = Gijón→Candás + Candás→Cabo Peñas
- */
-function findRoute(
-  routes: Record<string, [number, number][]>,
-  fromName: string, toName: string
-): [number, number][] | null {
-  // Direct lookup
-  const directKey = `${fromName} \u2192 ${toName}`;
-  if (routes[directKey]) return routes[directKey];
-
-  // Chain through intermediate ports
-  const fromIdx = ALL_PORTS.indexOf(fromName);
-  const toIdx = ALL_PORTS.indexOf(toName);
-  if (fromIdx < 0 || toIdx < 0 || fromIdx >= toIdx) return null;
-
-  const chain: [number, number][] = [];
-  for (let i = fromIdx; i < toIdx; i++) {
-    const key = `${ALL_PORTS[i]} \u2192 ${ALL_PORTS[i + 1]}`;
-    const seg = routes[key];
-    if (!seg || seg.length === 0) return null; // broken chain
-    if (chain.length > 0) {
-      chain.push(...seg.slice(1)); // skip duplicate join point
-    } else {
-      chain.push(...seg);
-    }
-  }
-  return chain.length > 0 ? chain : null;
-}
-
 export default function PassageMap({ waypoints, legs, theme }: { waypoints: WaypointWithData[]; legs: Leg[]; theme: string }) {
-  const [routes, setRoutes] = useState<Record<string, [number, number][]> | null>(null);
   const [contours, setContours] = useState<FeatureCollection | null>(null);
 
   useEffect(() => {
-    fetch("/data/routes.json").then(r => r.json()).then(setRoutes).catch(() => {});
     fetch("/data/contours.json").then(r => r.json()).then(setContours).catch(() => {});
   }, []);
 
   const positions = waypoints.map((w) => [w.port.lat, w.port.lon] as [number, number]);
 
-  // Build leg segments using pre-computed routes
-  // Routes are keyed by consecutive port pairs (e.g. "Gijón → Candás")
-  // so we must chain through ALL waypoints in the passage, not just stops/capes
+  // Build each leg directly from its start/end ports using the simplified
+  // offshore corridor. Intermediate ports stay as forecast markers, but the
+  // leg line itself no longer snakes through every harbor.
   const legSegments: { positions: [number, number][]; color: string; label: string }[] = [];
 
   for (let li = 0; li < legs.length; li++) {
     const leg = legs[li];
-    // Get ALL waypoints in this leg (not just stops/capes)
-    const legWps = waypoints.filter(
-      (w) => w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
-             w.port.coastlineNm <= leg.to.port.coastlineNm + 0.1
-    ).sort((a, b) => a.port.coastlineNm - b.port.coastlineNm);
-
-    // Chain routes through consecutive waypoints
-    const segPositions: [number, number][] = [];
-    for (let i = 0; i < legWps.length - 1; i++) {
-      const route = routes ? findRoute(routes, legWps[i].port.name, legWps[i + 1].port.name) : null;
-      if (route && route.length > 1) {
-        if (segPositions.length > 0) {
-          segPositions.push(...route.slice(1));
-        } else {
-          segPositions.push(...route);
-        }
-      } else {
-        // Fallback: straight line
-        if (segPositions.length === 0) {
-          segPositions.push([legWps[i].port.lat, legWps[i].port.lon]);
-        }
-        segPositions.push([legWps[i + 1].port.lat, legWps[i + 1].port.lon]);
+    const segPositions = buildSeaRoute(
+      {
+        name: leg.from.port.name,
+        lat: leg.from.port.lat,
+        lon: leg.from.port.lon,
+      },
+      {
+        name: leg.to.port.name,
+        lat: leg.to.port.lat,
+        lon: leg.to.port.lon,
       }
-    }
+    );
 
     const allLegWps = waypoints.filter(
       (w) => w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&

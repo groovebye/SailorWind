@@ -1,202 +1,242 @@
 /**
- * Coastal route shape points for passage rendering.
- * All points verified IN THE SEA. Dense spacing near headlands to
- * prevent route lines from cutting across land.
+ * Hand-authored coastal routing graph for North Spain.
  *
- * Coordinate reference: OpenStreetMap, verified against satellite imagery.
- * Points are ~0.5-2 NM offshore, closer inshore in sheltered areas,
- * further out near exposed capes.
+ * The model is intentionally simple:
+ * - sparse offshore corridor nodes at headlands and major turns
+ * - short branch nodes for ports and rías
+ * - shortest-path routing across this graph
+ *
+ * This avoids the "cut across the cape / loop around twice" behavior that
+ * appeared when we tried to over-simplify the geometry.
  */
 
-// Biscay-north: Gijón → Ribadeo
-// Coast runs E→W. Cabo Peñas peninsula juts N.
-const biscayNorth: [number, number][] = [
-  // === Gijón (43.545, -5.662) — harbor faces N ===
-  [43.555, -5.660],   // just N of harbor entrance
+export type LatLon = [number, number];
 
-  // === Gijón → Candás — coast goes NW, hug the shore ===
-  [43.565, -5.680],
-  [43.575, -5.700],
-  [43.580, -5.720],
-  [43.585, -5.740],
-  [43.590, -5.762],   // off Candás
-
-  // === Candás → Cabo Peñas — follow E side of peninsula N ===
-  // Peninsula runs N from ~43.59 to 43.655
-  // Must have dense points to follow the coast, not cut across
-  [43.600, -5.775],
-  [43.610, -5.790],
-  [43.620, -5.800],
-  [43.630, -5.810],
-  [43.640, -5.820],
-  [43.650, -5.835],
-  [43.660, -5.845],   // near cape tip
-
-  // === Rounding Cabo Peñas (43.655, -5.849) — stay 1-2NM N ===
-  [43.675, -5.850],   // N of cape, 1NM off
-  [43.675, -5.870],   // rounding W side
-
-  // === Cabo Peñas → Avilés — follow W side of peninsula S ===
-  [43.665, -5.885],
-  [43.655, -5.895],
-  [43.645, -5.905],
-  [43.635, -5.915],
-  [43.625, -5.920],
-  [43.615, -5.925],
-  [43.605, -5.930],   // off Avilés ría entrance
-
-  // === Avilés → Cudillero — coast goes W ===
-  [43.600, -5.960],
-  [43.598, -6.000],
-  [43.595, -6.050],
-  [43.592, -6.100],
-  [43.590, -6.150],   // off Cudillero
-
-  // === Cudillero → Luarca — long straight W ===
-  [43.588, -6.220],
-  [43.585, -6.300],
-  [43.582, -6.380],
-  [43.580, -6.450],
-  [43.578, -6.530],   // off Luarca
-
-  // === Luarca → Navia ===
-  [43.580, -6.580],
-  [43.582, -6.640],
-  [43.583, -6.700],
-  [43.585, -6.730],   // off Navia
-
-  // === Navia → Ribadeo ===
-  [43.585, -6.780],
-  [43.583, -6.840],
-  [43.580, -6.900],
-  [43.577, -6.960],
-  [43.573, -7.010],
-  [43.568, -7.042],   // off Ribadeo
-];
-
-// Galicia-north: Ribadeo → La Coruña
-// Deeply indented coast with rías. Route stays offshore between headlands,
-// only dips into rías to reach ports.
-const galiciaNorth: [number, number][] = [
-  // === Ribadeo ===
-  [43.568, -7.042],
-
-  // === Ribadeo → Foz — coast NW ===
-  [43.580, -7.080],
-  [43.590, -7.120],
-  [43.600, -7.170],
-  [43.610, -7.220],
-  [43.620, -7.255],   // off Foz
-
-  // === Foz → Viveiro — coast goes NW ===
-  [43.635, -7.290],
-  [43.650, -7.330],
-  [43.665, -7.370],
-  [43.680, -7.420],
-  [43.690, -7.470],
-  [43.700, -7.520],
-  [43.705, -7.560],   // Viveiro ría mouth
-  [43.695, -7.595],   // into ría toward Viveiro
-
-  // === Viveiro → Estaca de Bares — back out, head N ===
-  [43.705, -7.560],   // back to ría mouth
-  [43.720, -7.580],
-  [43.740, -7.600],
-  [43.760, -7.620],
-  [43.780, -7.650],
-  [43.800, -7.670],
-
-  // === Estaca de Bares (43.788, -7.685) — stay 2NM N ===
-  [43.825, -7.685],   // 2NM N of cape
-  [43.830, -7.710],   // rounding
-
-  // === Estaca → Cabo Ortegal — coast turns W ===
-  [43.828, -7.740],
-  [43.825, -7.770],
-  [43.820, -7.800],
-  [43.815, -7.830],
-
-  // === Cabo Ortegal (43.770, -7.870) — stay 3NM N ===
-  [43.810, -7.860],
-  [43.810, -7.880],   // rounding
-
-  // === Ortegal → Cariño — S into Ría de Ortigueira ===
-  [43.795, -7.878],
-  [43.775, -7.872],
-  [43.755, -7.867],   // off Cariño
-
-  // === Cariño → Cedeira — back out N, then W offshore ===
-  [43.775, -7.872],   // heading back N
-  [43.795, -7.878],   // back offshore
-  [43.810, -7.890],   // heading W, well N of coast
-  [43.805, -7.930],
-  [43.795, -7.970],
-  [43.780, -8.010],
-  [43.760, -8.040],
-  [43.730, -8.055],   // Cedeira ría mouth
-  [43.695, -8.057],   // off Cedeira
-
-  // === Cedeira → Ferrol — back out, head S offshore ===
-  [43.730, -8.055],   // back to ría mouth
-  [43.760, -8.070],   // offshore
-  [43.750, -8.110],
-  [43.730, -8.150],
-  [43.700, -8.180],
-  [43.670, -8.200],
-  [43.640, -8.215],
-  [43.610, -8.225],   // Ferrol ría entrance
-  [43.510, -8.233],   // inside to Ferrol
-
-  // === Ferrol → La Coruña — back out, head SW ===
-  [43.610, -8.225],   // ría entrance
-  [43.640, -8.240],   // offshore
-  [43.620, -8.280],
-  [43.590, -8.310],
-  [43.555, -8.340],
-  [43.520, -8.360],
-  [43.480, -8.380],
-  [43.440, -8.395],
-  [43.410, -8.400],   // off La Coruña
-];
-
-export interface CoastSegment {
+export interface RoutePort {
   name: string;
-  points: [number, number][];
+  lat: number;
+  lon: number;
 }
 
-export const COAST_SEGMENTS: CoastSegment[] = [
-  { name: "biscay-north", points: biscayNorth },
-  { name: "galicia-north", points: galiciaNorth },
-];
+const NAV_POINTS = {
+  "Gijón": [43.5453, -5.6621],
+  "Candás": [43.5883, -5.7617],
+  "Cabo Peñas": [43.6553, -5.8492],
+  "Luanco": [43.6117, -5.7917],
+  "Avilés": [43.5917, -5.9250],
+  "Cudillero": [43.5633, -6.1500],
+  "Luarca": [43.5417, -6.5333],
+  "Navia": [43.5500, -6.7283],
+  "Ribadeo": [43.5350, -7.0417],
+  "Foz": [43.5717, -7.2550],
+  "Viveiro": [43.6617, -7.5950],
+  "Estaca de Bares": [43.7883, -7.6850],
+  "Cabo Ortegal": [43.7700, -7.8700],
+  "Cariño": [43.7367, -7.8667],
+  "Cedeira": [43.6600, -8.0567],
+  "Ferrol": [43.4833, -8.2333],
+  "La Coruña": [43.3700, -8.4000],
 
-/**
- * Given two points, returns the coastal shape points between them.
- */
-export function getRouteShape(
-  fromLat: number, fromLon: number,
-  toLat: number, toLon: number,
-  segments: CoastSegment[] = COAST_SEGMENTS
-): [number, number][] {
-  const allPoints = segments.flatMap(s => s.points);
+  "gijon-offshore": [43.555, -5.660],
+  "gijon-west": [43.575, -5.700],
+  "candas-offshore": [43.590, -5.762],
+  "penas-east-1": [43.610, -5.790],
+  "penas-east-2": [43.640, -5.820],
+  "penas-tip-offshore": [43.660, -5.845],
+  "penas-north": [43.675, -5.850],
+  "penas-west": [43.675, -5.870],
+  "penas-west-1": [43.645, -5.905],
+  "aviles-offshore": [43.605, -5.930],
+  "asturias-west-1": [43.598, -6.000],
+  "cudillero-offshore": [43.590, -6.150],
+  "luarca-offshore": [43.578, -6.530],
+  "navia-offshore": [43.585, -6.730],
+  "ribadeo-offshore": [43.568, -7.042],
+  "galicia-west-1": [43.590, -7.120],
+  "foz-offshore": [43.620, -7.255],
+  "galicia-west-2": [43.665, -7.370],
+  "viveiro-mouth": [43.705, -7.560],
+  "viveiro-inner": [43.695, -7.595],
+  "estaca-north": [43.825, -7.685],
+  "ortegal-west": [43.810, -7.880],
+  "carino-inner-1": [43.795, -7.878],
+  "carino-inner-2": [43.775, -7.872],
+  "carino-inner-3": [43.755, -7.867],
+  "galicia-west-3": [43.795, -7.970],
+  "cedeira-mouth": [43.730, -8.055],
+  "cedeira-inner": [43.695, -8.057],
+  "ferrol-offshore": [43.640, -8.215],
+  "ferrol-inner-1": [43.610, -8.225],
+  "ferrol-inner-2": [43.560, -8.225],
+  "ferrol-inner-3": [43.510, -8.233],
+  "coruna-offshore": [43.620, -8.280],
+  "coruna-approach": [43.410, -8.400],
+} satisfies Record<string, LatLon>;
 
-  const dist2 = (p: [number, number], lat: number, lon: number) =>
-    (p[0] - lat) ** 2 + (p[1] - lon) ** 2;
+type PointId = keyof typeof NAV_POINTS;
 
-  let startIdx = 0, endIdx = 0;
-  let bestStartDist = Infinity, bestEndDist = Infinity;
+const EDGE_LIST: readonly [PointId, PointId][] = [
+  ["Gijón", "gijon-offshore"],
+  ["gijon-offshore", "gijon-west"],
+  ["gijon-west", "candas-offshore"],
+  ["Candás", "candas-offshore"],
+  ["candas-offshore", "penas-east-1"],
+  ["penas-east-1", "penas-east-2"],
+  ["Luanco", "penas-east-2"],
+  ["penas-east-2", "penas-tip-offshore"],
+  ["Cabo Peñas", "penas-tip-offshore"],
+  ["penas-tip-offshore", "penas-north"],
+  ["penas-north", "penas-west"],
+  ["penas-west", "penas-west-1"],
+  ["penas-west-1", "aviles-offshore"],
+  ["Avilés", "aviles-offshore"],
+  ["aviles-offshore", "asturias-west-1"],
+  ["asturias-west-1", "cudillero-offshore"],
+  ["Cudillero", "cudillero-offshore"],
+  ["cudillero-offshore", "luarca-offshore"],
+  ["Luarca", "luarca-offshore"],
+  ["luarca-offshore", "navia-offshore"],
+  ["Navia", "navia-offshore"],
+  ["navia-offshore", "ribadeo-offshore"],
+  ["Ribadeo", "ribadeo-offshore"],
+  ["ribadeo-offshore", "galicia-west-1"],
+  ["galicia-west-1", "foz-offshore"],
+  ["Foz", "foz-offshore"],
+  ["foz-offshore", "galicia-west-2"],
+  ["galicia-west-2", "viveiro-mouth"],
+  ["viveiro-mouth", "viveiro-inner"],
+  ["viveiro-inner", "Viveiro"],
+  ["viveiro-mouth", "estaca-north"],
+  ["Estaca de Bares", "estaca-north"],
+  ["estaca-north", "ortegal-west"],
+  ["Cabo Ortegal", "ortegal-west"],
+  ["ortegal-west", "carino-inner-1"],
+  ["carino-inner-1", "carino-inner-2"],
+  ["carino-inner-2", "carino-inner-3"],
+  ["carino-inner-3", "Cariño"],
+  ["ortegal-west", "galicia-west-3"],
+  ["galicia-west-3", "cedeira-mouth"],
+  ["cedeira-mouth", "cedeira-inner"],
+  ["cedeira-inner", "Cedeira"],
+  ["cedeira-mouth", "ferrol-offshore"],
+  ["ferrol-offshore", "ferrol-inner-1"],
+  ["ferrol-inner-1", "ferrol-inner-2"],
+  ["ferrol-inner-2", "ferrol-inner-3"],
+  ["ferrol-inner-3", "Ferrol"],
+  ["ferrol-offshore", "coruna-offshore"],
+  ["coruna-offshore", "coruna-approach"],
+  ["coruna-approach", "La Coruña"],
+] as const;
 
-  for (let i = 0; i < allPoints.length; i++) {
-    const ds = dist2(allPoints[i], fromLat, fromLon);
-    const de = dist2(allPoints[i], toLat, toLon);
-    if (ds < bestStartDist) { bestStartDist = ds; startIdx = i; }
-    if (de < bestEndDist) { bestEndDist = de; endIdx = i; }
+function point(id: PointId): LatLon {
+  return NAV_POINTS[id];
+}
+
+function distance(a: PointId, b: PointId): number {
+  const [alat, alon] = point(a);
+  const [blat, blon] = point(b);
+  return Math.hypot(alat - blat, alon - blon);
+}
+
+function buildGraph(): Map<PointId, Array<{ to: PointId; cost: number }>> {
+  const graph = new Map<PointId, Array<{ to: PointId; cost: number }>>();
+
+  for (const id of Object.keys(NAV_POINTS) as PointId[]) {
+    graph.set(id, []);
   }
 
-  const [lo, hi] = startIdx <= endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+  for (const [from, to] of EDGE_LIST) {
+    const cost = distance(from, to);
+    graph.get(from)!.push({ to, cost });
+    graph.get(to)!.push({ to: from, cost });
+  }
 
-  return [
-    [fromLat, fromLon],
-    ...allPoints.slice(lo, hi + 1),
-    [toLat, toLon],
-  ];
+  return graph;
+}
+
+const ROUTING_GRAPH = buildGraph();
+
+function shortestPath(from: PointId, to: PointId): PointId[] | null {
+  const queue = new Set<PointId>(Object.keys(NAV_POINTS) as PointId[]);
+  const best = new Map<PointId, number>();
+  const prev = new Map<PointId, PointId | null>();
+
+  for (const node of queue) {
+    best.set(node, Number.POSITIVE_INFINITY);
+    prev.set(node, null);
+  }
+  best.set(from, 0);
+
+  while (queue.size > 0) {
+    let current: PointId | null = null;
+    let currentCost = Number.POSITIVE_INFINITY;
+
+    for (const node of queue) {
+      const cost = best.get(node)!;
+      if (cost < currentCost) {
+        current = node;
+        currentCost = cost;
+      }
+    }
+
+    if (current === null || currentCost === Number.POSITIVE_INFINITY) {
+      break;
+    }
+
+    queue.delete(current);
+
+    if (current === to) {
+      const path: PointId[] = [];
+      let walk: PointId | null = current;
+      while (walk) {
+        path.push(walk);
+        walk = prev.get(walk) ?? null;
+      }
+      return path.reverse();
+    }
+
+    for (const edge of ROUTING_GRAPH.get(current) ?? []) {
+      if (!queue.has(edge.to)) continue;
+      const nextCost = currentCost + edge.cost;
+      if (nextCost < best.get(edge.to)!) {
+        best.set(edge.to, nextCost);
+        prev.set(edge.to, current);
+      }
+    }
+  }
+
+  return null;
+}
+
+function dedupe(points: LatLon[]): LatLon[] {
+  const result: LatLon[] = [];
+  for (const current of points) {
+    const prev = result[result.length - 1];
+    if (!prev || prev[0] !== current[0] || prev[1] !== current[1]) {
+      result.push(current);
+    }
+  }
+  return result;
+}
+
+export function buildSeaRoute(from: RoutePort, to: RoutePort): LatLon[] {
+  const fromId = from.name as PointId;
+  const toId = to.name as PointId;
+
+  if (!(fromId in NAV_POINTS) || !(toId in NAV_POINTS)) {
+    return [
+      [from.lat, from.lon],
+      [to.lat, to.lon],
+    ];
+  }
+
+  const routeIds = shortestPath(fromId, toId);
+  if (!routeIds || routeIds.length === 0) {
+    return [
+      [from.lat, from.lon],
+      [to.lat, to.lon],
+    ];
+  }
+
+  return dedupe(routeIds.map(point));
 }

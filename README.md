@@ -55,11 +55,11 @@ sailplanner-next/
 │   │   ├── db.ts              # Prisma client (singleton with pg adapter)
 │   │   ├── weather.ts         # Open-Meteo client, cache, GO/NO-GO logic
 │   │   ├── theme.tsx          # ThemeProvider context (dark/light, localStorage)
-│   │   ├── coastline.ts       # [DEPRECATED] Manual coastline shape points
+│   │   ├── coastline.ts       # Simplified offshore corridor + port/ría approaches
 │   │   └── nanoid.ts          # Short ID generator (8 chars)
 │   └── generated/prisma/      # Generated Prisma client (gitignored)
 ├── public/data/
-│   ├── routes.json            # Pre-computed sea routes between consecutive ports
+│   ├── routes.json            # Legacy pre-computed pair routes (kept for reference)
 │   └── contours.json          # Depth contour GeoJSON (5/10/20/50/100/200m)
 ├── scripts/
 │   └── gen-route-data.py      # Route + contour generator from EMODnet bathymetry
@@ -73,19 +73,20 @@ sailplanner-next/
 
 ### Overview
 
-The map displays sailing routes between ports with weather data overlays. Routes are **pre-computed offline** from bathymetry data and served as static JSON.
+The map displays sailing routes between ports with weather data overlays. Route geometry is built at runtime from a simplified offshore corridor in `src/lib/coastline.ts`, while EMODnet data is still used for contour overlays.
 
 ### Architecture
 
 ```
 EMODnet GeoTIFF (WCS download)
         ↓
- scripts/gen-route-data.py     ← offline Python script
+ scripts/gen-route-data.py     ← offline contour generator
         ↓
- public/data/routes.json       ← pre-computed routes (port→port)
  public/data/contours.json     ← depth contour lines
+
+src/lib/coastline.ts           ← offshore corridor + port approaches
         ↓
- PassageMap.tsx (client)        ← loads JSON, renders on Leaflet
+ PassageMap.tsx                ← builds leg geometry at runtime
 ```
 
 ### Data Source: EMODnet Bathymetry
@@ -109,7 +110,9 @@ At ~200m resolution, **all ports resolve to land pixels** (depth=0) in the EMODn
 
 **Current workaround:** `find_sea_point()` projects each port to the nearest "deep sea" pixel (depth < -12m, with 8m+ depth in all neighboring cells). This typically places the sea point 0.5-1.5 NM offshore from the port.
 
-### Route Generation Algorithm (`scripts/gen-route-data.py`)
+### Legacy Route Generator (`scripts/gen-route-data.py`)
+
+This script describes the old experimental pair-by-pair route generation based directly on bathymetry. It is still useful context for why the original routes produced zigzags, but the live map now uses the simplified corridor model in `src/lib/coastline.ts`.
 
 **Class: `DepthGrid`** — loads the GeoTIFF and provides:
 - `depth_at(lat, lon)` → float (negative = depth, 0 = land)
@@ -184,13 +187,12 @@ Produces GeoJSON with LineString features, each with `depth` property (made posi
 
 **Route rendering:**
 
-Routes are loaded from `/data/routes.json` (keyed by consecutive port pairs like `"Gijón → Candás"`).
+Leg lines are built directly from the leg's start/end ports via `buildSeaRoute()` in `src/lib/coastline.ts`.
 
-`findRoute(routes, fromName, toName)` handles non-consecutive port pairs by chaining:
-- Direct lookup: `routes["Gijón → Candás"]`
-- Chaining: `findRoute("Gijón", "Cabo Peñas")` → chain `Gijón→Candás` + `Candás→Cabo Peñas`
-
-Uses `ALL_PORTS` ordered array to determine which intermediate ports to chain through.
+The model is intentionally simple:
+- one offshore corridor with the main turning points
+- short spur routes for ports and rías
+- path simplification so long coastal sections stay as long, straight legs
 
 **Leg rendering:**
 - Each passage leg filters all waypoints within that leg's coastlineNm range
