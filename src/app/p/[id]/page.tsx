@@ -63,8 +63,11 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
   const { theme, toggle: toggleTheme } = useTheme();
   const [passage, setPassage] = useState<Passage | null>(null);
   const [forecasts, setForecasts] = useState<Record<string, ForecastEntry[]> | null>(null);
+  const [windyForecasts, setWindyForecasts] = useState<Record<string, ForecastEntry[]> | null>(null);
+  const [weatherSource, setWeatherSource] = useState<"openmeteo" | "windy">("openmeteo");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [windyPopup, setWindyPopup] = useState(false);
 
   const [departure, setDeparture] = useState("");
   const [speed, setSpeed] = useState(5.0);
@@ -104,6 +107,41 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
   useEffect(() => {
     if (passage) loadForecasts();
   }, [passage, loadForecasts]);
+
+  const loadWindyForecasts = useCallback(async () => {
+    if (!passage) return;
+    setLoading(true);
+    const wps = passage.waypoints.map((w) => ({
+      name: w.port.name, lat: w.port.lat, lon: w.port.lon, isCape: w.isCape,
+    }));
+    const res = await fetch("/api/forecast/windy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ waypoints: wps }),
+    });
+    const data = await res.json();
+    if (data.error) { setError(data.error); setLoading(false); return; }
+    setWindyForecasts(data);
+    setWeatherSource("windy");
+    setLoading(false);
+  }, [passage]);
+
+  function handleWindyClick() {
+    if (windyForecasts) {
+      // Already have Windy data — just switch view
+      setWeatherSource("windy");
+    } else {
+      // Need to fetch — show confirmation popup
+      setWindyPopup(true);
+    }
+  }
+
+  async function confirmWindyFetch() {
+    setWindyPopup(false);
+    await loadWindyForecasts();
+  }
+
+  const activeForecasts = weatherSource === "windy" && windyForecasts ? windyForecasts : forecasts;
 
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const initialLoad = useRef(true);
@@ -211,7 +249,16 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0z" /></svg>
               <span className="text-xs hidden sm:inline">Map</span>
             </Link>
-            <button onClick={() => loadForecasts(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Update forecasts">
+            {/* Weather source toggle */}
+            <div className="flex items-center rounded-lg overflow-hidden text-[11px]" style={{ border: `1px solid var(--border)` }}>
+              <button onClick={() => setWeatherSource("openmeteo")} className="px-2.5 py-1.5 transition-all" style={{ background: weatherSource === "openmeteo" ? "var(--accent-go)" : "transparent", color: weatherSource === "openmeteo" ? "var(--text-green)" : "var(--text-muted)" }}>
+                Open-Meteo
+              </button>
+              <button onClick={handleWindyClick} className="px-2.5 py-1.5 transition-all" style={{ background: weatherSource === "windy" ? "var(--accent-go)" : "transparent", color: weatherSource === "windy" ? "var(--text-green)" : "var(--text-muted)" }}>
+                Windy
+              </button>
+            </div>
+            <button onClick={() => weatherSource === "windy" ? handleWindyClick() : loadForecasts(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Update forecasts">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M20.984 4.356v4.993" /></svg>
               <span className="text-xs hidden sm:inline">Update</span>
             </button>
@@ -290,7 +337,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
           <div className="w-8 h-8 border-2 rounded-full animate-spin mx-auto mb-3" style={{ borderColor: "var(--border)", borderTopColor: "var(--text-heading)" }} />
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Fetching forecasts...</p>
         </div>
-      ) : forecasts && (
+      ) : activeForecasts && (
         <>
           <h2 className="text-base font-semibold mb-2" style={{ color: "var(--text-heading)" }}>Passage Summary</h2>
 
@@ -325,7 +372,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                   ...legWps.map((wp) => {
                     const eta = getWaypointETA(wp);
                     const tz = tzForPort(wp.port.lon);
-                    const wpF = forecasts[wp.port.name] || [];
+                    const wpF = activeForecasts[wp.port.name] || [];
                     const f = closestForecast(wpF, eta);
 
                     return (
@@ -372,7 +419,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
           {/* Detailed Forecast */}
           <h2 className="text-base font-semibold mb-2 mt-6" style={{ color: "var(--text-heading)" }}>Detailed Forecast by Waypoint</h2>
           {passage.waypoints.map((wp) => {
-            const allF = forecasts[wp.port.name] || [];
+            const allF = activeForecasts[wp.port.name] || [];
             const eta = getWaypointETA(wp);
             const tz = tzForPort(wp.port.lon);
             const etaDay = eta.toISOString().slice(0, 10);
@@ -467,6 +514,31 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
       <div className="text-center text-[10px] mt-6 pt-4" style={{ color: "var(--text-muted)", borderTop: `1px solid var(--border-light)` }}>
         Planning aid only. Cross-check with AEMET, Meteogalicia, and real-time conditions before departure.
       </div>
+
+      {/* Windy confirmation popup */}
+      {windyPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.6)" }}>
+          <div className="rounded-xl p-6 max-w-sm mx-4" style={{ background: "var(--bg-card)", border: `1px solid var(--border)` }}>
+            <h3 className="text-base font-bold mb-2" style={{ color: "var(--text-heading)" }}>Fetch Windy Forecasts</h3>
+            <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
+              This will request fresh marine forecast data from the Windy API for {passage.waypoints.length} waypoints.
+              Each request uses one API token from your daily allowance.
+            </p>
+            <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
+              Windy provides detailed wave, swell, and wind data from GFS model with 3-hour resolution.
+              Data will be cached — you can switch between Open-Meteo and Windy views without re-fetching.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={confirmWindyFetch} className="flex-1 px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>
+                Fetch from Windy
+              </button>
+              <button onClick={() => setWindyPopup(false)} className="flex-1 px-4 py-2 rounded-lg text-sm" style={{ background: "var(--bg-primary)", color: "var(--text-muted)", border: `1px solid var(--border)` }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

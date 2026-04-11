@@ -2,7 +2,10 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useTheme } from "@/lib/theme";
+
+const LegMap = dynamic(() => import("./LegMap"), { ssr: false });
 
 interface Port {
   id: string; name: string; slug: string; lat: number; lon: number; type: string;
@@ -174,7 +177,17 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         )}
       </div>
 
-      {/* Section 2: Passage Notes */}
+      {/* Section 2: Leg Map */}
+      <div className="rounded-xl overflow-hidden mb-3" style={{ border: `1px solid var(--border-light)`, height: 350 }}>
+        <LegMap
+          waypoints={legWps}
+          fromPort={leg.from.port}
+          toPort={leg.to.port}
+          theme={theme}
+        />
+      </div>
+
+      {/* Section 3: Passage Notes */}
       {(leg.from.port.passageNotes || leg.to.port.passageNotes || capeWps.some(w => w.port.passageNotes)) && (
         <Section title="Passage Notes &amp; Hazards">
           {leg.from.port.passageNotes && (
