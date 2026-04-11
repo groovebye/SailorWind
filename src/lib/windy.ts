@@ -90,6 +90,8 @@ export async function fetchWindyForecast(
 
   resetDailyIfNeeded();
 
+  // Free tier: wind, gusts, precip, clouds, temp only (no waves/swell)
+  // Marine data (waves, swell) requires paid plan ($720/yr)
   const res = await fetch(WINDY_API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -98,7 +100,8 @@ export async function fetchWindyForecast(
       lat,
       lon,
       model: "gfs",
-      parameters: ["wind", "windGust", "temp", "precip", "clouds", "waves", "swell1"],
+      parameters: ["wind", "windGust", "precip", "lclouds", "mclouds", "hclouds", "temp"],
+      levels: ["surface"],
     }),
   });
 
@@ -110,40 +113,65 @@ export async function fetchWindyForecast(
   dailyRequests++;
   lastWindyUpdate = Date.now();
 
-  const data = await res.json();
+  const windyData = await res.json();
 
-  // Windy returns arrays indexed by timestamp
-  const timestamps: string[] = data.ts || [];
+  // Also fetch marine data (waves/swell) from Open-Meteo (free)
+  let marineData: Record<string, number[]> = {};
+  try {
+    const marineRes = await fetch(
+      `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}` +
+      `&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction` +
+      `&timezone=UTC&forecast_days=14`
+    );
+    if (marineRes.ok) {
+      const mj = await marineRes.json();
+      marineData = mj.hourly || {};
+    }
+  } catch { /* marine data optional */ }
+
+  // Windy timestamps (ms since epoch)
+  const timestamps: number[] = windyData.ts || [];
   const entries: ForecastEntry[] = [];
 
   for (let i = 0; i < timestamps.length; i++) {
     const time = new Date(timestamps[i]).toISOString();
+    const timeHour = new Date(timestamps[i]).toISOString().slice(0, 13);
 
-    // Wind: m/s → knots (×1.944)
-    const windSpeedMs = data["wind_u-surface"] && data["wind_v-surface"]
-      ? Math.sqrt(data["wind_u-surface"][i] ** 2 + data["wind_v-surface"][i] ** 2)
-      : 0;
+    // Wind: u/v components → speed + direction (m/s → knots)
+    const u = windyData["wind_u-surface"]?.[i] || 0;
+    const v = windyData["wind_v-surface"]?.[i] || 0;
+    const windSpeedMs = Math.sqrt(u * u + v * v);
     const windKt = windSpeedMs * 1.944;
-    const windDirDeg = data["wind_u-surface"] && data["wind_v-surface"]
-      ? (270 - Math.atan2(data["wind_v-surface"][i], data["wind_u-surface"][i]) * 180 / Math.PI) % 360
-      : 0;
+    const windDirDeg = ((270 - Math.atan2(v, u) * 180 / Math.PI) % 360 + 360) % 360;
 
-    const gustMs = data["gust-surface"]?.[i] || windSpeedMs * 1.3;
+    const gustMs = windyData["gust-surface"]?.[i] || windSpeedMs * 1.3;
     const gustKt = gustMs * 1.944;
 
-    // Waves
-    const waveM = data["waves_height-surface"]?.[i] || 0;
-    const wavePeriodS = data["waves_period-surface"]?.[i] || 0;
-    const waveDirDeg = data["waves_direction-surface"]?.[i] || 0;
-
-    // Swell
-    const swellM = data["swell1_height-surface"]?.[i] || 0;
-    const swellPeriodS = data["swell1_period-surface"]?.[i] || 0;
-    const swellDirDeg = data["swell1_direction-surface"]?.[i] || 0;
-
     // Precip & clouds
-    const precipMm = data["past3hprecip-surface"]?.[i] || data["precip-surface"]?.[i] || 0;
-    const cloudPct = data["lclouds-surface"]?.[i] || data["mclouds-surface"]?.[i] || 0;
+    const precipMm = windyData["past3hprecip-surface"]?.[i] || 0;
+    const cloudPct = Math.max(
+      windyData["lclouds-surface"]?.[i] || 0,
+      windyData["mclouds-surface"]?.[i] || 0,
+      windyData["hclouds-surface"]?.[i] || 0
+    ) * 100; // Windy returns 0-1, convert to %
+
+    // Marine data from Open-Meteo — match by hour
+    let waveM = 0, wavePeriodS = 0, waveDirDeg = 0;
+    let swellM = 0, swellPeriodS = 0, swellDirDeg = 0;
+
+    if (marineData.time) {
+      const marineIdx = (marineData.time as unknown as string[]).findIndex(
+        (t: string) => t.slice(0, 13) === timeHour
+      );
+      if (marineIdx >= 0) {
+        waveM = marineData.wave_height?.[marineIdx] || 0;
+        wavePeriodS = marineData.wave_period?.[marineIdx] || 0;
+        waveDirDeg = marineData.wave_direction?.[marineIdx] || 0;
+        swellM = marineData.swell_wave_height?.[marineIdx] || 0;
+        swellPeriodS = marineData.swell_wave_period?.[marineIdx] || 0;
+        swellDirDeg = marineData.swell_wave_direction?.[marineIdx] || 0;
+      }
+    }
 
     entries.push({
       time,
@@ -167,6 +195,6 @@ export async function fetchWindyForecast(
     });
   }
 
-  // Filter to 3-hour intervals like Open-Meteo
+  // Filter to 3-hour intervals
   return entries.filter((_, i) => i % 3 === 0 || i === 0);
 }
