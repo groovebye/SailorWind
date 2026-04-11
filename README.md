@@ -2,7 +2,7 @@
 
 Веб-приложение для планирования парусных переходов с прогнозом погоды и системой GO/CAUTION/NO-GO.
 
-**Лодка:** Bossanova (Hallberg-Rassy Monsun 31)
+**Лодка:** Bossanova (Hallberg-Rassy Monsun 31, осадка 1.5м)
 **Маршрут:** Gijon (Испания) -> Греция, multi-year voyage
 
 ---
@@ -16,10 +16,14 @@
 | UI | React 19, Tailwind CSS 4 |
 | ORM | Prisma 7 with `@prisma/adapter-pg` driver adapter |
 | Database | PostgreSQL 17 (Alpine) |
+| Map | Leaflet + react-leaflet (dynamic import, no SSR) |
 | Font | JetBrains Mono |
+| Theme | Dark/Light toggle (CSS variables + ThemeProvider context) |
 | Deploy | Docker multi-stage build, nginx reverse proxy |
 | Server | Hetzner CX23 (x86, Nuremberg, Ubuntu) |
 | Weather API | Open-Meteo (free, no API key required) |
+| Bathymetry | EMODnet (free GeoTIFF via WCS) |
+| Chart overlay | OpenSeaMap tiles + EMODnet WMS contours |
 
 ---
 
@@ -29,30 +33,207 @@
 sailplanner-next/
 ├── prisma/
 │   ├── schema.prisma          # DB schema (Port, Passage, PassageWaypoint, PassagePort)
-│   ├── seed.ts                # Seed script (run via psql, not prisma)
+│   ├── seed.ts                # Seed 17 ports with facilities, phone, VHF, website
 │   └── migrations/
 ├── src/
 │   ├── app/
-│   │   ├── layout.tsx         # Root layout (dark theme, JetBrains Mono)
-│   │   ├── globals.css        # Tailwind import only
+│   │   ├── layout.tsx         # Root layout (ThemeProvider, JetBrains Mono)
+│   │   ├── globals.css        # CSS variables for dark/light themes
 │   │   ├── page.tsx           # Home — list recent passages
 │   │   ├── new/page.tsx       # Passage wizard (2-step: route -> waypoints)
-│   │   ├── p/[id]/page.tsx    # Passage dashboard (forecasts, verdicts, filters)
+│   │   ├── p/[id]/
+│   │   │   ├── page.tsx       # Passage dashboard (forecasts, verdicts, filters)
+│   │   │   └── map/
+│   │   │       ├── page.tsx   # Map page (fetches passage + forecasts, computes ETAs)
+│   │   │       └── PassageMap.tsx  # Leaflet map component
 │   │   └── api/
-│   │       ├── ports/route.ts          # GET /api/ports — list ports
-│   │       ├── forecast/route.ts       # GET /api/forecast — single point
-│   │       ├── forecast/batch/route.ts # POST /api/forecast/batch — multi-waypoint
+│   │       ├── ports/route.ts          # GET /api/ports
+│   │       ├── forecast/route.ts       # GET /api/forecast
+│   │       ├── forecast/batch/route.ts # POST /api/forecast/batch
 │   │       └── passage/route.ts        # CRUD: GET/POST/PATCH/DELETE
 │   ├── lib/
 │   │   ├── db.ts              # Prisma client (singleton with pg adapter)
 │   │   ├── weather.ts         # Open-Meteo client, cache, GO/NO-GO logic
+│   │   ├── theme.tsx          # ThemeProvider context (dark/light, localStorage)
+│   │   ├── coastline.ts       # [DEPRECATED] Manual coastline shape points
 │   │   └── nanoid.ts          # Short ID generator (8 chars)
 │   └── generated/prisma/      # Generated Prisma client (gitignored)
+├── public/data/
+│   ├── routes.json            # Pre-computed sea routes between consecutive ports
+│   └── contours.json          # Depth contour GeoJSON (5/10/20/50/100/200m)
+├── scripts/
+│   └── gen-route-data.py      # Route + contour generator from EMODnet bathymetry
 ├── Dockerfile                 # Multi-stage: deps -> build -> standalone
-├── docker-compose.yml         # (on server only: /opt/sailorwind/)
-├── next.config.ts             # output: "standalone"
-└── .env                       # DATABASE_URL (gitignored)
+└── next.config.ts             # output: "standalone"
 ```
+
+---
+
+## Map System — Route Generation
+
+### Overview
+
+The map displays sailing routes between ports with weather data overlays. Routes are **pre-computed offline** from bathymetry data and served as static JSON.
+
+### Architecture
+
+```
+EMODnet GeoTIFF (WCS download)
+        ↓
+ scripts/gen-route-data.py     ← offline Python script
+        ↓
+ public/data/routes.json       ← pre-computed routes (port→port)
+ public/data/contours.json     ← depth contour lines
+        ↓
+ PassageMap.tsx (client)        ← loads JSON, renders on Leaflet
+```
+
+### Data Source: EMODnet Bathymetry
+
+Downloaded via WCS (Web Coverage Service):
+```bash
+curl -o /tmp/emodnet.tiff "https://ows.emodnet-bathymetry.eu/wcs?\
+service=WCS&version=1.0.0&request=GetCoverage&coverage=emodnet:mean&\
+crs=EPSG:4326&BBOX=-8.5,43.3,-5.5,43.9&format=image/tiff&\
+interpolation=nearest&resx=0.002&resy=0.002"
+```
+
+- **Grid:** 300 rows x 1500 cols
+- **Resolution:** ~0.002 deg = ~200m per pixel
+- **Values:** negative = depth below sea (e.g. -15.0 = 15m deep), 0 or positive = land
+- **Coverage:** lat 43.3-43.9, lon -8.5 to -5.5 (N Spain coast)
+
+### CRITICAL ISSUE: Ports Are On Land
+
+At ~200m resolution, **all ports resolve to land pixels** (depth=0) in the EMODnet grid. This is because harbors, marinas, and pier areas are within 200m of shore. This breaks any routing algorithm that starts from port coordinates.
+
+**Current workaround:** `find_sea_point()` projects each port to the nearest "deep sea" pixel (depth < -12m, with 8m+ depth in all neighboring cells). This typically places the sea point 0.5-1.5 NM offshore from the port.
+
+### Route Generation Algorithm (`scripts/gen-route-data.py`)
+
+**Class: `DepthGrid`** — loads the GeoTIFF and provides:
+- `depth_at(lat, lon)` → float (negative = depth, 0 = land)
+- `is_sea(lat, lon)` → True if depth < -3m
+- `is_deep_sea(lat, lon)` → True if depth < -8m AND all 8 neighbors are sea
+- `find_sea_point(lat, lon)` → nearest (lat, lon) with depth < -12m
+- `line_hits_land(lat1, lon1, lat2, lon2)` → None if clear, or (lat, lon, fraction) of first land obstacle midpoint
+- `find_bypass(land_lat, land_lon, ...)` → (lat, lon) of a safe waypoint to go around the obstacle
+
+**Function: `build_route(grid, port_start, port_end)`**
+
+```
+1. Project ports to sea points: find_sea_point(port) → sea_point
+2. Start with path = [sea_start, sea_end]
+3. Loop up to 15 iterations:
+   a. For each segment in path:
+      - Check if segment crosses land (line_hits_land)
+      - If clear: keep segment
+      - If land hit: find bypass waypoint, insert into path
+   b. If no changes: converged, break
+4. Prepend port_start, append port_end
+5. Deduplicate close points
+```
+
+**Known problems with current algorithm:**
+
+1. **`find_bypass` picks shortest-to-deep-water direction** — this often means the bypass point is just barely past the coast edge. When the route has multiple land crossings (e.g. a peninsula), each gets a separate bypass, creating zigzag patterns instead of a clean arc around the whole peninsula.
+
+2. **`line_hits_land` returns the MIDDLE of the first land block** — if a line crosses multiple separate land masses, only the first one is found per iteration. Subsequent crossings are resolved in later iterations, but each new bypass may create new crossings.
+
+3. **No concept of "headland rounding"** — the algorithm doesn't understand that Cabo Peñas is a single headland that should be rounded with ONE clean arc. Instead it treats each land pixel intersection independently.
+
+4. **No awareness of route direction** — bypass doesn't know if we're going E→W or W→E, so it may place waypoints on the wrong side of a headland (the side we came from, not the side we're going to).
+
+5. **Deep rías (fjords) break the algorithm** — Ferrol, La Coruña, Viveiro are deep inside rías. The algorithm can't find a connected sea path because the ría entrance is narrow and gets lost in iterative bypassing. These use hardcoded manual routes.
+
+**Manual routes** are defined in `MANUAL_ROUTES` dict for:
+- Cedeira → Ferrol (deep ría)
+- Ferrol → La Coruña (deep ría + complex coastline)
+- Ribadeo → Foz (ría entrance issue)
+- Foz → Viveiro (deep ría)
+
+### Contour Generation
+
+Depth contours are generated via GDAL:
+```bash
+gdal_contour -a depth -fl -200 -100 -50 -20 -10 -5 emodnet.tiff contours.geojson -f GeoJSON
+```
+
+Produces GeoJSON with LineString features, each with `depth` property (made positive for display: 5, 10, 20, 50, 100, 200).
+
+### Map Client: PassageMap.tsx
+
+**Tile layers (bottom to top):**
+1. CartoDB Dark/Voyager base map (theme-aware)
+2. EMODnet mean_multicolour WMS (colored depth shading, 20-35% opacity)
+3. EMODnet contours WMS (50m+ interval lines from WMS)
+4. Local contour GeoJSON overlay (5/10/20m lines from `contours.json`)
+5. OpenSeaMap tiles (buoys, lights, marks)
+6. Route polylines
+7. Waypoint CircleMarkers with Popups
+
+**Contour line colors:**
+| Depth | Color | Weight |
+|-------|-------|--------|
+| 5m | Red (#ef4444) | 1.5px solid |
+| 10m | Orange (#f97316) | 1.2px solid |
+| 20m | Yellow (#eab308) | 1px dashed |
+| 50m | Gray (#94a3b8) | 0.8px dashed |
+| 100m | Dark gray (#64748b) | 0.6px dashed |
+| 200m | Darker (#475569) | 0.5px dashed |
+
+**Route rendering:**
+
+Routes are loaded from `/data/routes.json` (keyed by consecutive port pairs like `"Gijón → Candás"`).
+
+`findRoute(routes, fromName, toName)` handles non-consecutive port pairs by chaining:
+- Direct lookup: `routes["Gijón → Candás"]`
+- Chaining: `findRoute("Gijón", "Cabo Peñas")` → chain `Gijón→Candás` + `Candás→Cabo Peñas`
+
+Uses `ALL_PORTS` ordered array to determine which intermediate ports to chain through.
+
+**Leg rendering:**
+- Each passage leg filters all waypoints within that leg's coastlineNm range
+- Routes are chained through consecutive waypoints in the leg
+- Leg line color = worst verdict among all leg waypoints:
+  - Green (#4ade80) = all GO
+  - Yellow (#facc15) = any CAUTION
+  - Red (#f87171) = any NO-GO
+
+**Waypoint popups contain:**
+- Port name, type, region, country
+- ETA with local timezone
+- Forecast at ETA: wind, gusts, waves, swell, verdict
+- 24h mini-forecast grid (up to 8 time slots)
+- Facilities: fuel, water, electric, repairs, customs
+- Shelter quality (color-coded: good/moderate/poor)
+- Max draft, VHF channel
+- Phone (clickable tel: link), website
+- Notes, coordinates
+
+### Ideal Routing Algorithm (Not Yet Implemented)
+
+The current visibility-graph bypass approach produces zigzag routes around headlands. An ideal algorithm would:
+
+1. **Detect headlands** from coastline geometry (prominence analysis):
+   - Walk along depth=0 contour
+   - For each point, measure perpendicular distance to baseline between neighbors
+   - Local maxima = headland tips
+
+2. **Place rounding waypoints** at each headland:
+   - From headland tip, push outward along normal vector
+   - Find point at ~10m depth with safety clearance
+   - This gives ONE clean rounding point per headland
+
+3. **Route as straight lines between rounding points:**
+   - Port → nearest headland WP → next headland WP → ... → destination port
+   - Each segment is a straight line verified clear of land
+   - Result: minimal waypoints, clean courses, like real sailing navigation
+
+4. **Handle rías** separately:
+   - Detect narrow ría entrances
+   - Route in/out of rías with entrance/exit waypoints
+   - Main route stays offshore between ría entrances
 
 ---
 
@@ -66,58 +247,35 @@ sailplanner-next/
 - Default departure: tomorrow 08:00
 
 **Step 2 — Waypoints:**
-- All ports between From and To are shown (ordered by `coastlineNm`)
+- All ports between From and To shown (ordered by `coastlineNm`)
 - Auto-checked: start, end, capes, marinas
-- User toggles intermediate stops via checkboxes
+- User toggles intermediate stops
 - Legs computed dynamically: distance (NM), time (hours), warnings for >50 NM or >10h legs
-- On save: creates `Passage` + `PassageWaypoint[]` in DB, redirects to `/p/{shortId}`
 
 ### Passage Dashboard (`/p/[id]`)
 
-**Header:**
-- Passage name, boat name (Bossanova / HR Monsun 31), model, total sailing hours, speed
-- Buttons: Home, Refresh, Force Refresh, Share Link, Delete
-
-**Editable Filters:**
-- Departure, Speed, Mode, Weather Model — all changes auto-save to DB (debounce 500ms)
-- Changing model triggers automatic forecast re-fetch
+**Editable Filters (auto-save with 500ms debounce):**
+- Departure datetime, Speed (kt), Mode (daily/nonstop), Weather Model
 
 **Schedule Computation:**
-- `daily` mode: each leg starts at the same UTC hour as departure, on the next day after arrival
+- `daily` mode: each leg starts at departure hour, next day after arrival
 - `nonstop` mode: next leg starts immediately after arrival
-- ETA for intermediate waypoints is interpolated linearly by `coastlineNm`
+- ETA for intermediate waypoints: linear interpolation by `coastlineNm`
 
-**Forecast Display:**
-1. **Passage Summary** — table per leg: waypoint, ETA, weather icon, wind (arrow + kt + Beaufort), gusts, waves, swell, verdict
-2. **Detailed Forecast by Waypoint** — expandable cards with 3-hour entries for ETA day (+/-12h window)
+**Timezone:** computed from port longitude:
+- lon -10..3 → Europe/Madrid
+- lon 3..15 → Europe/Rome
+- lon 15..30 → Europe/Athens
 
-**Direction Arrows:**
-- Wind: yellow arrow rotated by `windDirDeg` (meteorological: direction wind comes FROM)
-- Waves/Swell: white arrow rotated by direction (oceanographic: direction waves travel TO)
+**Time format:** `en-GB` locale, "at" removed (e.g. "Sun 12 Apr 11:00")
 
 ### Weather Data (`src/lib/weather.ts`)
 
-**APIs (no auth required):**
-- Weather: `https://api.open-meteo.com/v1/forecast` — wind, gusts, precipitation, clouds, WMO codes
-- Marine: `https://marine-api.open-meteo.com/v1/marine` — waves, swell (height, period, direction)
+**APIs (no auth):**
+- Weather: `api.open-meteo.com/v1/forecast` — wind, gusts, precip, clouds, WMO codes
+- Marine: `marine-api.open-meteo.com/v1/marine` — waves, swell
 
-**Models:**
-
-| ID | Name | Coverage |
-|----|------|----------|
-| `ecmwf_ifs025` | ECMWF IFS 0.25 deg | Global, 10 days |
-| `icon_eu` | ICON-EU | Europe, 5 days |
-| `gfs_seamless` | GFS | Global, 16 days |
-| `arome_france` | AROME France | France/Spain coast, 2 days |
-
-**Cache:**
-- In-memory `Map`, keyed by `{model}_{lat}_{lon}` (4 decimal places)
-- TTL: 3 hours
-- Marine API has shorter forecast range (~8 days) — falls back to last known marine data for later hours
-
-**Rate Limiting:**
-- Requests are made sequentially (not parallel) to avoid 429
-- Retry with backoff: up to 3 attempts, 1s/2s delays on 429
+**Sequential requests** with retry/backoff (avoid 429 rate limiting).
 
 **GO/NO-GO Thresholds:**
 
@@ -129,66 +287,22 @@ sailplanner-next/
 | Wave CAUTION | >2.5 m | >2.0 m |
 | Wave NO-GO | >3.5 m | >3.0 m |
 
-Cape waypoints have stricter thresholds due to wind acceleration zones.
+### Port Data
 
-### Port System
+17 ports seeded from Gijón to La Coruña. Each port has:
+- Position (lat/lon), type (marina/port/anchorage/cape)
+- `coastSegment` + `coastlineNm` — for ordering and distance calculation
+- Facilities: fuel, water, electric, repairs, customs (boolean flags)
+- Metadata: shelter (good/moderate/poor), maxDraft (m), vhfCh, website
+- Notes with phone numbers (e.g. "Tel: +34 985 344 543")
 
-Ports are stored in PostgreSQL with:
-- **coastSegment** — coast section identifier (e.g. `biscay-north`, `galicia-west`)
-- **coastlineNm** — cumulative nautical miles along the coast from a reference point
-- Used for: ordering waypoints, computing leg distances, finding ports between From/To
-- **Types:** `marina`, `port`, `anchorage`, `cape`
+### Theme System
 
-Currently seeded: 14 ports from Gijon to La Coruna (Bay of Biscay / Galician coast).
-
----
-
-## API Reference
-
-### `GET /api/ports`
-List all ports, ordered by `coastlineNm`.
-- `?segment=biscay-north` — filter by coast segment
-
-### `GET /api/forecast`
-Single-point forecast.
-- `?lat=43.54&lon=-5.66&model=ecmwf_ifs025&cape=0&force=0`
-
-### `POST /api/forecast/batch`
-Multi-waypoint forecast (sequential fetch).
-```json
-{
-  "waypoints": [{"name": "Gijon", "lat": 43.54, "lon": -5.66, "isCape": false}],
-  "model": "ecmwf_ifs025",
-  "force": false
-}
-```
-Returns: `{ "Gijon": [ForecastEntry, ...], ... }`
-
-### `GET /api/passage`
-- No params: list recent passages (20, desc by updatedAt)
-- `?id={shortId}`: get single passage with waypoints and ports
-
-### `POST /api/passage`
-Create passage.
-```json
-{
-  "name": "Gijon -> Cudillero",
-  "departure": "2026-04-11T08:00",
-  "speed": 5.0,
-  "mode": "daily",
-  "model": "ecmwf_ifs025",
-  "waypoints": [{"portId": "cuid...", "isStop": true, "isCape": false}]
-}
-```
-
-### `PATCH /api/passage`
-Update passage filters.
-```json
-{ "id": "shortId", "departure": "...", "speed": 5, "mode": "daily", "model": "icon_eu" }
-```
-
-### `DELETE /api/passage?id={shortId}`
-Delete passage and all its waypoints.
+`ThemeProvider` in `src/lib/theme.tsx`:
+- Stores preference in localStorage
+- Toggles `dark` class on `<html>`
+- CSS variables in `globals.css` for all colors
+- Map tiles switch between CartoDB Dark and Voyager
 
 ---
 
@@ -196,20 +310,13 @@ Delete passage and all its waypoints.
 
 ### Server: Hetzner CX23
 - **IP:** `178.104.144.13`
-- **OS:** Ubuntu
-- **Cost:** ~4 EUR/mo
-- **SSH:** `ssh root@178.104.144.13`
+- **Domain:** `sailorwind.com` (Namecheap, A records → server IP)
+- **SSL:** Let's Encrypt via certbot, auto-renewal
+- **SSH:** `ssh root@sailorwind.com`
 
-### Domain
-- **sailorwind.com** — DNS A records (@ and www) -> `178.104.144.13`
-- Registrar: Namecheap
-- SSL: not yet configured (planned: Let's Encrypt via certbot)
-
-### Nginx (`/etc/nginx/sites-available/sailorwind`)
-- Reverse proxy: port 80 -> localhost:3000
-- HTTP Basic Auth: `/etc/nginx/.htpasswd`
-  - **User:** `sailor`
-  - **Password:** `bossanova`
+### Nginx
+- Reverse proxy: HTTPS → localhost:3000
+- HTTP Basic Auth: user `sailor`, password `bossanova`
 
 ### Docker Compose (`/opt/sailorwind/docker-compose.yml`)
 
@@ -221,87 +328,43 @@ services:
       POSTGRES_DB: sailplanner
       POSTGRES_USER: sailor
       POSTGRES_PASSWORD: sw_db_2026!secure
-    volumes:
-      - pgdata:/var/lib/postgresql/data
 
   app:
-    build: ./app       # cloned from GitHub repo
-    ports:
-      - "127.0.0.1:3000:3000"
+    build: ./app
+    ports: ["127.0.0.1:3000:3000"]
     environment:
       DATABASE_URL: "postgresql://sailor:sw_db_2026!secure@db:5432/sailplanner"
-      NODE_ENV: production
-    depends_on:
-      db:
-        condition: service_healthy
 ```
 
 ### Deploy Workflow
 
 ```bash
-# Local: commit & push
+# Local
 cd ~/Projects/sailplanner-next
 git add . && git commit -m "..." && git push
 
-# Server: pull & rebuild
-ssh root@178.104.144.13
+# Server
+ssh root@sailorwind.com
 cd /opt/sailorwind/app && git pull origin main
 cd /opt/sailorwind && docker compose up --build -d
 ```
 
-### Database Access (from server)
+### Regenerate Route Data
+
+Requires: Python 3, GDAL, numpy, shapely, rasterio
 
 ```bash
-# Enter psql
-docker exec -it sailorwind-db-1 psql -U sailor -d sailplanner
+# 1. Download bathymetry (one-time, cached in /tmp)
+curl -o /tmp/emodnet.tiff "https://ows.emodnet-bathymetry.eu/wcs?..."
 
-# Common queries
-SELECT id, name, "shortId", speed, mode, model FROM "Passage";
-SELECT name, type, "coastlineNm" FROM "Port" ORDER BY "coastlineNm";
+# 2. Generate routes + contours
+cd sailplanner-next
+python3 scripts/gen-route-data.py
+
+# 3. Commit and deploy
+git add public/data/ && git commit -m "update routes" && git push
+# then deploy on server
 ```
-
----
-
-## Local Development
-
-### Prerequisites
-- Node.js 22+
-- PostgreSQL 17 (or Docker)
-
-### Setup
-
-```bash
-git clone git@github.com:groovebye/SailorWind.git
-cd SailorWind
-
-npm install
-
-# Create .env
-echo 'DATABASE_URL="postgresql://sailor:password@localhost:5432/sailplanner"' > .env
-
-# Generate Prisma client
-npx prisma generate
-
-# Run migrations
-npx prisma migrate deploy
-
-# Seed ports (via psql or seed script)
-npx tsx prisma/seed.ts
-
-# Start dev server
-npm run dev  # -> http://localhost:3000
-```
-
----
-
-## Known Issues & Gotchas
-
-- **Prisma 7** requires `@prisma/adapter-pg` — `new PrismaClient()` without adapter fails
-- **Marine API** returns null beyond ~8 days — handled via `lastMarine` fallback
-- **Nearby ports** (<20km) may share the same ECMWF grid cell and show identical forecasts
-- **Open-Meteo rate limit** — sequential requests + retry to avoid 429; do not switch to parallel
-- **`prisma/seed.ts`** is excluded from `tsconfig.json` to avoid build errors (uses `PrismaClient()` without adapter)
-- **Docker cache invalidation** — if `package.json` hasn't changed, `npm ci` layer is cached; only `COPY . .` and build layers re-run
 
 ---
 
