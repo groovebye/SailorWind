@@ -14,13 +14,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       error: "Windy update too recent. Please wait 6 hours between updates.",
       lastUpdate: stats.lastUpdate,
-      nextAvailable: stats.lastUpdate! + 6 * 3600000,
     }, { status: 429 });
   }
 
   const result: Record<string, unknown> = {};
-
-  // Sequential to avoid rate limits
   for (const wp of waypoints) {
     try {
       result[wp.name] = await fetchWindyForecast(wp.lat, wp.lon, wp.isCape ?? false);
@@ -28,7 +25,6 @@ export async function POST(req: NextRequest) {
       result[wp.name] = [];
       console.error(`Windy fetch failed for ${wp.name}:`, e);
     }
-    // Small delay between requests
     await new Promise((r) => setTimeout(r, 300));
   }
 
@@ -36,6 +32,5 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const stats = getWindyStats();
-  return NextResponse.json(stats);
+  return NextResponse.json(getWindyStats());
 }

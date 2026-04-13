@@ -88,58 +88,85 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
       });
   }, [id]);
 
+  // Load forecasts: try cache first, then fetch from API
   const loadForecasts = useCallback(async (force = false) => {
     if (!passage) return;
+
+    const src = weatherSource === "windy" ? "windy" : "openmeteo";
+    const mdl = weatherSource === "windy" ? "gfs" : model;
+
+    // Try DB cache first (unless force refresh)
+    if (!force) {
+      try {
+        const cacheRes = await fetch(`/api/forecast/cache?passageId=${id}&source=${src}&model=${mdl}`);
+        const cached = await cacheRes.json();
+        if (cached.data) {
+          if (weatherSource === "windy") setWindyForecasts(cached.data);
+          else setForecasts(cached.data);
+          setLoading(false);
+          return;
+        }
+      } catch { /* no cache, proceed to fetch */ }
+    }
+
+    // Fetch fresh data
     setLoading(true);
     const wps = passage.waypoints.map((w) => ({
       name: w.port.name, lat: w.port.lat, lon: w.port.lon, isCape: w.isCape,
     }));
-    const res = await fetch("/api/forecast/batch", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ waypoints: wps, model, force }),
-    });
-    const data = await res.json();
-    if (data.error) { setError(data.error); setLoading(false); return; }
-    setForecasts(data);
+
+    let data;
+    if (weatherSource === "windy") {
+      const res = await fetch("/api/forecast/windy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ waypoints: wps, passageId: id, force: true }),
+      });
+      data = await res.json();
+      if (data.error) { setError(data.error); setLoading(false); return; }
+      setWindyForecasts(data);
+    } else {
+      const res = await fetch("/api/forecast/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ waypoints: wps, model, force }),
+      });
+      data = await res.json();
+      if (data.error) { setError(data.error); setLoading(false); return; }
+      setForecasts(data);
+    }
+
+    // Save to DB cache
+    try {
+      await fetch("/api/forecast/cache", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passageId: id, source: src, model: mdl, data }),
+      });
+    } catch { /* cache save failed, non-critical */ }
+
     setLoading(false);
-  }, [passage, model]);
+  }, [passage, model, weatherSource, id]);
 
   useEffect(() => {
     if (passage) loadForecasts();
   }, [passage, loadForecasts]);
 
-  const loadWindyForecasts = useCallback(async () => {
-    if (!passage) return;
-    setLoading(true);
-    const wps = passage.waypoints.map((w) => ({
-      name: w.port.name, lat: w.port.lat, lon: w.port.lon, isCape: w.isCape,
-    }));
-    const res = await fetch("/api/forecast/windy", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ waypoints: wps }),
-    });
-    const data = await res.json();
-    if (data.error) { setError(data.error); setLoading(false); return; }
-    setWindyForecasts(data);
-    setWeatherSource("windy");
-    setLoading(false);
-  }, [passage]);
-
   function handleWindyClick() {
-    if (windyForecasts) {
-      // Already have Windy data — just switch view
-      setWeatherSource("windy");
+    setWeatherSource("windy");
+  }
+
+  function handleUpdateClick() {
+    if (weatherSource === "windy") {
+      setWindyPopup(true); // confirm before using Windy API tokens
     } else {
-      // Need to fetch — show confirmation popup
-      setWindyPopup(true);
+      loadForecasts(true); // force refresh Open-Meteo (free)
     }
   }
 
   async function confirmWindyFetch() {
     setWindyPopup(false);
-    await loadWindyForecasts();
+    await loadForecasts(true);
   }
 
   const activeForecasts = weatherSource === "windy" && windyForecasts ? windyForecasts : forecasts;
@@ -259,7 +286,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                 Windy
               </button>
             </div>
-            <button onClick={() => weatherSource === "windy" ? handleWindyClick() : loadForecasts(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Update forecasts">
+            <button onClick={handleUpdateClick} className="flex items-center gap-1.5 px-3 py-2 rounded-lg transition-all hover:opacity-80" style={{ color: "var(--text-secondary)" }} title="Update forecasts">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182M20.984 4.356v4.993" /></svg>
               <span className="text-xs hidden sm:inline">Update</span>
             </button>
@@ -324,10 +351,9 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
           const toTz = tzForPort(l.to.port.lon);
           return (
             <Link key={i} href={`/p/${id}/leg/${i}`} style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }} className="rounded-lg px-3 py-2 flex-1 min-w-[180px] hover:opacity-80 transition-opacity cursor-pointer">
-              <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{mode === "daily" ? `Day ${i + 1}: ` : ""}{l.from.port.name} &rarr; {l.to.port.name}</div>
+              <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{mode === "daily" ? `D${i + 1}: ` : ""}{l.from.port.name} &rarr; {l.to.port.name}</div>
               <div className="text-xs" style={{ color: "var(--text-muted)" }}>{l.nm} NM, ~{l.hours.toFixed(1)}h</div>
               <div className="text-xs mt-0.5" style={{ color: "var(--text-green)" }}>{fmtLocal(l.departTime, fromTz)} &rarr; {fmtTimeLocal(l.arriveTime, toTz)}</div>
-              <div className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Tap for details &#8594;</div>
             </Link>
           );
         })}
@@ -367,7 +393,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                 return [
                   <tr key={`leg-${li}`}>
                     <td colSpan={8} className="text-xs font-semibold px-2 py-1.5" style={{ background: "var(--bg-card)", color: "var(--text-heading)", borderBottom: `1px solid var(--border-light)`, borderTop: li > 0 ? `1px solid var(--border-light)` : undefined }}>
-                      {mode === "daily" ? `Day ${li + 1}: ` : `Leg ${li + 1}: `}{leg.from.port.name} &rarr; {leg.to.port.name} ({leg.nm} NM, ~{leg.hours.toFixed(1)}h) — {fmtLocal(leg.departTime, fromTz)} &rarr; {fmtLocal(leg.arriveTime, toTz)}
+                      {mode === "daily" ? `D${li + 1}: ` : `L${li + 1}: `}{leg.from.port.name} &rarr; {leg.to.port.name} ({leg.nm} NM, ~{leg.hours.toFixed(1)}h) — {fmtLocal(leg.departTime, fromTz)} &rarr; {fmtLocal(leg.arriveTime, toTz)}
                     </td>
                   </tr>,
                   ...legWps.map((wp) => {

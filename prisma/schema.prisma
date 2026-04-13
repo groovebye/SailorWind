@@ -94,6 +94,9 @@ model Passage {
   model       String   @default("ecmwf_ifs025")
   source      String   @default("openmeteo")  // "openmeteo" | "windy"
 
+  // Cached forecasts — keyed by "{source}_{model}": { data: {...}, cachedAt: ISO }
+  forecastCache Json?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
