@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useTheme } from "@/lib/theme";
 import type { ForecastEntry } from "@/lib/weather";
@@ -103,6 +104,7 @@ function PlaceCard({ place }: { place: PlaceInfo }) {
 export default function LegDetailPage({ params }: { params: Promise<{ id: string; legIndex: string }> }) {
   const { id, legIndex: legIndexStr } = use(params);
   const legIndex = parseInt(legIndexStr, 10);
+  const router = useRouter();
   const { theme } = useTheme();
   const [passage, setPassage] = useState<Passage | null>(null);
   const [forecasts, setForecasts] = useState<Record<string, ForecastEntry[]> | null>(null);
@@ -234,7 +236,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     <div className="max-w-[1200px] mx-auto px-6 py-4" style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
       {/* Sticky compact bar */}
       <div className="sticky top-0 z-40 -mx-6 px-6 py-2 flex items-center justify-between text-xs backdrop-blur-md" style={{ background: "var(--bg-primary)ee", borderBottom: `1px solid var(--border-light)` }}>
-        <Link href={`/p/${id}`} className="hover:opacity-80" style={{ color: "var(--text-secondary)" }}>← Back</Link>
+        <button onClick={() => router.back()} className="hover:opacity-80" style={{ color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", font: "inherit" }}>← Back</button>
         <div className="flex items-center gap-3">
           <span className="font-bold" style={{ color: "var(--text-heading)" }}>{fromPort?.name} → {dest?.name}</span>
           <span className="font-black px-2 py-0.5 rounded" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
@@ -261,7 +263,6 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
           <div className="flex items-center gap-3">
             <span className="text-2xl font-black px-3 py-1 rounded-lg" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
-            <span className="text-lg font-bold" style={{ color: scoreColor }}>{legScore}/100</span>
             <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
               <div>{leg.nm} NM · ~{leg.hours.toFixed(1)}h · {passage.speed}kt</div>
               <div>{fmtLocal(leg.departTime, fromTz)} → {fmtLocal(leg.arriveTime, toTz)}</div>
@@ -504,11 +505,9 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           )}
           {dest.accessCodes && <div className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>🔑 {dest.accessCodes}</div>}
           {dest.approachNotes && <div className="mt-2 text-xs p-2 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-blue-light)" }}>{dest.approachNotes}</div>}
-          {verification && (
-            <div className="mt-2 text-[11px] space-y-1" style={{ color: "var(--text-muted)" }}>
-              {verification.phone?.checkedAt && <div>Verified phone: {verification.phone.checkedAt.slice(0, 10)}{verification.phone.source ? ` via ${verification.phone.source}` : ""}</div>}
-              {verification.hours?.checkedAt && <div>Verified hours: {verification.hours.checkedAt.slice(0, 10)}{verification.hours.source ? ` via ${verification.hours.source}` : ""}</div>}
-              {verification.approach?.checkedAt && <div>Approach notes reviewed: {verification.approach.checkedAt.slice(0, 10)}{verification.approach.source ? ` via ${verification.approach.source}` : ""}</div>}
+          {verification?.phone?.checkedAt && (
+            <div className="mt-2 text-[10px] inline-block px-2 py-0.5 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border-light)` }}>
+              ✓ Data verified {verification.phone.checkedAt.slice(0, 10)}
             </div>
           )}
         </Section>
