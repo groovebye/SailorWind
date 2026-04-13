@@ -332,14 +332,21 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
           </div>
           <div>
             <label className="block text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>Model</label>
-            <select value={model} onChange={(e) => setModel(e.target.value)}
-              style={{ background: "var(--bg-input)", border: `1px solid var(--border)`, color: "var(--text-primary)" }}
-              className="rounded px-2.5 h-9 text-sm focus:outline-none">
-              <option value="ecmwf_ifs025">ECMWF IFS 0.25&deg;</option>
-              <option value="icon_eu">ICON-EU</option>
-              <option value="gfs_seamless">GFS</option>
-              <option value="arome_france">AROME France</option>
-            </select>
+            {weatherSource === "windy" ? (
+              <div style={{ background: "var(--bg-input)", border: `1px solid var(--border)`, color: "var(--text-muted)" }}
+                className="rounded px-2.5 h-9 text-sm flex items-center">
+                GFS + GFS Wave
+              </div>
+            ) : (
+              <select value={model} onChange={(e) => setModel(e.target.value)}
+                style={{ background: "var(--bg-input)", border: `1px solid var(--border)`, color: "var(--text-primary)" }}
+                className="rounded px-2.5 h-9 text-sm focus:outline-none">
+                <option value="ecmwf_ifs025">ECMWF IFS 0.25&deg;</option>
+                <option value="icon_eu">ICON-EU</option>
+                <option value="gfs_seamless">GFS</option>
+                <option value="arome_france">AROME France</option>
+              </select>
+            )}
           </div>
         </div>
       </div>
@@ -548,8 +555,8 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
           <div className="rounded-xl p-6 max-w-sm mx-4" style={{ background: "var(--bg-card)", border: `1px solid var(--border)` }}>
             <h3 className="text-base font-bold mb-2" style={{ color: "var(--text-heading)" }}>Fetch Windy Forecasts</h3>
             <p className="text-sm mb-4" style={{ color: "var(--text-secondary)" }}>
-              This will request fresh marine forecast data from the Windy API for {passage.waypoints.length} waypoints.
-              Each request uses one API token from your daily allowance.
+              This will fetch wind (GFS) and wave (GFS Wave) data from Windy API
+              for {passage.waypoints.length} waypoints — {passage.waypoints.length * 2} API calls total.
             </p>
             <p className="text-xs mb-4" style={{ color: "var(--text-muted)" }}>
               Windy provides detailed wave, swell, and wind data from GFS model with 3-hour resolution.

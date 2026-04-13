@@ -90,46 +90,53 @@ export async function fetchWindyForecast(
 
   resetDailyIfNeeded();
 
-  // Free tier: wind, gusts, precip, clouds, temp only (no waves/swell)
-  // Marine data (waves, swell) requires paid plan ($720/yr)
-  const res = await fetch(WINDY_API_URL, {
+  // Request 1: GFS model for wind, gusts, precip, clouds
+  const windRes = await fetch(WINDY_API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      key: apiKey,
-      lat,
-      lon,
-      model: "gfs",
+      key: apiKey, lat, lon, model: "gfs",
       parameters: ["wind", "windGust", "precip", "lclouds", "mclouds", "hclouds", "temp"],
       levels: ["surface"],
     }),
   });
+  if (!windRes.ok) throw new Error(`Windy GFS ${windRes.status}: ${await windRes.text()}`);
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Windy API ${res.status}: ${text}`);
-  }
+  // Request 2: gfsWave model for waves and swell (same API key)
+  const waveRes = await fetch(WINDY_API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      key: apiKey, lat, lon, model: "gfsWave",
+      parameters: ["waves", "swell1"],
+      levels: ["surface"],
+    }),
+  });
+  if (!waveRes.ok) throw new Error(`Windy gfsWave ${waveRes.status}: ${await waveRes.text()}`);
 
-  dailyRequests++;
+  dailyRequests += 2;
   lastWindyUpdate = Date.now();
 
-  const windyData = await res.json();
+  const windyData = await windRes.json();
+  const waveData = await waveRes.json();
 
-  // Also fetch marine data (waves/swell) from Open-Meteo (free)
-  // Use offshore coords — ports inside rías return null in marine model
-  const marineLat = Math.min(lat + 0.05, 44.0);
-  let marineData: Record<string, number[]> = {};
-  try {
-    const marineRes = await fetch(
-      `https://marine-api.open-meteo.com/v1/marine?latitude=${marineLat}&longitude=${lon}` +
-      `&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction` +
-      `&timezone=UTC&forecast_days=14`
-    );
-    if (marineRes.ok) {
-      const mj = await marineRes.json();
-      marineData = mj.hourly || {};
-    }
-  } catch { /* marine data optional */ }
+  // No need for Open-Meteo marine fallback — gfsWave has full wave data
+  const waveTimestamps: number[] = waveData.ts || [];
+  // Build wave lookup by timestamp
+  const waveLookup = new Map<number, {
+    waveH: number; waveP: number; waveD: number;
+    swellH: number; swellP: number; swellD: number;
+  }>();
+  for (let i = 0; i < waveTimestamps.length; i++) {
+    waveLookup.set(waveTimestamps[i], {
+      waveH: waveData["waves_height-surface"]?.[i] ?? 0,
+      waveP: waveData["waves_period-surface"]?.[i] ?? 0,
+      waveD: waveData["waves_direction-surface"]?.[i] ?? 0,
+      swellH: waveData["swell1_height-surface"]?.[i] ?? 0,
+      swellP: waveData["swell1_period-surface"]?.[i] ?? 0,
+      swellD: waveData["swell1_direction-surface"]?.[i] ?? 0,
+    });
+  }
 
   // Windy timestamps (ms since epoch)
   const timestamps: number[] = windyData.ts || [];
@@ -137,7 +144,6 @@ export async function fetchWindyForecast(
 
   for (let i = 0; i < timestamps.length; i++) {
     const time = new Date(timestamps[i]).toISOString();
-    const timeHour = new Date(timestamps[i]).toISOString().slice(0, 13);
 
     // Wind: u/v components → speed + direction (m/s → knots)
     const u = windyData["wind_u-surface"]?.[i] || 0;
@@ -157,25 +163,15 @@ export async function fetchWindyForecast(
       windyData["hclouds-surface"]?.[i] || 0
     ) * 100; // Windy returns 0-1, convert to %
 
-    // Marine data from Open-Meteo — match by hour
-    let hasMarine = false;
-    let waveM: number | null = null, wavePeriodS: number | null = null, waveDirDeg2 = 0;
-    let swellM: number | null = null, swellPeriodS: number | null = null, swellDirDeg2 = 0;
-
-    if (marineData.time) {
-      const marineIdx = (marineData.time as unknown as string[]).findIndex(
-        (t: string) => t.slice(0, 13) === timeHour
-      );
-      if (marineIdx >= 0 && marineData.wave_height?.[marineIdx] != null) {
-        hasMarine = true;
-        waveM = marineData.wave_height[marineIdx] || 0;
-        wavePeriodS = marineData.wave_period?.[marineIdx] || 0;
-        waveDirDeg2 = marineData.wave_direction?.[marineIdx] || 0;
-        swellM = marineData.swell_wave_height?.[marineIdx] || 0;
-        swellPeriodS = marineData.swell_wave_period?.[marineIdx] || 0;
-        swellDirDeg2 = marineData.swell_wave_direction?.[marineIdx] || 0;
-      }
-    }
+    // Wave data from gfsWave model — match by timestamp
+    const ts = timestamps[i];
+    const wave = waveLookup.get(ts);
+    const waveH = wave?.waveH ?? 0;
+    const waveP = wave?.waveP ?? 0;
+    const waveD = wave?.waveD ?? 0;
+    const swellH = wave?.swellH ?? 0;
+    const swellP = wave?.swellP ?? 0;
+    const swellD = wave?.swellD ?? 0;
 
     entries.push({
       time,
@@ -184,20 +180,18 @@ export async function fetchWindyForecast(
       windDir: windDirection(windDirDeg),
       beaufort: beaufortScale(windKt),
       gustKt: Math.round(gustKt * 10) / 10,
-      waveM: hasMarine ? Math.round(waveM! * 10) / 10 : null,
-      wavePeriodS: hasMarine ? Math.round(wavePeriodS! * 10) / 10 : null,
-      waveDirDeg: Math.round(waveDirDeg2),
-      waveDir: windDirection(waveDirDeg2),
-      swellM: hasMarine ? Math.round(swellM! * 10) / 10 : null,
-      swellPeriodS: hasMarine ? Math.round(swellPeriodS! * 10) / 10 : null,
-      swellDirDeg: Math.round(swellDirDeg2),
-      swellDir: windDirection(swellDirDeg2),
+      waveM: Math.round(waveH * 10) / 10,
+      wavePeriodS: Math.round(waveP * 10) / 10,
+      waveDirDeg: Math.round(waveD),
+      waveDir: windDirection(waveD),
+      swellM: Math.round(swellH * 10) / 10,
+      swellPeriodS: Math.round(swellP * 10) / 10,
+      swellDirDeg: Math.round(swellD),
+      swellDir: windDirection(swellD),
       precipMm: Math.round(precipMm * 10) / 10,
       cloudPct: Math.round(cloudPct),
       weather: weatherFromClouds(cloudPct, precipMm),
-      verdict: hasMarine
-        ? goNogo(windKt, gustKt, waveM!, isCape)
-        : goNogo(windKt, gustKt, 0, isCape) + (windKt > 0 ? " (no wave data)" : ""),
+      verdict: goNogo(windKt, gustKt, waveH, isCape),
     });
   }
 
