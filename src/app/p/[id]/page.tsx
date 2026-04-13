@@ -250,7 +250,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
   };
 
   return (
-    <div className="max-w-[1200px] mx-auto px-4 py-4">
+    <div className="max-w-[1600px] mx-auto px-6 py-4">
       {/* Header */}
       <header style={{ background: `linear-gradient(to right, var(--bg-header-from), var(--bg-header-to))`, border: `1px solid var(--border)` }} className="rounded-xl px-5 py-4 mb-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
