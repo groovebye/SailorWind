@@ -1,6 +1,6 @@
 "use client";
 
-import { MapContainer, TileLayer, WMSTileLayer, CircleMarker, Tooltip, Polyline, Rectangle, useMap, GeoJSON as GeoJSONLayer } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline, Rectangle, useMap, GeoJSON as GeoJSONLayer } from "react-leaflet";
 import { useEffect, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -104,14 +104,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme }: {
 
       <TileLayer url={tileUrl} attribution='&copy; OSM &copy; CARTO' />
 
-      {/* EMODnet depth shading */}
-      <WMSTileLayer
-        url="https://ows.emodnet-bathymetry.eu/wms"
-        params={{ layers: "emodnet:mean_multicolour", format: "image/png", transparent: true, version: "1.3.0" }}
-        opacity={theme === "dark" ? 0.3 : 0.2}
-      />
-
-      {/* Local depth contours (5/10/20/50/100/200m) */}
+      {/* Depth contours (5/10/20/50/100/200m) from static GeoJSON — stable, no flicker */}
       {contours && (
         <GeoJSONLayer
           data={contours}

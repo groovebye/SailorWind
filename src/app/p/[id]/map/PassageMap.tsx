@@ -235,20 +235,7 @@ export default function PassageMap({ waypoints, theme }: { waypoints: WaypointWi
         url={tileUrl}
       />
 
-      {/* EMODnet colored depth shading */}
-      <WMSTileLayer
-        url="https://ows.emodnet-bathymetry.eu/wms"
-        params={{
-          layers: "emodnet:mean_multicolour",
-          format: "image/png",
-          transparent: true,
-          version: "1.3.0",
-        }}
-        attribution='&copy; <a href="https://emodnet.ec.europa.eu">EMODnet</a>'
-        opacity={theme === "dark" ? 0.3 : 0.2}
-      />
-
-      {/* Local depth contour lines (5m, 10m, 20m, 50m, 100m, 200m) */}
+      {/* Depth contour lines from static GeoJSON — no flicker */}
       {contours && (
         <GeoJSONLayer
           data={contours}
