@@ -688,6 +688,50 @@ async function main() {
     });
   }
   console.log(`Seeded ${NEARBY_PLACES.length} nearby places.`);
+
+  await prisma.vesselProfile.upsert({
+    where: { slug: "bossanova" },
+    update: {
+      name: "Bossanova",
+      loaMeters: 9.5,
+      draftMeters: 1.45,
+      engineCruiseKt: 6.2,
+      engineMaxKt: 6.8,
+      notes: "Hallberg-Rassy Monsun 31 heuristic profile for passage timeline calculations.",
+      performanceModel: {
+        lightAirMotorThresholdKt: 7,
+        motorsailUpwindThresholdKt: 12,
+        closeHauledMinAngleDeg: 38,
+        efficientRunMinWindKt: 10,
+        reef1AtWindKt: 18,
+        reef2AtWindKt: 24,
+        reef1AtGustKt: 22,
+        reef2AtGustKt: 28,
+        harborApproachMotorRadiusNm: 1.2,
+      },
+    },
+    create: {
+      slug: "bossanova",
+      name: "Bossanova",
+      loaMeters: 9.5,
+      draftMeters: 1.45,
+      engineCruiseKt: 6.2,
+      engineMaxKt: 6.8,
+      notes: "Hallberg-Rassy Monsun 31 heuristic profile for passage timeline calculations.",
+      performanceModel: {
+        lightAirMotorThresholdKt: 7,
+        motorsailUpwindThresholdKt: 12,
+        closeHauledMinAngleDeg: 38,
+        efficientRunMinWindKt: 10,
+        reef1AtWindKt: 18,
+        reef2AtWindKt: 24,
+        reef1AtGustKt: 22,
+        reef2AtGustKt: 28,
+        harborApproachMotorRadiusNm: 1.2,
+      },
+    },
+  });
+  console.log("Seeded vessel profile Bossanova.");
 }
 
 main()

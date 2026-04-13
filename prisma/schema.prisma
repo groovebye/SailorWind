@@ -119,6 +119,7 @@ model Passage {
 
   ports       PassagePort[]
   waypoints   PassageWaypoint[]
+  computations LegComputation[]
 }
 
 enum PassageMode {
@@ -352,6 +353,45 @@ model NearbyPlace {
 
   @@index([portAreaId, category])
   @@index([marinaOptionId, category])
+}
+
+model VesselProfile {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  loaMeters       Float
+  draftMeters     Float
+  engineCruiseKt  Float
+  engineMaxKt     Float?
+  notes           String?
+  performanceModel Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  computations    LegComputation[]
+}
+
+model LegComputation {
+  id                String   @id @default(cuid())
+  passage           Passage  @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  passageId         String
+  legIndex          Int
+  vessel            VesselProfile @relation(fields: [vesselProfileId], references: [id])
+  vesselProfileId   String
+  forecastSignature String
+  routeSignature    String
+  vesselSignature   String
+  summary           Json
+  timeline          Json
+  warnings          Json?
+  status            String   @default("ready")
+  computedAt        DateTime @default(now())
+  validUntil        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([passageId, legIndex, forecastSignature, routeSignature, vesselSignature])
+  @@index([passageId, legIndex, updatedAt])
 }
 
 // Junction: which ports are start/end of this passage

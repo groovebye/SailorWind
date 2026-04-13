@@ -27,6 +27,25 @@ interface Port {
   waitingArea: string | null; swellSensitivity: string | null; entranceNotes: string | null; bestTideEntry: string | null;
 }
 interface PlaceInfo { name: string; rating?: number; cuisine?: string; phone?: string; hours?: string; address?: string; description?: string; category?: string; }
+interface TimelineEntry {
+  hourIndex: number; time: string; lat: number; lon: number; distanceFromStartNm: number; distanceToGoNm: number;
+  segmentName: string; courseTrue: number; boatHeading: number; windDir: string; windDirDeg: number; windKt: number; gustKt: number;
+  waveM: number | null; swellM: number | null; currentDir: string | null; currentDirDeg: number | null; currentKt: number; twa: number;
+  pointOfSail: string; mode: "sail" | "motor" | "motorsail"; tack: "port" | "starboard" | "none"; sailConfig: string; reefLevel: 0 | 1 | 2;
+  expectedBoatSpeedKt: number; expectedSogKt: number; comfortScore: number; comfort: string; warnings: string[]; notes: string;
+}
+interface TimelineSummaryData {
+  routeDistanceNm: number; computedDurationHours: number; estimatedArrival: string; dominantMode: string;
+  sailHours: number; motorHours: number; motorsailHours: number; averageSogKt: number;
+  maxWindKt: number; maxGustKt: number; maxWaveM: number; maxCurrentKt: number;
+  overallComfortScore: number; overallComfort: string; worstSegment: string; hardestHour: string | null;
+  comfortBySegment: { segment: string; comfort: string; reason: string }[];
+  forecastSource: string; forecastModel: string;
+}
+interface TimelineResponse {
+  source: string; computedAt: string; validUntil: string | null;
+  summary: TimelineSummaryData; timeline: TimelineEntry[]; warnings: string[] | null;
+}
 interface MarinaFacilities {
   showers?: boolean; toilets?: boolean; laundry?: boolean; wifi?: boolean; fuelDock?: boolean;
   slipway?: boolean; travelLift?: boolean; repairs?: boolean; chandlery?: boolean;
@@ -122,6 +141,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   interface NearbyPlaceData { id: string; name: string; category: string; description: string | null; phone: string | null; hours: string | null; address: string | null; distanceMeters: number | null; walkMinutes: number | null; rating: number | null; reviewCount: number | null; priceLevel: string | null; isRecommended: boolean; bestFor: string | null; marinaOptionId: string | null; }
   interface PortAreaData { name: string; slug: string; marinas: MarinaOptionData[]; nearbyPlaces: NearbyPlaceData[]; }
   const [portArea, setPortArea] = useState<PortAreaData | null>(null);
+  const [timelineData, setTimelineData] = useState<TimelineResponse | null>(null);
 
   useEffect(() => { fetch(`/api/passage?id=${id}`).then(r => r.json()).then(setPassage); }, [id]);
 
@@ -186,6 +206,15 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
   // Fetch webcams
   useEffect(() => { if (dest) { fetch(`/api/webcams?lat=${dest.lat}&lon=${dest.lon}&radius=25`).then(r => r.json()).then(data => { if (Array.isArray(data)) setWebcams(data); }).catch(() => {}); } }, [dest]);
+
+  // Fetch computed passage timeline
+  useEffect(() => {
+    if (!passage || !leg) return;
+    fetch(`/api/leg-timeline?passageId=${passage.id}&legIndex=${legIndex}`)
+      .then((r) => r.json())
+      .then((data) => { if (!data.error) setTimelineData(data); })
+      .catch(() => {});
+  }, [passage?.id, legIndex, leg?.from.port.slug, leg?.to.port.slug]);
 
   if (!passage) return <div className="h-screen flex items-center justify-center" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>Loading...</div>;
   if (!leg || !dest || !fromPort) return <div className="p-8" style={{ color: "var(--text-red)" }}>Leg not found</div>;
@@ -476,6 +505,130 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
       <div className="rounded-xl overflow-hidden mb-3" style={{ border: `1px solid var(--border-light)`, height: 400 }}>
         <LegMap waypoints={legWps} fromPort={fromPort} toPort={dest} theme={theme} hazards={hazards} milestones={milestones} />
       </div>
+
+      {/* ══════ PASSAGE TIMELINE ══════ */}
+      {timelineData?.summary && timelineData.timeline?.length > 0 && (
+        <Section title={`Passage Timeline (${timelineData.timeline.length}h)`} icon="⏱️">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-3 text-xs">
+            <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+              <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Mode</div>
+              <div className="font-semibold" style={{ color: "var(--text-heading)" }}>{timelineData.summary.dominantMode}</div>
+              <div style={{ color: "var(--text-secondary)" }}>⛵ {timelineData.summary.sailHours}h · 🚢 {timelineData.summary.motorHours}h · ⚙️ {timelineData.summary.motorsailHours}h</div>
+            </div>
+            <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+              <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Performance</div>
+              <div className="font-semibold" style={{ color: "var(--text-heading)" }}>{timelineData.summary.averageSogKt.toFixed(1)}kt avg SOG</div>
+              <div style={{ color: "var(--text-secondary)" }}>ETA {fmtLocal(new Date(timelineData.summary.estimatedArrival), toTz)}</div>
+            </div>
+            <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+              <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Comfort</div>
+              <div className="font-semibold" style={{ color: comfortColor }}>{timelineData.summary.overallComfort}</div>
+              <div style={{ color: "var(--text-secondary)" }}>Worst: {timelineData.summary.worstSegment}</div>
+            </div>
+            <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+              <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Forecast basis</div>
+              <div className="font-semibold" style={{ color: "var(--text-heading)" }}>{timelineData.summary.forecastModel}</div>
+              <div style={{ color: "var(--text-secondary)" }}>Updated {fmtLocal(new Date(timelineData.computedAt), toTz)}</div>
+            </div>
+          </div>
+
+          {timelineData.summary.comfortBySegment?.length > 0 && (
+            <div className="rounded-lg px-3 py-2 mb-3" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+              <div className="text-[10px] uppercase mb-2" style={{ color: "var(--text-muted)" }}>Segment comfort</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                {timelineData.summary.comfortBySegment.map((segment, index) => (
+                  <div key={index} className="rounded-md px-2 py-1.5" style={{ background: "var(--bg-card)" }}>
+                    <div className="font-semibold" style={{ color: "var(--text-heading)" }}>{segment.segment}</div>
+                    <div style={{ color: segment.comfort === "Comfortable" ? "var(--text-green)" : segment.comfort === "Moderate" ? "var(--text-blue-light)" : segment.comfort === "Bumpy" ? "var(--text-yellow)" : "var(--text-red)" }}>
+                      {segment.comfort}
+                    </div>
+                    <div style={{ color: "var(--text-secondary)" }}>{segment.reason}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {timelineData.warnings && timelineData.warnings.length > 0 && (
+            <div className="rounded-lg px-3 py-2 mb-3 text-xs" style={{ background: "var(--accent-caution)", color: "var(--text-yellow)" }}>
+              <strong>Likely complications:</strong> {timelineData.warnings.join(" · ")}
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {timelineData.timeline.map((entry) => (
+              <div key={entry.hourIndex} className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <div className="font-semibold text-xs" style={{ color: "var(--text-heading)" }}>
+                      {fmtLocal(new Date(entry.time), toTz)} · {entry.segmentName}
+                    </div>
+                    <div className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
+                      {entry.distanceFromStartNm.toFixed(1)}NM run · {entry.distanceToGoNm.toFixed(1)}NM to go
+                    </div>
+                  </div>
+                  <div className="text-[11px] px-2 py-0.5 rounded" style={{
+                    background: entry.comfort === "Comfortable" ? "var(--accent-go)" : entry.comfort === "Moderate" ? "rgba(96,165,250,0.15)" : entry.comfort === "Bumpy" ? "var(--accent-caution)" : "var(--accent-nogo)",
+                    color: entry.comfort === "Comfortable" ? "var(--text-green)" : entry.comfort === "Moderate" ? "var(--text-blue-light)" : entry.comfort === "Bumpy" ? "var(--text-yellow)" : "var(--text-red)"
+                  }}>
+                    {entry.comfort}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mt-2 text-[11px]">
+                  <div>
+                    <div style={{ color: "var(--text-muted)" }}>Weather</div>
+                    <div style={{ color: "var(--text-secondary)" }}>
+                      {Math.round(entry.windKt)}kt {entry.windDir}, gust {Math.round(entry.gustKt)}kt
+                    </div>
+                    <div style={{ color: "var(--text-secondary)" }}>
+                      Waves {entry.waveM?.toFixed(1) ?? "—"}m · Swell {entry.swellM?.toFixed(1) ?? "—"}m
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: "var(--text-muted)" }}>Boat mode</div>
+                    <div style={{ color: "var(--text-secondary)" }}>
+                      {entry.mode === "motor" ? "Motor" : entry.mode === "motorsail" ? "Motor-sail" : "Sail"} · {entry.pointOfSail}
+                    </div>
+                    <div style={{ color: "var(--text-secondary)" }}>
+                      {entry.tack !== "none" ? `${entry.tack} tack` : "No tack"} · COG {entry.courseTrue}°
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: "var(--text-muted)" }}>Sails & speed</div>
+                    <div style={{ color: "var(--text-secondary)" }}>{entry.sailConfig}</div>
+                    <div style={{ color: "var(--text-secondary)" }}>
+                      BSP {entry.expectedBoatSpeedKt.toFixed(1)}kt · SOG {entry.expectedSogKt.toFixed(1)}kt
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: "var(--text-muted)" }}>Current & angle</div>
+                    <div style={{ color: "var(--text-secondary)" }}>
+                      {entry.currentDir ? `${entry.currentDir} ${entry.currentKt.toFixed(1)}kt` : "Current negligible"}
+                    </div>
+                    <div style={{ color: "var(--text-secondary)" }}>TWA {entry.twa}°</div>
+                  </div>
+                </div>
+
+                <div className="mt-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>{entry.notes}</div>
+                {entry.warnings.length > 0 && (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {entry.warnings.map((warning, index) => (
+                      <span key={index} className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: "var(--bg-card)", color: "var(--text-yellow)", border: `1px solid var(--border-light)` }}>
+                        {warning}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 text-[10px]" style={{ color: "var(--text-muted)" }}>
+            Computed using Bossanova heuristics: engine cruise 6.2kt, rule-based sail plan, cached until {timelineData.validUntil ? fmtLocal(new Date(timelineData.validUntil), toTz) : "forecast refresh"}.
+          </div>
+        </Section>
+      )}
 
       {/* ══════ PILOTAGE ══════ (Full mode only) */}
       {viewMode === "full" && guide?.pilotageText && (

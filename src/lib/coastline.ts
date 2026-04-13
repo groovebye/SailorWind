@@ -299,6 +299,25 @@ function dedupe(points: LatLon[]): LatLon[] {
   return result;
 }
 
+function distanceToLatLon(a: LatLon, b: LatLon): number {
+  return Math.hypot(a[0] - b[0], a[1] - b[1]);
+}
+
+function nearestPointId(target: RoutePort): PointId | null {
+  let best: PointId | null = null;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  for (const id of Object.keys(NAV_POINTS) as PointId[]) {
+    const nextDistance = distanceToLatLon([target.lat, target.lon], NAV_POINTS[id]);
+    if (nextDistance < bestDistance) {
+      best = id;
+      bestDistance = nextDistance;
+    }
+  }
+
+  return bestDistance <= 0.2 ? best : null;
+}
+
 export function buildSeaRoute(from: RoutePort, to: RoutePort): LatLon[] {
   const handcrafted = manualRoute(from.name, to.name);
   if (handcrafted) {
@@ -307,15 +326,17 @@ export function buildSeaRoute(from: RoutePort, to: RoutePort): LatLon[] {
 
   const fromId = from.name as PointId;
   const toId = to.name as PointId;
+  const resolvedFrom = (fromId in NAV_POINTS ? fromId : nearestPointId(from)) as PointId | null;
+  const resolvedTo = (toId in NAV_POINTS ? toId : nearestPointId(to)) as PointId | null;
 
-  if (!(fromId in NAV_POINTS) || !(toId in NAV_POINTS)) {
+  if (!resolvedFrom || !resolvedTo) {
     return [
       [from.lat, from.lon],
       [to.lat, to.lon],
     ];
   }
 
-  const routeIds = shortestPath(fromId, toId);
+  const routeIds = shortestPath(resolvedFrom, resolvedTo);
   if (!routeIds || routeIds.length === 0) {
     return [
       [from.lat, from.lon],
@@ -323,5 +344,11 @@ export function buildSeaRoute(from: RoutePort, to: RoutePort): LatLon[] {
     ];
   }
 
-  return dedupe(routeIds.map(point));
+  const points = routeIds.map(point);
+  const withEndpoints: LatLon[] = [
+    [from.lat, from.lon],
+    ...points,
+    [to.lat, to.lon],
+  ];
+  return dedupe(withEndpoints);
 }
