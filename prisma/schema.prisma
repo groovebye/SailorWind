@@ -171,6 +171,133 @@ model LegGuide {
   @@unique([fromSlug, toSlug])
 }
 
+// ── Port Areas & Marina Options (content layer) ────────────────
+
+model PortArea {
+  id              String   @id @default(cuid())
+  name            String   // "La Coruña"
+  slug            String   @unique
+  country         String
+  region          String?
+  lat             Float
+  lon             Float
+  type            String   // "major_stopover" | "medium_stopover" | "minor_stopover" | "cape_area"
+
+  description         String?
+  arrivalSummary      String?
+  shoreSummary        String?
+  repairSummary       String?
+  provisioningSummary String?
+
+  // Shore services (shared across all marinas in this area)
+  restaurants    Json?
+  yachtShops     Json?
+  groceryStores  Json?
+  extras         Json?
+
+  // Safety
+  orcaRisk       String?
+  orcaNotes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  marinas   MarinaOption[]
+}
+
+model MarinaOption {
+  id            String   @id @default(cuid())
+  portArea      PortArea @relation(fields: [portAreaId], references: [id], onDelete: Cascade)
+  portAreaId    String
+  name          String   // "Marina Coruña"
+  slug          String   @unique
+  operator      String?
+  lat           Float
+  lon           Float
+  kind          String   // "marina" | "yacht_club" | "fishing_port" | "mixed_port"
+
+  website       String?
+  email         String?
+  phone         String?
+  vhfCh         String?
+
+  shelter       String?  // "good" | "moderate" | "poor"
+  maxDraft      Float?
+  maxLength     Float?
+  berthCount    Int?
+  visitorBerths Int?
+
+  fuel          Boolean  @default(false)
+  water         Boolean  @default(false)
+  electric      Boolean  @default(false)
+  repairs       Boolean  @default(false)
+  laundry       Boolean  @default(false)
+  showers       Boolean  @default(false)
+  toilets       Boolean  @default(false)
+  wifi          Boolean  @default(false)
+  customs       Boolean  @default(false)
+  securityGate  Boolean  @default(false)
+  pumpOut       Boolean  @default(false)
+
+  marinaHours         String?
+  approachDescription String?
+  entranceNotes       String?
+  waitingArea         String?
+  bestTideEntry       String?
+  swellSensitivity    String?
+  notes               String?
+
+  sourceVerification  Json?  // {phone: {source, checkedAt}, ...}
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prices    MarinaPrice[]
+  mapFeatures MarinaMapFeature[]
+}
+
+model MarinaPrice {
+  id              String   @id @default(cuid())
+  marina          MarinaOption @relation(fields: [marinaOptionId], references: [id], onDelete: Cascade)
+  marinaOptionId  String
+
+  loaMeters       Float    @default(9.5)
+  season          String   // "low" | "high"
+  billingPeriod   String   // "daily" | "monthly"
+  price           Float
+  currency        String   @default("EUR")
+  taxIncluded     Boolean  @default(true)
+  utilitiesIncluded Boolean @default(false)
+  pricingNote     String?
+
+  sourceName      String?
+  sourceUrl       String?
+  checkedAt       DateTime?
+  confidence      String?  // "official" | "curated" | "estimated"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([marinaOptionId])
+}
+
+model MarinaMapFeature {
+  id              String   @id @default(cuid())
+  marina          MarinaOption @relation(fields: [marinaOptionId], references: [id], onDelete: Cascade)
+  marinaOptionId  String
+
+  type            String   // "breakwater" | "entrance" | "waiting_area" | "visitor_berth" | "fuel_dock" | "office" | "showers" | "hazard" | "route_hint"
+  name            String
+  geometry        Json     // GeoJSON geometry
+  description     String?
+  sortOrder       Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([marinaOptionId])
+}
+
 // Junction: which ports are start/end of this passage
 model PassagePort {
   id         String  @id @default(cuid())

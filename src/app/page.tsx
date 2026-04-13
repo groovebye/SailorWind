@@ -4,6 +4,17 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  const portAreas = await prisma.portArea.findMany({
+    orderBy: { name: "asc" },
+    include: {
+      marinas: {
+        include: {
+          prices: { where: { loaMeters: 9.5, billingPeriod: "daily", season: "low" }, take: 1 },
+        },
+      },
+    },
+  });
+
   const passages = await prisma.passage.findMany({
     orderBy: { updatedAt: "desc" },
     take: 10,
@@ -65,6 +76,38 @@ export default async function Home() {
                       {p.waypoints.length} waypoints
                     </span>
                   </div>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Ports & Marinas catalog */}
+      {portAreas.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-lg font-semibold text-slate-300 mb-4">
+            ⚓ Ports & Marinas
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {portAreas.map((area) => {
+              const totalBerths = area.marinas.reduce((s, m) => s + (m.berthCount || 0), 0);
+              const cheapest = area.marinas.flatMap(m => m.prices).sort((a, b) => a.price - b.price)[0];
+              return (
+                <Link key={area.id} href={`/port/${area.slug}`}
+                  className="block rounded-lg p-4 hover:opacity-80 transition-opacity"
+                  style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
+                  <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{area.name}</div>
+                  <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                    {area.region} · {area.type.replace("_", " ")} · {area.marinas.length} marina{area.marinas.length > 1 ? "s" : ""}
+                  </div>
+                  <div className="flex gap-3 mt-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
+                    {totalBerths > 0 && <span>⚓ {totalBerths} berths</span>}
+                    {cheapest && <span style={{ color: "var(--text-green)" }}>from €{cheapest.price}/day</span>}
+                  </div>
+                  {area.orcaRisk && area.orcaRisk !== "none" && area.orcaRisk !== "low" && (
+                    <div className="text-[10px] mt-1" style={{ color: "var(--text-yellow)" }}>🐋 Orca: {area.orcaRisk}</div>
+                  )}
                 </Link>
               );
             })}
