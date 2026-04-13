@@ -275,12 +275,21 @@ export default function PortAreaPage({ params }: { params: Promise<{ slug: strin
             </div>
 
             {/* Official layout */}
-            {m.officialLayoutImageUrl || m.officialLayoutPdfUrl ? (
+            {m.officialLayoutImageUrl ? (
+              <div className="mt-2">
+                <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>📐 Official Layout</div>
+                <a href={m.officialLayoutImageUrl} target="_blank" rel="noopener">
+                  <img src={m.officialLayoutImageUrl} alt={`${m.name} layout`} className="w-full rounded-lg" style={{ maxHeight: 300, objectFit: "contain", border: `1px solid var(--border-light)` }} />
+                </a>
+                <div className="flex gap-2 mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>
+                  {m.officialLayoutPdfUrl && <a href={m.officialLayoutPdfUrl} target="_blank" rel="noopener" style={{ color: "var(--text-blue-light)" }}>Download PDF</a>}
+                  {m.officialLayoutSource && <span>Source: {m.officialLayoutSource}</span>}
+                </div>
+              </div>
+            ) : m.officialLayoutPdfUrl ? (
               <div className="mt-2 text-xs" style={{ color: "var(--text-secondary)" }}>
-                📐 <strong>Official layout:</strong>{" "}
-                {m.officialLayoutPdfUrl && <a href={m.officialLayoutPdfUrl} target="_blank" rel="noopener" style={{ color: "var(--text-blue-light)" }}>PDF</a>}
-                {m.officialLayoutImageUrl && <>{m.officialLayoutPdfUrl ? " · " : ""}<a href={m.officialLayoutImageUrl} target="_blank" rel="noopener" style={{ color: "var(--text-blue-light)" }}>Image</a></>}
-                {m.officialLayoutSource && <span style={{ color: "var(--text-muted)" }}> ({m.officialLayoutSource})</span>}
+                📐 <a href={m.officialLayoutPdfUrl} target="_blank" rel="noopener" style={{ color: "var(--text-blue-light)" }}>Official layout (PDF)</a>
+                {m.officialLayoutSource && <span style={{ color: "var(--text-muted)" }}> — {m.officialLayoutSource}</span>}
               </div>
             ) : (
               <div className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>Official layout not added yet</div>

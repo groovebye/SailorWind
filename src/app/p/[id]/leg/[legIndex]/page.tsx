@@ -8,6 +8,7 @@ import { useTheme } from "@/lib/theme";
 import type { ForecastEntry } from "@/lib/weather";
 
 const LegMap = dynamic(() => import("./LegMap"), { ssr: false });
+const MarinaMiniMap = dynamic(() => import("@/components/MarinaMiniMap"), { ssr: false });
 
 // ── Types ──
 
@@ -116,7 +117,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [depTide, setDepTide] = useState<TideData | null>(null);
   const [arrTide, setArrTide] = useState<TideData | null>(null);
   interface MarinaPrice { season: string; billingPeriod: string; price: number; currency: string; sourceName: string | null; confidence: string | null; }
-  interface MarinaOptionData { id: string; name: string; slug: string; kind: string; phone: string | null; vhfCh: string | null; website: string | null; shelter: string | null; maxDraft: number | null; maxLength: number | null; berthCount: number | null; visitorBerths: number | null; fuel: boolean; water: boolean; electric: boolean; repairs: boolean; laundry: boolean; showers: boolean; toilets: boolean; wifi: boolean; customs: boolean; securityGate: boolean; pumpOut: boolean; approachDescription: string | null; notes: string | null; prices: MarinaPrice[]; }
+  interface MapFeatureData { type: string; name: string; geometry: { type: string; coordinates: unknown }; description: string | null; }
+  interface MarinaOptionData { id: string; name: string; slug: string; kind: string; lat: number; lon: number; phone: string | null; vhfCh: string | null; website: string | null; shelter: string | null; maxDraft: number | null; maxLength: number | null; berthCount: number | null; visitorBerths: number | null; fuel: boolean; water: boolean; electric: boolean; repairs: boolean; laundry: boolean; showers: boolean; toilets: boolean; wifi: boolean; customs: boolean; securityGate: boolean; pumpOut: boolean; approachDescription: string | null; notes: string | null; prices: MarinaPrice[]; mapFeatures: MapFeatureData[]; officialLayoutImageUrl: string | null; officialLayoutPdfUrl: string | null; }
   interface NearbyPlaceData { id: string; name: string; category: string; description: string | null; phone: string | null; hours: string | null; address: string | null; distanceMeters: number | null; walkMinutes: number | null; rating: number | null; reviewCount: number | null; priceLevel: string | null; isRecommended: boolean; bestFor: string | null; marinaOptionId: string | null; }
   interface PortAreaData { name: string; slug: string; marinas: MarinaOptionData[]; nearbyPlaces: NearbyPlaceData[]; }
   const [portArea, setPortArea] = useState<PortAreaData | null>(null);
@@ -645,6 +647,20 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 <div className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>No verified tariff yet</div>
               )}
               {m.notes && <div className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>{m.notes}</div>}
+              {/* Mini-map */}
+              {m.mapFeatures && m.mapFeatures.length > 0 && (
+                <div className="mt-2">
+                  <MarinaMiniMap features={m.mapFeatures} center={[m.lat, m.lon]} name={m.name} />
+                </div>
+              )}
+              {/* Official layout */}
+              {m.officialLayoutImageUrl && (
+                <div className="mt-2">
+                  <a href={m.officialLayoutImageUrl} target="_blank" rel="noopener">
+                    <img src={m.officialLayoutImageUrl} alt={`${m.name} layout`} className="w-full rounded" style={{ maxHeight: 200, objectFit: "contain", border: `1px solid var(--border-light)` }} />
+                  </a>
+                </div>
+              )}
             </div>
           ))}
 

@@ -61,7 +61,7 @@ export default function MarinaMiniMap({ features, center, name }: {
 }) {
   return (
     <div className="rounded-lg overflow-hidden" style={{ border: `1px solid var(--border-light)` }}>
-      <MapContainer center={center} zoom={16} className="h-full w-full" style={{ background: "#0f172a" }}
+      <MapContainer center={center} zoom={16} className="w-full" style={{ height: 240, background: "#0f172a" }}
         zoomControl={false} attributionControl={false}>
         <FitToFeatures features={features} center={center} />
 

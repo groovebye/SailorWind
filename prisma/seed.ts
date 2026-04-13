@@ -644,6 +644,50 @@ async function main() {
     });
   }
   console.log(`Seeded ${LEG_GUIDES.length} leg guides.`);
+
+  // Seed port areas + marina options + prices
+  const { PORT_AREAS } = await import("./marina-seed.js");
+  console.log("Seeding port areas + marinas...");
+  for (const area of PORT_AREAS) {
+    const { marinas: marinasData, ...areaData } = area;
+    const portArea = await prisma.portArea.upsert({
+      where: { slug: area.slug },
+      update: areaData,
+      create: areaData,
+    });
+    for (const marina of marinasData) {
+      const { prices: pricesData, ...marinaData } = marina;
+      const marinaOption = await prisma.marinaOption.upsert({
+        where: { slug: marina.slug },
+        update: { ...marinaData, portAreaId: portArea.id },
+        create: { ...marinaData, portAreaId: portArea.id },
+      });
+      for (const price of pricesData) {
+        await prisma.marinaPrice.create({
+          data: { ...price, loaMeters: 9.5, currency: "EUR", marinaOptionId: marinaOption.id, sourceName: "Marina/cruiser data", confidence: "curated" },
+        });
+      }
+    }
+  }
+  console.log(`Seeded ${PORT_AREAS.length} port areas.`);
+
+  // Seed nearby places
+  const { NEARBY_PLACES } = await import("./nearby-places-seed.js");
+  console.log("Seeding nearby places...");
+  for (const place of NEARBY_PLACES) {
+    const area = await prisma.portArea.findUnique({ where: { slug: place.portAreaSlug } });
+    if (!area) continue;
+    let marinaId: string | undefined;
+    if (place.marinaSlug) {
+      const marina = await prisma.marinaOption.findUnique({ where: { slug: place.marinaSlug } });
+      marinaId = marina?.id;
+    }
+    const { portAreaSlug: _, marinaSlug: __, ...placeData } = place;
+    await prisma.nearbyPlace.create({
+      data: { ...placeData, portAreaId: area.id, marinaOptionId: marinaId },
+    });
+  }
+  console.log(`Seeded ${NEARBY_PLACES.length} nearby places.`);
 }
 
 main()
