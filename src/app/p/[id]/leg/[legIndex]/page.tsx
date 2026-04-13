@@ -108,6 +108,9 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [forecasts, setForecasts] = useState<Record<string, ForecastEntry[]> | null>(null);
   const [guide, setGuide] = useState<LegGuide | null>(null);
   const [webcams, setWebcams] = useState<Webcam[]>([]);
+  interface TideData { port: string; isSpring: boolean; range: number; stateAtDate: { rising: boolean; hoursToHW: number; hoursToLW: number; approxHeight: number; description: string }; extremes: { time: string; type: string; height: number }[]; stream: { area: string; floodDir: string; ebbDir: string; springRate: number; notes: string } | null; }
+  const [depTide, setDepTide] = useState<TideData | null>(null);
+  const [arrTide, setArrTide] = useState<TideData | null>(null);
 
   useEffect(() => { fetch(`/api/passage?id=${id}`).then(r => r.json()).then(setPassage); }, [id]);
 
@@ -151,6 +154,15 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     fetch("/api/forecast/batch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ waypoints: wps, model: passage.model }) })
       .then(r => r.json()).then(data => { if (!data.error) setForecasts(data); }).catch(() => {});
   }, [passage, leg, dest, fromPort]);
+
+  // Fetch tides for departure and arrival ports
+  useEffect(() => {
+    if (!leg || !fromPort || !dest) return;
+    const depTime = leg.departTime.toISOString();
+    const arrTime = leg.arriveTime.toISOString();
+    fetch(`/api/tides?port=${fromPort.slug}&date=${depTime}`).then(r => r.json()).then(d => { if (!d.error) setDepTide(d); }).catch(() => {});
+    fetch(`/api/tides?port=${dest.slug}&date=${arrTime}`).then(r => r.json()).then(d => { if (!d.error) setArrTide(d); }).catch(() => {});
+  }, [leg, fromPort?.slug, dest?.slug]);
 
   // Fetch webcams
   useEffect(() => { if (dest) { fetch(`/api/webcams?lat=${dest.lat}&lon=${dest.lon}&radius=25`).then(r => r.json()).then(data => { if (Array.isArray(data)) setWebcams(data); }).catch(() => {}); } }, [dest]);
@@ -219,27 +231,68 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      {/* ══════ DECISION ══════ */}
-      <div className="rounded-xl px-5 py-3 mb-3 flex items-center justify-between flex-wrap gap-3" style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
-        <div className="flex items-center gap-3">
-          <span className="text-2xl font-black px-3 py-1 rounded-lg" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
-          <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
-            <div>{leg.nm} NM · ~{leg.hours.toFixed(1)}h · {passage.speed}kt</div>
-            <div>{fmtLocal(leg.departTime, fromTz)} → {fmtLocal(leg.arriveTime, toTz)}</div>
+      {/* ══════ DECISION SUMMARY ══════ */}
+      <div className="rounded-xl px-5 py-4 mb-3" style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
+        {/* Verdict + metrics row */}
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-black px-3 py-1 rounded-lg" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
+            <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
+              <div>{leg.nm} NM · ~{leg.hours.toFixed(1)}h · {passage.speed}kt</div>
+              <div>{fmtLocal(leg.departTime, fromTz)} → {fmtLocal(leg.arriveTime, toTz)}</div>
+            </div>
+          </div>
+          <div className="flex gap-4 text-xs" style={{ color: "var(--text-secondary)" }}>
+            <div><span style={{ color: "var(--text-muted)" }}>Wind</span> <strong>{Math.round(maxWind)}kt</strong></div>
+            <div><span style={{ color: "var(--text-muted)" }}>Gusts</span> <strong>{Math.round(maxGust)}kt</strong></div>
+            <div><span style={{ color: "var(--text-muted)" }}>Waves</span> <strong>{maxWave.toFixed(1)}m</strong></div>
+            <div><span style={{ color: "var(--text-muted)" }}>Swell</span> <strong>{maxSwell.toFixed(1)}m</strong></div>
           </div>
         </div>
-        <div className="flex gap-4 text-xs" style={{ color: "var(--text-secondary)" }}>
-          <div><span style={{ color: "var(--text-muted)" }}>Wind</span> <strong>{Math.round(maxWind)}kt</strong></div>
-          <div><span style={{ color: "var(--text-muted)" }}>Gusts</span> <strong>{Math.round(maxGust)}kt</strong></div>
-          <div><span style={{ color: "var(--text-muted)" }}>Waves</span> <strong>{maxWave.toFixed(1)}m</strong></div>
-          <div><span style={{ color: "var(--text-muted)" }}>Swell</span> <strong>{maxSwell.toFixed(1)}m</strong></div>
-          {worstWp && verdict !== "GO" && <div style={{ color: verdictColor }}>⚠ {worstWp}</div>}
-          {capeWps.length > 0 && <div style={{ color: "var(--text-yellow)" }}>⚡ {capeWps.length} cape{capeWps.length > 1 ? "s" : ""}</div>}
+
+        {/* Decision details */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+          {/* What to monitor */}
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)" }}>
+            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Monitor</div>
+            {worstWp && verdict !== "GO" && <div style={{ color: verdictColor }}>⚠ Worst: <strong>{worstWp}</strong></div>}
+            {capeWps.length > 0 && <div style={{ color: "var(--text-yellow)" }}>⚡ {capeWps.map(w => w.port.name).join(", ")}</div>}
+            {maxWave > 2.0 && <div style={{ color: "var(--text-yellow)" }}>🌊 Waves {maxWave.toFixed(1)}m — reef early</div>}
+            {maxGust > 25 && <div style={{ color: "var(--text-red)" }}>💨 Gusts {Math.round(maxGust)}kt — expect reefing</div>}
+            {!worstWp && capeWps.length === 0 && maxWave <= 2 && <div style={{ color: "var(--text-green)" }}>✓ No special concerns</div>}
+          </div>
+
+          {/* Sailing expectation */}
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)" }}>
+            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Sailing</div>
+            <div>🚢 Motor exit ~{Math.min(0.5, leg.hours * 0.1).toFixed(1)}h</div>
+            <div>⛵ Sailing ~{Math.max(0, leg.hours - 1).toFixed(1)}h</div>
+            <div>🚢 Motor entry ~{Math.min(0.5, leg.hours * 0.1).toFixed(1)}h</div>
+            {leg.hours > 8 && <div style={{ color: "var(--text-yellow)" }}>🌙 Long day — {leg.hours > 12 ? "night sailing likely" : "arrive before dark"}</div>}
+          </div>
+
+          {/* Fallback */}
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)" }}>
+            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Fallback</div>
+            {fallbacks.length > 0
+              ? fallbacks.slice(0, 2).map((f, i) => <div key={i}>🆘 {f.name} ({f.distance_nm}NM, ~{f.time_hours}h)</div>)
+              : <div style={{ color: "var(--text-muted)" }}>No intermediate ports</div>
+            }
+            {verdict !== "GO" && <div className="mt-1 font-semibold" style={{ color: "var(--text-yellow)" }}>⚠ Consider postponing if conditions worsen</div>}
+          </div>
         </div>
+
+        {/* Tide at departure/arrival */}
+        {(depTide || arrTide) && (
+          <div className="flex gap-2 mt-2 text-[11px] flex-wrap" style={{ color: "var(--text-secondary)" }}>
+            {depTide && <div>🏗️ Departure tide: <strong>{depTide.stateAtDate.description}</strong> ({depTide.isSpring ? "Springs" : "Neaps"}, range {depTide.range}m)</div>}
+            {arrTide && <div>⚓ Arrival tide: <strong>{arrTide.stateAtDate.description}</strong></div>}
+          </div>
+        )}
       </div>
 
       {/* Best window + orca */}
-      {(guide?.bestWindow || dest.orcaRisk && dest.orcaRisk !== "none") && (
+      {(guide?.bestWindow || (dest.orcaRisk && dest.orcaRisk !== "none")) && (
         <div className="flex gap-2 mb-3 flex-wrap">
           {guide?.bestWindow && (
             <div className="flex-1 rounded-lg px-3 py-2 text-xs" style={{ background: "var(--accent-go)", color: "var(--text-green)", border: `1px solid var(--text-green)30` }}>
@@ -314,14 +367,66 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </Section>
       )}
 
-      {/* ══════ TIDES & CURRENTS ══════ */}
-      {(guide?.tidalNotes || guide?.currentNotes || guide?.tidalGate) && (
-        <Section title="Tides & Currents" icon="🌊">
-          {guide.tidalGate && <div className="rounded-lg px-3 py-2 mb-2 text-xs font-semibold" style={{ background: "var(--accent-caution)", color: "var(--text-yellow)" }}>⏰ Tidal gate: {guide.tidalGate}</div>}
-          {guide.tidalNotes && <div className="text-xs mb-2" style={{ color: "var(--text-secondary)" }}><strong>Tides:</strong> {guide.tidalNotes}</div>}
-          {guide.currentNotes && <div className="text-xs" style={{ color: "var(--text-secondary)" }}><strong>Currents:</strong> {guide.currentNotes}</div>}
-        </Section>
-      )}
+      {/* ══════ TIDES & CURRENTS — LIVE ══════ */}
+      <Section title="Tides & Currents" icon="🌊">
+        {/* Live tide predictions */}
+        {(depTide || arrTide) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+            {depTide && (
+              <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+                <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Departure: {fromPort.name}</div>
+                <div className="text-xs font-semibold mb-1" style={{ color: depTide.stateAtDate.rising ? "var(--text-green)" : "var(--text-blue-light)" }}>
+                  {depTide.stateAtDate.description}
+                </div>
+                <div className="text-[11px] space-y-0.5" style={{ color: "var(--text-secondary)" }}>
+                  <div>Range: {depTide.range}m ({depTide.isSpring ? "Springs" : "Neaps"})</div>
+                  {depTide.extremes.filter(e => {
+                    const t = new Date(e.time);
+                    return Math.abs(t.getTime() - leg.departTime.getTime()) < 12 * 3600000;
+                  }).slice(0, 4).map((e, i) => (
+                    <div key={i}>
+                      <span style={{ color: e.type === "HW" ? "var(--text-green)" : "var(--text-blue-light)" }}>{e.type}</span>
+                      {" "}{new Date(e.time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: tzForPort(fromPort.lon) })}
+                      {" "}<span style={{ color: "var(--text-muted)" }}>({e.height > 0 ? "+" : ""}{e.height}m)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {arrTide && (
+              <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+                <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Arrival: {dest.name}</div>
+                <div className="text-xs font-semibold mb-1" style={{ color: arrTide.stateAtDate.rising ? "var(--text-green)" : "var(--text-blue-light)" }}>
+                  {arrTide.stateAtDate.description}
+                </div>
+                <div className="text-[11px] space-y-0.5" style={{ color: "var(--text-secondary)" }}>
+                  <div>Range: {arrTide.range}m ({arrTide.isSpring ? "Springs" : "Neaps"})</div>
+                  {arrTide.extremes.filter(e => {
+                    const t = new Date(e.time);
+                    return Math.abs(t.getTime() - leg.arriveTime.getTime()) < 12 * 3600000;
+                  }).slice(0, 4).map((e, i) => (
+                    <div key={i}>
+                      <span style={{ color: e.type === "HW" ? "var(--text-green)" : "var(--text-blue-light)" }}>{e.type}</span>
+                      {" "}{new Date(e.time).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: tzForPort(dest.lon) })}
+                      {" "}<span style={{ color: "var(--text-muted)" }}>({e.height > 0 ? "+" : ""}{e.height}m)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {/* Wind-against-tide warning */}
+        {depTide?.stream && (
+          <div className="rounded-lg px-3 py-2 mb-2 text-xs" style={{ background: "var(--accent-caution)", color: "var(--text-yellow)" }}>
+            ⚠️ <strong>{depTide.stream.area}:</strong> {depTide.stream.notes} (Springs: {depTide.stream.springRate}kt {depTide.stream.floodDir}/{depTide.stream.ebbDir})
+          </div>
+        )}
+        {/* Tidal gate from curated data */}
+        {guide?.tidalGate && <div className="rounded-lg px-3 py-2 mb-2 text-xs font-semibold" style={{ background: "var(--accent-caution)", color: "var(--text-yellow)" }}>⏰ Tidal gate: {guide.tidalGate}</div>}
+        {guide?.currentNotes && <div className="text-xs mb-1" style={{ color: "var(--text-secondary)" }}><strong>Currents:</strong> {guide.currentNotes}</div>}
+        <div className="text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>⚠ Approximate predictions (~15-30 min accuracy). Cross-check with Admiralty EasyTide.</div>
+      </Section>
 
       {/* ══════ FALLBACK ══════ */}
       {fallbacks.length > 0 && (
