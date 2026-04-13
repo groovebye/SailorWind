@@ -49,6 +49,12 @@ model Port {
   yachtShops     Json?     // [{name, phone, hours, address, description}]
   groceryStores  Json?     // [{name, phone, hours, address, description}]
 
+  // Port classification
+  tier           String?   // "major" | "medium" | "minor"
+  // major = large marina, full services, crew change port
+  // medium = decent marina, visitor berths, basic services
+  // minor = small port, limited, bail-out only
+
   // Safety
   orcaRisk       String?   // "none" | "low" | "medium" | "high"
   orcaNotes      String?

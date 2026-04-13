@@ -13,7 +13,7 @@ interface Port {
   coastlineNm: number; fuel: boolean; water: boolean; electric: boolean;
   repairs: boolean; customs: boolean; shelter: string | null; maxDraft: number | null;
   vhfCh: string | null; website: string | null; notes: string | null;
-  country: string; region: string | null;
+  country: string; region: string | null; tier: string | null;
 }
 interface Waypoint { port: Port; isStop: boolean; isCape: boolean; sortOrder: number; }
 interface WaypointWithData extends Waypoint {
@@ -294,12 +294,12 @@ export default function PassageMap({ waypoints, theme }: { waypoints: WaypointWi
           <CircleMarker
             key={w.sortOrder}
             center={[w.port.lat, w.port.lon]}
-            radius={w.isCape ? 7 : isKey ? 9 : 5}
+            radius={w.isCape ? 6 : w.port.tier === "major" ? 11 : w.port.tier === "medium" ? 8 : 5}
             pathOptions={{
               fillColor: glowColor || c.fill,
               color: glowColor || c.stroke,
-              weight: isKey ? 2.5 : 1.5,
-              fillOpacity: isKey ? 0.9 : 0.5,
+              weight: w.port.tier === "major" ? 3 : w.port.tier === "medium" ? 2 : 1.5,
+              fillOpacity: w.port.tier === "major" ? 0.95 : w.port.tier === "medium" ? 0.8 : 0.5,
             }}
           >
             <Tooltip direction="top" offset={[0, -10]}>

@@ -9,7 +9,7 @@ import type { FeatureCollection } from "geojson";
 
 interface Port {
   name: string; lat: number; lon: number; type: string;
-  orcaRisk?: string | null;
+  orcaRisk?: string | null; tier?: string | null;
 }
 interface Waypoint { port: Port; isStop: boolean; isCape: boolean; }
 
@@ -150,7 +150,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme }: {
       {/* Waypoints */}
       {waypoints.map((w, i) => (
         <CircleMarker key={i} center={[w.port.lat, w.port.lon]}
-          radius={w.isCape ? 7 : w.isStop ? 9 : 5}
+          radius={w.isCape ? 6 : w.port.tier === "major" ? 11 : w.port.tier === "medium" ? 8 : 5}
           pathOptions={{
             fillColor: COLORS[w.port.type] || "#60a5fa",
             color: COLORS[w.port.type] || "#1e40af",

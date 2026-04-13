@@ -248,6 +248,23 @@ const ports = [
       { name: "Carrefour Express", phone: null, hours: "08:00-22:00", address: "C/ Real (10min walk from marina)", description: "City-center convenience store." },
       { name: "Mercado de San Agustín", phone: null, hours: "Mon-Sat 08:00-15:00", address: "C/ San Agustín", description: "Traditional market. Best for fresh fish, meat, vegetables, and local cheeses." },
     ]),
+    tier: "major",
+  },
+  {
+    name: "Burela", slug: "burela", lat: 43.6617, lon: -7.3583, type: "port" as const,
+    country: "ES", region: "Galicia", coastSegment: "galicia-north", coastlineNm: 100,
+    water: true, shelter: "moderate", maxDraft: 3.0, vhfCh: "09", phone: "+34 982 586 002",
+    notes: "Working fishing port. Limited visitor facilities. Fuel available. Good bail-out between Viveiro and capes.",
+    orcaRisk: "medium", tier: "minor",
+  },
+  {
+    name: "Sada", slug: "sada", lat: 43.3550, lon: -8.2550, type: "marina" as const,
+    country: "ES", region: "Galicia", coastSegment: "galicia-north", coastlineNm: 155,
+    fuel: true, water: true, electric: true, shelter: "good",
+    maxDraft: 3.5, vhfCh: "09", phone: "+34 981 620 140",
+    website: "https://www.puertosada.com",
+    notes: "Growing marina near La Coruña. Good provisioning. Alternative to crowded La Coruña marina.",
+    orcaRisk: "medium", tier: "medium",
   },
 ];
 

@@ -11,7 +11,7 @@ interface Port {
   coastlineNm: number; fuel: boolean; water: boolean; electric: boolean;
   repairs: boolean; customs: boolean; shelter: string | null; maxDraft: number | null;
   vhfCh: string | null; website: string | null; notes: string | null;
-  country: string; region: string | null;
+  country: string; region: string | null; tier: string | null;
 }
 interface Waypoint { port: Port; isStop: boolean; isCape: boolean; sortOrder: number; }
 interface Passage {
