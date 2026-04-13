@@ -8,7 +8,7 @@ import "leaflet/dist/leaflet.css";
 interface MapFeature {
   type: string;
   name: string;
-  geometry: { type: string; coordinates: [number, number] };
+  geometry: { type: string; coordinates: unknown };
   description: string | null;
 }
 
@@ -40,8 +40,8 @@ function FitToFeatures({ features, center }: { features: MapFeature[]; center: [
   useEffect(() => {
     if (features.length > 0) {
       const pts = features
-        .filter(f => f.geometry?.coordinates)
-        .map(f => L.latLng(f.geometry.coordinates[1], f.geometry.coordinates[0]));
+        .filter(f => f.geometry?.coordinates && f.geometry.type === "Point")
+        .map(f => { const c = f.geometry.coordinates as [number, number]; return L.latLng(c[1], c[0]); });
       if (pts.length > 1) {
         map.fitBounds(L.latLngBounds(pts), { padding: [30, 30], maxZoom: 17 });
       } else if (pts.length === 1) {
