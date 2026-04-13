@@ -120,16 +120,16 @@ function hwDoverTimes(startDate: Date, days: number): Date[] {
   const start = startDate.getTime();
   const end = start + days * 86400000;
 
-  // Find first HW Dover before start
+  // Start 24h before to ensure we have extremes before the target time
+  // (port offsets can add up to 6h, and we need prev+next brackets)
   let t = REF_HW_DOVER;
-  while (t > start - 86400000) t -= HW_PERIOD_MS;
-  while (t < start - HW_PERIOD_MS) t += HW_PERIOD_MS;
+  const lookback = start - 2 * 86400000; // 2 days before
+  while (t > lookback) t -= HW_PERIOD_MS;
+  while (t < lookback) t += HW_PERIOD_MS;
 
   const times: Date[] = [];
-  while (t < end) {
-    if (t >= start - HW_PERIOD_MS) {
-      times.push(new Date(t));
-    }
+  while (t < end + 86400000) { // extend 1 day past end too
+    times.push(new Date(t));
     t += HW_PERIOD_MS;
   }
   return times;
@@ -217,7 +217,16 @@ export function tideStateAt(prediction: TidePrediction, time: Date): {
   }
 
   if (!prevExtreme || !nextExtreme) {
-    return { rising: true, hoursToHW: 0, hoursToLW: 0, approxHeight: 0, description: "No tide data" };
+    // Fallback: find any nearby extreme and give approximate state
+    const nearest = prediction.extremes.reduce<TideExtreme | null>((best, e) => {
+      if (!best) return e;
+      return Math.abs(e.time.getTime() - t) < Math.abs(best.time.getTime() - t) ? e : best;
+    }, null);
+    if (nearest) {
+      const diff = (nearest.time.getTime() - t) / 3600000;
+      return { rising: nearest.type === "HW" ? diff > 0 : diff <= 0, hoursToHW: 0, hoursToLW: 0, approxHeight: 0, description: `Near ${nearest.type} (${diff > 0 ? "in" : ""} ${Math.abs(diff).toFixed(1)}h ${diff > 0 ? "ahead" : "ago"})` };
+    }
+    return { rising: true, hoursToHW: 0, hoursToLW: 0, approxHeight: 0, description: "Tide data unavailable" };
   }
 
   const rising = nextExtreme.type === "HW";

@@ -37,6 +37,8 @@ export async function GET(req: NextRequest) {
       height: e.height,
     })),
     stream: prediction.nearestStream,
-    disclaimer: "Approximate tidal predictions based on harmonic constants. For precision, cross-check with Admiralty EasyTide or Puertos del Estado.",
+    confidence: "approximate",
+    source: "Harmonic model (HW Dover + port offsets)",
+    disclaimer: "~15-30 min accuracy. Cross-check with Admiralty EasyTide.",
   });
 }

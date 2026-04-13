@@ -23,6 +23,7 @@ interface Port {
   restaurants: unknown; yachtShops: unknown; groceryStores: unknown; extras: unknown;
   marinaFacilities: unknown; sourceVerification: unknown;
   orcaRisk: string | null; orcaNotes: string | null; passageNotes: string | null;
+  waitingArea: string | null; swellSensitivity: string | null; entranceNotes: string | null; bestTideEntry: string | null;
 }
 interface PlaceInfo { name: string; rating?: number; cuisine?: string; phone?: string; hours?: string; address?: string; description?: string; category?: string; }
 interface MarinaFacilities {
@@ -110,6 +111,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [forecasts, setForecasts] = useState<Record<string, ForecastEntry[]> | null>(null);
   const [guide, setGuide] = useState<LegGuide | null>(null);
   const [webcams, setWebcams] = useState<Webcam[]>([]);
+  const [viewMode, setViewMode] = useState<"quick" | "full">("full");
   interface TideData { port: string; isSpring: boolean; range: number; stateAtDate: { rising: boolean; hoursToHW: number; hoursToLW: number; approxHeight: number; description: string }; extremes: { time: string; type: string; height: number }[]; stream: { area: string; floodDir: string; ebbDir: string; springRate: number; notes: string } | null; }
   const [depTide, setDepTide] = useState<TideData | null>(null);
   const [arrTide, setArrTide] = useState<TideData | null>(null);
@@ -165,6 +167,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     fetch(`/api/tides?port=${fromPort.slug}&date=${depTime}`).then(r => r.json()).then(d => { if (!d.error) setDepTide(d); }).catch(() => {});
     fetch(`/api/tides?port=${dest.slug}&date=${arrTime}`).then(r => r.json()).then(d => { if (!d.error) setArrTide(d); }).catch(() => {});
   }, [leg, fromPort?.slug, dest?.slug]);
+
+
 
   // Fetch webcams
   useEffect(() => { if (dest) { fetch(`/api/webcams?lat=${dest.lat}&lon=${dest.lon}&radius=25`).then(r => r.json()).then(data => { if (Array.isArray(data)) setWebcams(data); }).catch(() => {}); } }, [dest]);
@@ -241,6 +245,10 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           <span className="font-bold" style={{ color: "var(--text-heading)" }}>{fromPort?.name} → {dest?.name}</span>
           <span className="font-black px-2 py-0.5 rounded" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
           <span style={{ color: "var(--text-muted)" }}>{leg?.nm}NM · {Math.round(maxWind)}kt · {maxWave.toFixed(1)}m</span>
+          <div className="flex rounded overflow-hidden text-[10px]" style={{ border: `1px solid var(--border)` }}>
+            <button onClick={() => setViewMode("quick")} className="px-2 py-0.5" style={{ background: viewMode === "quick" ? "var(--accent-go)" : "transparent", color: viewMode === "quick" ? "var(--text-green)" : "var(--text-muted)" }}>Quick</button>
+            <button onClick={() => setViewMode("full")} className="px-2 py-0.5" style={{ background: viewMode === "full" ? "var(--accent-go)" : "transparent", color: viewMode === "full" ? "var(--text-green)" : "var(--text-muted)" }}>Full</button>
+          </div>
         </div>
       </div>
 
@@ -308,6 +316,35 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           </div>
         </div>
 
+        {/* Score breakdown (expandable) */}
+        {penalties.length > 0 && (
+          <details className="mt-2 text-[11px]">
+            <summary className="cursor-pointer" style={{ color: "var(--text-muted)" }}>Score {legScore}/100 — tap for breakdown ▸</summary>
+            <div className="mt-1 pl-3 space-y-0.5" style={{ color: "var(--text-secondary)" }}>
+              {penalties.map((p, i) => <div key={i}>• {p}</div>)}
+            </div>
+          </details>
+        )}
+
+        {/* Last safe departure */}
+        {leg.hours > 5 && (
+          <div className="mt-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>
+            ⏰ <strong>Last safe departure:</strong>{" "}
+            {fmtLocal(new Date(new Date(leg.departTime).setUTCHours(20, 0, 0, 0) - leg.hours * 3600000), fromTz)} (arrive before sunset)
+          </div>
+        )}
+
+        {/* What invalidates GO */}
+        {verdict === "GO" && viewMode === "full" && (
+          <div className="mt-2 text-[11px] rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", color: "var(--text-muted)" }}>
+            <strong>Plan invalidated if:</strong>{" "}
+            wind &gt;{Math.round(maxWind) + 10}kt
+            {capeWps.length > 0 && " · cape wind >15kt"}
+            {" · waves >"}{(maxWave + 1).toFixed(0)}m
+            {" · visibility <2NM"}
+          </div>
+        )}
+
         {/* Tide at departure/arrival */}
         {(depTide || arrTide) && (
           <div className="flex gap-2 mt-2 text-[11px] flex-wrap" style={{ color: "var(--text-secondary)" }}>
@@ -338,8 +375,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         <LegMap waypoints={legWps} fromPort={fromPort} toPort={dest} theme={theme} hazards={hazards} milestones={milestones} />
       </div>
 
-      {/* ══════ PILOTAGE ══════ */}
-      {guide?.pilotageText && (
+      {/* ══════ PILOTAGE ══════ (Full mode only) */}
+      {viewMode === "full" && guide?.pilotageText && (
         <Section title="Pilotage Notes" icon="🗺️">
           <div className="text-xs leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-secondary)" }}>
             {guide.pilotageText.split(/^## /m).filter(Boolean).map((section, i) => {
@@ -473,6 +510,17 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
       {dest.type !== "cape" && (
         <Section title={`Arrival: ${dest.marinaName || dest.name}`} icon="🏗️">
           {dest.approachDescription && <div className="text-xs mb-3 p-2 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>{dest.approachDescription}</div>}
+
+          {/* Arrival intelligence */}
+          {(dest.entranceNotes || dest.waitingArea || dest.bestTideEntry || dest.swellSensitivity) && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3 text-xs">
+              {dest.entranceNotes && <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}><div className="text-[10px] uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>Entrance</div><div style={{ color: "var(--text-secondary)" }}>{dest.entranceNotes}</div></div>}
+              {dest.waitingArea && <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}><div className="text-[10px] uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>Waiting area</div><div style={{ color: "var(--text-secondary)" }}>{dest.waitingArea}</div></div>}
+              {dest.bestTideEntry && <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}><div className="text-[10px] uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>Best tide to enter</div><div style={{ color: "var(--text-secondary)" }}>{dest.bestTideEntry}</div></div>}
+              {dest.swellSensitivity && <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}><div className="text-[10px] uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>Swell sensitivity</div><div style={{ color: "var(--text-secondary)" }}>{dest.swellSensitivity}</div></div>}
+            </div>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
             {dest.phone && <div>📞 <a href={`tel:${dest.phone.replace(/\s/g, "")}`} style={{ color: "var(--text-blue-light)" }}>{dest.phone}</a></div>}
             {dest.vhfCh && <div>📻 VHF Ch {dest.vhfCh}</div>}
@@ -513,36 +561,36 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </Section>
       )}
 
-      {/* ══════ RESTAURANTS ══════ */}
-      {restaurants.length > 0 && (
+      {/* ══════ RESTAURANTS ══════ (Full mode only) */}
+      {viewMode === "full" && restaurants.length > 0 && (
         <Section title={`Restaurants (${restaurants.length})`} icon="🍽️">
           {restaurants.map((r, i) => <PlaceCard key={i} place={r} />)}
         </Section>
       )}
 
-      {/* ══════ YACHT SHOPS ══════ */}
-      {yachtShops.length > 0 && (
+      {/* ══════ YACHT SHOPS ══════ (Full mode only) */}
+      {viewMode === "full" && yachtShops.length > 0 && (
         <Section title={`Yacht & Marine (${yachtShops.length})`} icon="⛵">
           {yachtShops.map((s, i) => <PlaceCard key={i} place={s} />)}
         </Section>
       )}
 
-      {/* ══════ GROCERY ══════ */}
-      {groceryStores.length > 0 && (
+      {/* ══════ GROCERY ══════ (Full mode only) */}
+      {viewMode === "full" && groceryStores.length > 0 && (
         <Section title={`Provisioning (${groceryStores.length})`} icon="🛒">
           {groceryStores.map((s, i) => <PlaceCard key={i} place={s} />)}
         </Section>
       )}
 
-      {/* ══════ EXTRAS ══════ */}
-      {extras.length > 0 && (
+      {/* ══════ EXTRAS ══════ (Full mode only) */}
+      {viewMode === "full" && extras.length > 0 && (
         <Section title="Services & Extras" icon="📋">
           {extras.map((e, i) => <PlaceCard key={i} place={e} />)}
         </Section>
       )}
 
-      {/* ══════ WEBCAMS ══════ */}
-      {webcams.length > 0 && (
+      {/* ══════ WEBCAMS ══════ (Full mode only) */}
+      {viewMode === "full" && webcams.length > 0 && (
         <Section title={`Live Webcams (${webcams.length})`} icon="📹">
           <div className="grid grid-cols-2 gap-2">
             {webcams.map(wc => (
