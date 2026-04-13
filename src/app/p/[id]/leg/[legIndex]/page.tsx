@@ -240,6 +240,72 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   legScore = Math.max(0, Math.min(100, legScore));
   const scoreColor = legScore >= 80 ? "var(--text-green)" : legScore >= 50 ? "var(--text-yellow)" : "var(--text-red)";
 
+  // ── Comfort scoring (separate from safety verdict) ──
+  // GO doesn't mean comfortable. Comfortable doesn't mean GO.
+  let comfortScore = 100;
+  const comfortReasons: string[] = [];
+
+  // Wave comfort
+  if (maxWave > 2.5) { comfortScore -= 30; comfortReasons.push(`Waves ${maxWave.toFixed(1)}m — rough ride`); }
+  else if (maxWave > 2.0) { comfortScore -= 20; comfortReasons.push(`Waves ${maxWave.toFixed(1)}m — bumpy`); }
+  else if (maxWave > 1.5) { comfortScore -= 10; comfortReasons.push(`Waves ${maxWave.toFixed(1)}m — moderate motion`); }
+
+  // Swell comfort
+  if (maxSwell > 2.5) { comfortScore -= 15; comfortReasons.push(`Swell ${maxSwell.toFixed(1)}m — rolling motion`); }
+  else if (maxSwell > 1.5) { comfortScore -= 5; comfortReasons.push(`Swell ${maxSwell.toFixed(1)}m — gentle roll`); }
+
+  // Gustiness (spread between sustained and gusts)
+  const gustSpread = maxGust - maxWind;
+  if (gustSpread > 15) { comfortScore -= 15; comfortReasons.push(`Gusty (+${Math.round(gustSpread)}kt spread) — unpredictable`); }
+  else if (gustSpread > 10) { comfortScore -= 8; comfortReasons.push(`Moderate gusts (+${Math.round(gustSpread)}kt)`); }
+
+  // Cape rounding discomfort
+  if (capeWps.length > 0) {
+    comfortScore -= capeWps.length * 8;
+    comfortReasons.push(`${capeWps.length} cape(s) — wind acceleration, confused seas`);
+  }
+
+  // Duration fatigue
+  if (leg.hours > 10) { comfortScore -= 12; comfortReasons.push(`Long leg (${leg.hours.toFixed(0)}h) — crew fatigue`); }
+  else if (leg.hours > 7) { comfortScore -= 5; comfortReasons.push(`${leg.hours.toFixed(0)}h passage`); }
+
+  // Night sailing discomfort
+  const arrHour = leg.arriveTime.getUTCHours();
+  if (arrHour >= 21 || arrHour <= 6) { comfortScore -= 15; comfortReasons.push("Night arrival — reduced visibility, cold"); }
+  else if (arrHour >= 20) { comfortScore -= 5; comfortReasons.push("Dusk arrival"); }
+
+  // Harbor entry complexity
+  if (guide?.difficulty === "challenging") { comfortScore -= 10; comfortReasons.push("Complex passage — demanding navigation"); }
+  if (dest.swellSensitivity?.toLowerCase().includes("medium") || dest.swellSensitivity?.toLowerCase().includes("high")) {
+    comfortScore -= 5; comfortReasons.push("Swell-sensitive arrival entrance");
+  }
+
+  comfortScore = Math.max(0, Math.min(100, comfortScore));
+  const comfortLabel = comfortScore >= 85 ? "Comfortable" : comfortScore >= 70 ? "Moderate" : comfortScore >= 55 ? "Bumpy" : comfortScore >= 40 ? "Demanding" : "Uncomfortable";
+  const comfortColor = comfortScore >= 85 ? "var(--text-green)" : comfortScore >= 70 ? "var(--text-blue-light)" : comfortScore >= 55 ? "var(--text-yellow)" : "var(--text-red)";
+
+  // Segment comfort (departure, offshore, cape, arrival)
+  type SegComfort = { segment: string; comfort: string; color: string; reason: string };
+  const segmentComfort: SegComfort[] = [];
+
+  // Departure
+  segmentComfort.push({ segment: "Departure", comfort: maxWind > 15 ? "Moderate" : "Comfortable", color: maxWind > 15 ? "var(--text-blue-light)" : "var(--text-green)", reason: maxWind > 15 ? "Motoring out in wind" : "Calm exit expected" });
+
+  // Cape rounding
+  for (const cape of capeWps) {
+    const capeF = forecasts ? closestForecast(forecasts[cape.port.name] || [], getETA(cape)) : null;
+    const capeWind = capeF?.windKt || 0;
+    const capeWave = capeF?.waveM || 0;
+    let cc = "Comfortable", cr = "Light conditions", ccol = "var(--text-green)";
+    if (capeWind > 20 || capeWave > 2.5) { cc = "Demanding"; cr = `Wind ${Math.round(capeWind)}kt, waves ${capeWave.toFixed(1)}m + acceleration`; ccol = "var(--text-red)"; }
+    else if (capeWind > 12 || capeWave > 1.5) { cc = "Bumpy"; cr = `Wind ${Math.round(capeWind)}kt + cape acceleration`; ccol = "var(--text-yellow)"; }
+    segmentComfort.push({ segment: `${cape.port.name} rounding`, comfort: cc, color: ccol, reason: cr });
+  }
+
+  // Arrival
+  const arrivalComfort = maxWave > 2 ? "Bumpy" : maxWave > 1 ? "Moderate" : "Comfortable";
+  segmentComfort.push({ segment: `Arrival ${dest.name}`, comfort: arrivalComfort, color: maxWave > 2 ? "var(--text-yellow)" : maxWave > 1 ? "var(--text-blue-light)" : "var(--text-green)", reason: maxWave > 2 ? "Choppy approach" : maxWave > 1 ? "Some swell at entrance" : "Calm approach expected" });
+
   const milestones = parseJsonTyped<Milestone>(guide?.milestones);
   const hazards = parseJsonTyped<Hazard>(guide?.hazards);
   const fallbacks = parseJsonTyped<FallbackPort>(guide?.fallbackPorts);
@@ -296,11 +362,15 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             <div><span style={{ color: "var(--text-muted)" }}>Gusts</span> <strong>{Math.round(maxGust)}kt</strong></div>
             <div><span style={{ color: "var(--text-muted)" }}>Waves</span> <strong>{maxWave.toFixed(1)}m</strong></div>
             <div><span style={{ color: "var(--text-muted)" }}>Swell</span> <strong>{maxSwell.toFixed(1)}m</strong></div>
+            <div className="flex items-center gap-1">
+              <span style={{ color: "var(--text-muted)" }}>Comfort</span>
+              <strong style={{ color: comfortColor }}>{comfortLabel}</strong>
+            </div>
           </div>
         </div>
 
         {/* Decision details */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs">
           {/* What to monitor */}
           <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)" }}>
             <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Monitor</div>
@@ -328,6 +398,23 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
               : <div style={{ color: "var(--text-muted)" }}>No intermediate ports</div>
             }
             {verdict !== "GO" && <div className="mt-1 font-semibold" style={{ color: "var(--text-yellow)" }}>⚠ Consider postponing if conditions worsen</div>}
+          </div>
+
+          {/* Comfort & Crew */}
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)" }}>
+            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Comfort</div>
+            <div className="font-semibold" style={{ color: comfortColor }}>{comfortLabel}</div>
+            {segmentComfort.map((s, i) => (
+              <div key={i} className="text-[10px] mt-0.5" style={{ color: s.color }}>{s.segment}: {s.comfort}</div>
+            ))}
+            {comfortReasons.length > 0 && (
+              <details className="mt-1 text-[10px]">
+                <summary className="cursor-pointer" style={{ color: "var(--text-muted)" }}>Why {comfortReasons.length} factor{comfortReasons.length > 1 ? "s" : ""} ▸</summary>
+                <div className="mt-0.5 space-y-0.5" style={{ color: "var(--text-secondary)" }}>
+                  {comfortReasons.map((r, i) => <div key={i}>• {r}</div>)}
+                </div>
+              </details>
+            )}
           </div>
         </div>
 
