@@ -33,8 +33,24 @@ const CONTOUR_STYLES: Record<number, { color: string; weight: number; dash?: str
 };
 
 const ORCA_ZONES = [
-  { name: "Galicia Coast", bounds: [[42.5, -9.5], [43.5, -7.5]] as [[number, number], [number, number]], risk: "medium" },
-  { name: "Cape Finisterre", bounds: [[42.5, -9.5], [43.0, -8.8]] as [[number, number], [number, number]], risk: "high" },
+  {
+    name: "Galicia North Coast",
+    bounds: [[43.3, -8.5], [43.85, -7.5]] as [[number, number], [number, number]],
+    risk: "medium",
+    source: "Orca Ibérica / GTOA",
+    season: "Year-round, peak May-Oct",
+    advisory: "Interactions reported along Galician coast. Keep engine in neutral if approached. Report to GT Orcas app.",
+    lastReport: "2026 season — monitoring active",
+  },
+  {
+    name: "Cape Finisterre Zone",
+    bounds: [[42.5, -9.5], [43.0, -8.8]] as [[number, number], [number, number]],
+    risk: "high",
+    source: "GTOA advisory",
+    season: "Peak Jun-Oct",
+    advisory: "High interaction area. Multiple rudder/keel damage reports. Avoid if possible or transit quickly. Engine neutral, rudder centered.",
+    lastReport: "Active monitoring zone",
+  },
 ];
 
 function FitBounds({ positions }: { positions: [number, number][] }) {
@@ -143,9 +159,18 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
           pathOptions={{
             color: z.risk === "high" ? "#ef4444" : "#f97316",
             fillColor: z.risk === "high" ? "#ef4444" : "#f97316",
-            fillOpacity: 0.08, weight: 1, dashArray: "6 4",
+            fillOpacity: 0.06, weight: 1.5, dashArray: "8 4",
           }}>
-          <Tooltip sticky>&#128011; Orca zone: {z.name} ({z.risk} risk)</Tooltip>
+          <Popup maxWidth={280}>
+            <div style={{ fontFamily: "monospace", fontSize: 12 }}>
+              <div style={{ fontWeight: 700, color: z.risk === "high" ? "#ef4444" : "#f97316" }}>🐋 {z.name}</div>
+              <div style={{ fontSize: 10, color: "#94a3b8" }}>Risk: {z.risk.toUpperCase()} · {z.season}</div>
+              <div style={{ fontSize: 11, margin: "6px 0" }}>{z.advisory}</div>
+              <div style={{ fontSize: 10, color: "#64748b" }}>Source: {z.source}</div>
+              <div style={{ fontSize: 10, color: "#64748b" }}>{z.lastReport}</div>
+            </div>
+          </Popup>
+          <Tooltip sticky>🐋 {z.name} ({z.risk.toUpperCase()} risk)</Tooltip>
         </Rectangle>
       ))}
 
