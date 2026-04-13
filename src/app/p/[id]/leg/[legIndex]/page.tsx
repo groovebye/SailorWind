@@ -115,6 +115,10 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   interface TideData { port: string; isSpring: boolean; range: number; stateAtDate: { rising: boolean; hoursToHW: number; hoursToLW: number; approxHeight: number; description: string }; extremes: { time: string; type: string; height: number }[]; stream: { area: string; floodDir: string; ebbDir: string; springRate: number; notes: string } | null; }
   const [depTide, setDepTide] = useState<TideData | null>(null);
   const [arrTide, setArrTide] = useState<TideData | null>(null);
+  interface MarinaPrice { season: string; billingPeriod: string; price: number; currency: string; sourceName: string | null; confidence: string | null; }
+  interface MarinaOptionData { id: string; name: string; slug: string; kind: string; phone: string | null; vhfCh: string | null; website: string | null; shelter: string | null; maxDraft: number | null; maxLength: number | null; berthCount: number | null; visitorBerths: number | null; fuel: boolean; water: boolean; electric: boolean; repairs: boolean; laundry: boolean; showers: boolean; toilets: boolean; wifi: boolean; customs: boolean; securityGate: boolean; pumpOut: boolean; approachDescription: string | null; notes: string | null; prices: MarinaPrice[]; }
+  interface PortAreaData { name: string; slug: string; marinas: MarinaOptionData[]; }
+  const [portArea, setPortArea] = useState<PortAreaData | null>(null);
 
   useEffect(() => { fetch(`/api/passage?id=${id}`).then(r => r.json()).then(setPassage); }, [id]);
 
@@ -149,6 +153,13 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
       fetch(`/api/leg?from=${fromPort.slug}&to=${dest.slug}`).then(r => r.json()).then(d => setGuide(d.guide)).catch(() => {});
     }
   }, [fromPort, dest]);
+
+  // Fetch port area (marina options for arrival)
+  useEffect(() => {
+    if (dest) {
+      fetch(`/api/port-areas?slug=${dest.slug}`).then(r => r.json()).then(d => { if (!d.error) setPortArea(d); }).catch(() => {});
+    }
+  }, [dest]);
 
   // Fetch forecasts
   useEffect(() => {
@@ -559,6 +570,86 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
               ✓ Data verified {verification.phone.checkedAt.slice(0, 10)}
             </div>
           )}
+        </Section>
+      )}
+
+      {/* ══════ MARINA OPTIONS ══════ */}
+      {portArea && portArea.marinas.length > 0 && (
+        <Section title={`Marina Options at ${portArea.name} (${portArea.marinas.length})`} icon="⚓" defaultOpen={portArea.marinas.length > 1}>
+          {/* Comparison table if >1 marina */}
+          {portArea.marinas.length > 1 && (
+            <div className="overflow-x-auto mb-3">
+              <table className="w-full text-[11px] border-collapse">
+                <thead>
+                  <tr style={{ color: "var(--text-muted)" }}>
+                    <th className="text-left px-2 py-1.5">Marina</th>
+                    <th className="text-center px-2 py-1.5">Berths</th>
+                    <th className="text-center px-2 py-1.5">Visitor</th>
+                    <th className="text-center px-2 py-1.5">Draft</th>
+                    <th className="text-center px-2 py-1.5">Fuel</th>
+                    <th className="text-center px-2 py-1.5">Repairs</th>
+                    <th className="text-center px-2 py-1.5">Daily €</th>
+                    <th className="text-center px-2 py-1.5">Monthly €</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {portArea.marinas.map(m => {
+                    const dayLow = m.prices.find(p => p.season === "low" && p.billingPeriod === "daily");
+                    const monthLow = m.prices.find(p => p.season === "low" && p.billingPeriod === "monthly");
+                    return (
+                      <tr key={m.id} style={{ borderBottom: `1px solid var(--border-light)` }}>
+                        <td className="px-2 py-1.5 font-semibold" style={{ color: "var(--text-heading)" }}>{m.name}</td>
+                        <td className="text-center px-2 py-1.5">{m.berthCount || "?"}</td>
+                        <td className="text-center px-2 py-1.5">{m.visitorBerths || "?"}</td>
+                        <td className="text-center px-2 py-1.5">{m.maxDraft ? `${m.maxDraft}m` : "?"}</td>
+                        <td className="text-center px-2 py-1.5">{m.fuel ? "✓" : "—"}</td>
+                        <td className="text-center px-2 py-1.5">{m.repairs ? "✓" : "—"}</td>
+                        <td className="text-center px-2 py-1.5" style={{ color: "var(--text-green)" }}>{dayLow ? `€${dayLow.price}` : "—"}</td>
+                        <td className="text-center px-2 py-1.5">{monthLow ? `€${monthLow.price}` : "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Marina cards */}
+          {portArea.marinas.map(m => (
+            <div key={m.id} className="rounded-lg px-3 py-2.5 mb-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-semibold text-xs" style={{ color: "var(--text-heading)" }}>{m.name}</span>
+                <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>{m.kind.replace("_", " ")} · {m.berthCount || "?"} berths</span>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[11px] mb-1" style={{ color: "var(--text-secondary)" }}>
+                {m.phone && <a href={`tel:${m.phone.replace(/\s/g, "")}`} style={{ color: "var(--text-blue-light)" }}>📞 {m.phone}</a>}
+                {m.vhfCh && <span>📻 VHF {m.vhfCh}</span>}
+                {m.shelter && <span>🛡️ <span style={{ color: m.shelter === "good" ? "var(--text-green)" : "var(--text-yellow)" }}>{m.shelter.toUpperCase()}</span></span>}
+              </div>
+              <div className="flex flex-wrap gap-1 text-[10px] mb-1">
+                {m.fuel && <span className="px-1.5 py-0.5 rounded" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>Fuel</span>}
+                {m.water && <span className="px-1.5 py-0.5 rounded" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>Water</span>}
+                {m.electric && <span className="px-1.5 py-0.5 rounded" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>Electric</span>}
+                {m.repairs && <span className="px-1.5 py-0.5 rounded" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>Repairs</span>}
+                {m.showers && <span className="px-1.5 py-0.5 rounded" style={{ border: `1px solid var(--border-light)` }}>Showers</span>}
+                {m.laundry && <span className="px-1.5 py-0.5 rounded" style={{ border: `1px solid var(--border-light)` }}>Laundry</span>}
+                {m.wifi && <span className="px-1.5 py-0.5 rounded" style={{ border: `1px solid var(--border-light)` }}>Wi-Fi</span>}
+              </div>
+              {m.prices.length > 0 ? (
+                <div className="text-[11px] mt-1" style={{ color: "var(--text-secondary)" }}>
+                  💰 {m.prices.filter(p => p.billingPeriod === "daily").map(p => `€${p.price}/${p.season}`).join(", ")}
+                  {m.prices.some(p => p.billingPeriod === "monthly") && ` · Monthly: ${m.prices.filter(p => p.billingPeriod === "monthly").map(p => `€${p.price}/${p.season}`).join(", ")}`}
+                </div>
+              ) : (
+                <div className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>No verified tariff yet</div>
+              )}
+              {m.notes && <div className="text-[11px] mt-1" style={{ color: "var(--text-muted)" }}>{m.notes}</div>}
+            </div>
+          ))}
+
+          <Link href={`/port/${portArea.slug}`} className="text-xs hover:opacity-80 mt-1 inline-block" style={{ color: "var(--text-blue-light)" }}>
+            View full port details →
+          </Link>
         </Section>
       )}
 
