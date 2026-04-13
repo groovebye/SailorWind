@@ -114,7 +114,10 @@ The Ría de Viveiro opens wide to the N. Enter between Punta del Faro (E) and Pu
       { name: "Celeiro fishing harbor alignment", eta_offset_hours: 5.8, lat: 43.680, lon: -7.585, bearing: "165°", visual_ref: "Fishing harbor infrastructure and breakwater become clear on the east side", type: "approach" },
       { name: "Berth Marina Viveiro", eta_offset_hours: 6.0, lat: 43.662, lon: -7.595, bearing: null, visual_ref: "Celeiro fishing port. Marina on E side.", type: "berth" },
     ]),
-    hazards: JSON.stringify([]),
+    hazards: JSON.stringify([
+      { name: "Ría de Foz bar", lat: 43.572, lon: -7.255, type: "shoal", severity: "low", description: "Shallow bar at Foz harbor entrance. Breaks in NW swell >2m. Enter on rising tide only." },
+      { name: "Ría de Viveiro cross-current", lat: 43.700, lon: -7.560, type: "current", severity: "low", description: "Tidal current at Viveiro ría mouth can run 0.5-1kt on springs. Set across the entrance." },
+    ]),
     fallbackPorts: JSON.stringify([
       { name: "Foz", slug: "foz", distance_nm: 12, time_hours: 2.4, conditions: "Small port. Moderate shelter. Enter in calm conditions." },
     ]),

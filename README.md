@@ -21,9 +21,11 @@
 | Theme | Dark/Light toggle (CSS variables + ThemeProvider context) |
 | Deploy | Docker multi-stage build, nginx reverse proxy |
 | Server | Hetzner CX23 (x86, Nuremberg, Ubuntu) |
-| Weather API | Open-Meteo (free, no API key required) |
+| Weather API | Open-Meteo (free) + Windy Point Forecast (GFS + gfsWave) |
 | Bathymetry | EMODnet (free GeoTIFF via WCS) |
-| Chart overlay | OpenSeaMap tiles + EMODnet WMS contours |
+| Chart overlay | OpenSeaMap tiles + local GeoJSON contours (5-200m) |
+| Webcams | Windy Webcams API v3 |
+| Routing | Hand-authored coastal graph (62 nodes, 59 edges, Dijkstra) |
 
 ---
 
@@ -227,11 +229,56 @@ Day/leg tiles on the passage dashboard open a dedicated leg brief page. That pag
 - arrival block with marina contacts, facilities and verification metadata
 - shore-side enrichment: restaurants, provisioning, yacht shops, practical services
 
+### Tidal Data
+
+All N Spain ports are **semi-diurnal** (2 HW / 2 LW per day). Curated tidal reference data per port:
+
+| Port | Spring Range | Neap Range | HW ref (vs Dover) | Stream notes |
+|------|-------------|-----------|-------------------|-------------|
+| Gijón | ~4.9m | ~2.5m | +5h30m | <0.5kt coast, 1kt at Cabo Peñas |
+| Avilés | ~4.9m | ~2.5m | +5h35m | Ría ebb 1-2kt in channel |
+| Luarca | ~4.5m | ~2.3m | +5h40m | Negligible |
+| Ribadeo | ~3.7m | ~1.9m | +5h50m | Ría entrance 1-2kt springs |
+| Viveiro | ~3.5m | ~1.8m | +5h55m | Ría mouth 0.5-1kt springs |
+| Cedeira | ~4.4m | ~2.2m | +6h00m | Negligible |
+| Ferrol | ~4.4m | ~2.2m | +5h45m | Ría entrance 0.5-1kt |
+| La Coruña | ~5.0m | ~2.5m | +5h40m | Harbor <0.3kt |
+
+**Critical tidal streams:**
+- **Estaca de Bares**: up to 2kt on springs. E-going flood HW Dover -5h to +1h.
+- **Cabo Ortegal**: up to 2kt on springs. Complex seabed = unpredictable.
+- **Wind against tide at capes = DANGEROUS breaking seas.**
+
+**Future integration:** WorldTides API (worldtides.info) for live HW/LW predictions. Currently curated text only.
+
+### Weather Sources
+
+| Source | Data | Model | Cost |
+|--------|------|-------|------|
+| Open-Meteo Weather | Wind, gusts, precip, clouds | ECMWF, GFS, ICON, AROME | Free |
+| Open-Meteo Marine | Waves, swell (height/period/dir) | ERA5 marine | Free, ~9 day range |
+| Windy GFS | Wind, gusts, precip, clouds, temp | GFS | Free (API key required) |
+| Windy gfsWave | Waves, swell 1+2 | GFS Wave | Free (same key), full 10-day |
+
+**Windy API key:** stored in `WINDY_API_KEY` env var. Free tier = GFS + gfsWave only (no ECMWF).
+
+**Marine data gap:** Open-Meteo marine forecast is ~9 days. Beyond that, wave/swell columns show "—" with "(no wave data)" in verdict. Windy gfsWave covers full 10 days.
+
+**Offshore coordinate shift:** Ports inside rías return null from marine APIs (resolved as land in ~5km grid). Fix: marine API calls shift lat +0.05° (~3NM north) into open water.
+
+### Orca Information
+
+Orca interaction zones are curated from Orca Ibérica / GTOA advisory data:
+- **Galicia coast** (42.5-43.5°N, 7.5-9.5°W): medium risk
+- **Cape Finisterre** (42.5-43.0°N, 8.8-9.5°W): high risk
+- Displayed as semi-transparent rectangles on leg maps
+- GT Orcas app recommended for real-time tracking
+
 Important current limitations:
 
-- tides / currents are still curated text, not yet a live `HW/LW/slack` computation for the selected date
-- orca information is advisory; the UI links to Orca Ibérica / GTOA sources and GT Orcas workflow, but there is no public live GT Orcas API integration in the app yet
-- port and shore-service enrichment is curated for the current Gijón → La Coruña coastal set and should continue to be rechecked in season
+- Tides are curated reference text, not yet live HW/LW for the selected departure date
+- Orca data is advisory; no public live API integration yet
+- Shore-service enrichment is curated for Gijón → La Coruña and should be rechecked in season
 
 **Leg rendering:**
 - The master route is split visually only at route-defining anchors (typically capes)
