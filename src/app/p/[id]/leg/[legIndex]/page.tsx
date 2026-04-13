@@ -204,6 +204,22 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     verdictColor = worstLevel === 2 ? "var(--text-red)" : worstLevel === 1 ? "var(--text-yellow)" : "var(--text-green)";
   }
 
+  // Leg scoring engine (0-100, higher = safer)
+  let legScore = 100;
+  const penalties: string[] = [];
+  if (maxWind > 25) { legScore -= 30; penalties.push(`Wind ${Math.round(maxWind)}kt (-30)`); }
+  else if (maxWind > 15) { legScore -= 10; penalties.push(`Wind ${Math.round(maxWind)}kt (-10)`); }
+  if (maxGust > 30) { legScore -= 20; penalties.push(`Gusts ${Math.round(maxGust)}kt (-20)`); }
+  if (maxWave > 3) { legScore -= 25; penalties.push(`Waves ${maxWave.toFixed(1)}m (-25)`); }
+  else if (maxWave > 2) { legScore -= 10; penalties.push(`Waves ${maxWave.toFixed(1)}m (-10)`); }
+  if (capeWps.length > 0) { legScore -= capeWps.length * 10; penalties.push(`${capeWps.length} cape(s) (-${capeWps.length * 10})`); }
+  if (leg.hours > 10) { legScore -= 10; penalties.push(`Long leg ${leg.hours.toFixed(0)}h (-10)`); }
+  if (leg.hours > 14) { legScore -= 10; penalties.push(`Night sailing (-10)`); }
+  if (guide?.difficulty === "challenging") { legScore -= 15; penalties.push("Challenging difficulty (-15)"); }
+  else if (guide?.difficulty === "dangerous") { legScore -= 30; penalties.push("Dangerous difficulty (-30)"); }
+  legScore = Math.max(0, Math.min(100, legScore));
+  const scoreColor = legScore >= 80 ? "var(--text-green)" : legScore >= 50 ? "var(--text-yellow)" : "var(--text-red)";
+
   const milestones = parseJsonTyped<Milestone>(guide?.milestones);
   const hazards = parseJsonTyped<Hazard>(guide?.hazards);
   const fallbacks = parseJsonTyped<FallbackPort>(guide?.fallbackPorts);
@@ -216,7 +232,15 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-4" style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
-      <Link href={`/p/${id}`} className="text-sm mb-3 inline-block hover:opacity-80" style={{ color: "var(--text-secondary)" }}>← Back to Passage</Link>
+      {/* Sticky compact bar */}
+      <div className="sticky top-0 z-40 -mx-6 px-6 py-2 flex items-center justify-between text-xs backdrop-blur-md" style={{ background: "var(--bg-primary)ee", borderBottom: `1px solid var(--border-light)` }}>
+        <Link href={`/p/${id}`} className="hover:opacity-80" style={{ color: "var(--text-secondary)" }}>← Back</Link>
+        <div className="flex items-center gap-3">
+          <span className="font-bold" style={{ color: "var(--text-heading)" }}>{fromPort?.name} → {dest?.name}</span>
+          <span className="font-black px-2 py-0.5 rounded" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
+          <span style={{ color: "var(--text-muted)" }}>{leg?.nm}NM · {Math.round(maxWind)}kt · {maxWave.toFixed(1)}m</span>
+        </div>
+      </div>
 
       {/* ══════ HEADER ══════ */}
       <div className="rounded-xl px-5 py-4 mb-3" style={{ background: `linear-gradient(to right, var(--bg-header-from), var(--bg-header-to))`, border: `1px solid var(--border)` }}>
@@ -237,6 +261,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
           <div className="flex items-center gap-3">
             <span className="text-2xl font-black px-3 py-1 rounded-lg" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
+            <span className="text-lg font-bold" style={{ color: scoreColor }}>{legScore}/100</span>
             <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
               <div>{leg.nm} NM · ~{leg.hours.toFixed(1)}h · {passage.speed}kt</div>
               <div>{fmtLocal(leg.departTime, fromTz)} → {fmtLocal(leg.arriveTime, toTz)}</div>
@@ -309,7 +334,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
       {/* ══════ MAP ══════ */}
       <div className="rounded-xl overflow-hidden mb-3" style={{ border: `1px solid var(--border-light)`, height: 400 }}>
-        <LegMap waypoints={legWps} fromPort={fromPort} toPort={dest} theme={theme} />
+        <LegMap waypoints={legWps} fromPort={fromPort} toPort={dest} theme={theme} hazards={hazards} milestones={milestones} />
       </div>
 
       {/* ══════ PILOTAGE ══════ */}

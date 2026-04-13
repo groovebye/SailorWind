@@ -1,6 +1,6 @@
 "use client";
 
-import { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline, Rectangle, useMap, GeoJSON as GeoJSONLayer } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Popup, Polyline, Rectangle, useMap, GeoJSON as GeoJSONLayer, Marker } from "react-leaflet";
 import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -12,6 +12,8 @@ interface Port {
   orcaRisk?: string | null; tier?: string | null;
 }
 interface Waypoint { port: Port; isStop: boolean; isCape: boolean; }
+interface Hazard { name: string; lat: number; lon: number; type: string; severity: string; description: string; }
+interface Milestone { name: string; lat: number; lon: number; eta_offset_hours: number; bearing: string | null; visual_ref: string; type: string; notes?: string; }
 
 const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png";
@@ -51,11 +53,17 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
   return null;
 }
 
-export default function LegMap({ waypoints, fromPort, toPort, theme }: {
+const HAZARD_COLORS: Record<string, string> = {
+  critical: "#ef4444", high: "#f97316", medium: "#eab308", low: "#94a3b8",
+};
+
+export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [], milestones = [] }: {
   waypoints: Waypoint[];
   fromPort: Port;
   toPort: Port;
   theme: string;
+  hazards?: Hazard[];
+  milestones?: Milestone[];
 }) {
   const [contours, setContours] = useState<FeatureCollection | null>(null);
 
@@ -161,6 +169,41 @@ export default function LegMap({ waypoints, fromPort, toPort, theme }: {
             <span style={{ fontSize: 10, color: "#94a3b8" }}>
               {w.port.type.toUpperCase()}{w.isStop ? " STOP" : ""}{w.isCape ? " CAPE" : ""}
             </span>
+          </Tooltip>
+        </CircleMarker>
+      ))}
+
+      {/* Hazard markers */}
+      {hazards.map((h, i) => (
+        <CircleMarker key={`hz-${i}`} center={[h.lat, h.lon]} radius={8}
+          pathOptions={{
+            fillColor: HAZARD_COLORS[h.severity] || "#eab308",
+            color: HAZARD_COLORS[h.severity] || "#eab308",
+            weight: 2, fillOpacity: 0.3, dashArray: "4 3",
+          }}>
+          <Popup maxWidth={250}>
+            <div style={{ fontFamily: "monospace", fontSize: 12 }}>
+              <div style={{ fontWeight: 700, color: HAZARD_COLORS[h.severity] }}>{h.name}</div>
+              <div style={{ fontSize: 10, color: "#94a3b8", marginBottom: 4 }}>{h.type.toUpperCase()} · {h.severity}</div>
+              <div style={{ fontSize: 11 }}>{h.description}</div>
+            </div>
+          </Popup>
+          <Tooltip direction="top" offset={[0, -10]}>
+            <span style={{ color: HAZARD_COLORS[h.severity], fontWeight: 700 }}>⚠ {h.name}</span>
+          </Tooltip>
+        </CircleMarker>
+      ))}
+
+      {/* Milestone markers */}
+      {milestones.filter(m => m.lat && m.lon).map((m, i) => (
+        <CircleMarker key={`ms-${i}`} center={[m.lat, m.lon]} radius={4}
+          pathOptions={{ fillColor: "#93c5fd", color: "#3b82f6", weight: 1.5, fillOpacity: 0.7 }}>
+          <Tooltip direction="top" offset={[0, -6]}>
+            <span style={{ fontWeight: 600 }}>{m.name}</span><br />
+            <span style={{ fontSize: 10, color: "#94a3b8" }}>
+              +{m.eta_offset_hours}h {m.bearing && `· BRG ${m.bearing}`}
+            </span><br />
+            <span style={{ fontSize: 10 }}>{m.visual_ref}</span>
           </Tooltip>
         </CircleMarker>
       ))}
