@@ -2,11 +2,14 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useTheme } from "@/lib/theme";
+
+const MarinaMiniMap = dynamic(() => import("@/components/MarinaMiniMap"), { ssr: false });
 
 interface MarinaPrice { season: string; billingPeriod: string; price: number; currency: string; sourceName: string | null; confidence: string | null; checkedAt: string | null; }
 interface MarinaOption {
-  id: string; name: string; slug: string; kind: string;
+  id: string; name: string; slug: string; kind: string; lat: number; lon: number;
   phone: string | null; email: string | null; website: string | null; vhfCh: string | null;
   shelter: string | null; maxDraft: number | null; maxLength: number | null;
   berthCount: number | null; visitorBerths: number | null;
@@ -17,6 +20,7 @@ interface MarinaOption {
   entranceNotes: string | null; waitingArea: string | null;
   bestTideEntry: string | null; swellSensitivity: string | null;
   notes: string | null; prices: MarinaPrice[];
+  mapFeatures: { type: string; name: string; geometry: { type: string; coordinates: [number, number] }; description: string | null }[];
 }
 interface PortArea {
   name: string; slug: string; country: string; region: string | null;
@@ -189,6 +193,21 @@ export default function PortAreaPage({ params }: { params: Promise<{ slug: strin
 
             {/* Approach */}
             {m.approachDescription && <div className="text-xs p-2 rounded mb-2" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>{m.approachDescription}</div>}
+
+            {/* Marina mini-map */}
+            {m.mapFeatures && m.mapFeatures.length > 0 && (
+              <div className="mb-2">
+                <MarinaMiniMap
+                  features={m.mapFeatures}
+                  center={[m.lat, m.lon]}
+                  name={m.name}
+                />
+              </div>
+            )}
+            {m.mapFeatures && m.mapFeatures.length === 0 && (
+              <div className="text-[10px] mb-2 px-2 py-1 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-muted)" }}>Map not curated yet</div>
+            )}
+
             {m.notes && <div className="text-xs" style={{ color: "var(--text-muted)" }}>{m.notes}</div>}
           </div>
         </div>

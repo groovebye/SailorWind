@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
       where: { slug },
       include: {
         marinas: {
-          include: { prices: true },
+          include: { prices: true, mapFeatures: { orderBy: { sortOrder: "asc" } } },
           orderBy: { berthCount: "desc" },
         },
       },
