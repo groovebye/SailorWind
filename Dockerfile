@@ -9,8 +9,7 @@ RUN npm ci
 # Prisma generate
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
-COPY src/generated ./src/generated/
-RUN npx prisma generate
+RUN mkdir -p src/generated/prisma && npx prisma generate --no-hints
 
 # Build
 FROM base AS builder
