@@ -15,8 +15,8 @@ RUN mkdir -p src/generated/prisma && npx prisma generate --no-hints
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/src/generated ./src/generated
 COPY . .
+COPY --from=deps /app/src/generated ./src/generated
 RUN npm run build
 
 # Production
