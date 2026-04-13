@@ -356,10 +356,37 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
         {legs.map((l, i) => {
           const fromTz = tzForPort(l.from.port.lon);
           const toTz = tzForPort(l.to.port.lon);
+          // Compute worst verdict for this leg from forecasts
+          let legVerdict = "";
+          let legVerdictColor = "";
+          if (activeForecasts) {
+            const legWps = passage.waypoints.filter(w =>
+              w.port.coastlineNm >= l.from.port.coastlineNm - 0.1 &&
+              w.port.coastlineNm <= l.to.port.coastlineNm + 0.1
+            );
+            let worst = 0;
+            for (const w of legWps) {
+              const wpF = activeForecasts[w.port.name] || [];
+              const eta = new Date(l.departTime.getTime() + (w.port.coastlineNm - l.from.port.coastlineNm) / (l.to.port.coastlineNm - l.from.port.coastlineNm || 1) * (l.arriveTime.getTime() - l.departTime.getTime()));
+              let bestF: ForecastEntry | null = null;
+              let bestD = Infinity;
+              for (const f of wpF) { const d = Math.abs(new Date(f.time).getTime() - eta.getTime()); if (d < bestD) { bestD = d; bestF = f; } }
+              if (bestF) {
+                if (bestF.verdict.startsWith("NO") && worst < 2) worst = 2;
+                else if (bestF.verdict.startsWith("CAUTION") && worst < 1) worst = 1;
+              }
+            }
+            legVerdict = worst === 2 ? "NO-GO" : worst === 1 ? "CAUTION" : "GO";
+            legVerdictColor = worst === 2 ? "var(--text-red)" : worst === 1 ? "var(--text-yellow)" : "var(--text-green)";
+          }
+          const capes = passage.waypoints.filter(w => w.isCape && w.port.coastlineNm >= l.from.port.coastlineNm - 0.1 && w.port.coastlineNm <= l.to.port.coastlineNm + 0.1);
           return (
             <Link key={i} href={`/p/${id}/leg/${i}`} style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }} className="rounded-lg px-3 py-2 flex-1 min-w-[180px] hover:opacity-80 transition-opacity cursor-pointer">
-              <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{mode === "daily" ? `D${i + 1}: ` : ""}{l.from.port.name} &rarr; {l.to.port.name}</div>
-              <div className="text-xs" style={{ color: "var(--text-muted)" }}>{l.nm} NM, ~{l.hours.toFixed(1)}h</div>
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{mode === "daily" ? `D${i + 1}: ` : ""}{l.from.port.name} &rarr; {l.to.port.name}</div>
+                {legVerdict && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ color: legVerdictColor, background: legVerdict === "GO" ? "var(--accent-go)" : legVerdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{legVerdict}</span>}
+              </div>
+              <div className="text-xs" style={{ color: "var(--text-muted)" }}>{l.nm} NM, ~{l.hours.toFixed(1)}h{capes.length > 0 ? ` · ${capes.length} cape${capes.length > 1 ? "s" : ""}` : ""}</div>
               <div className="text-xs mt-0.5" style={{ color: "var(--text-green)" }}>{fmtLocal(l.departTime, fromTz)} &rarr; {fmtTimeLocal(l.arriveTime, toTz)}</div>
             </Link>
           );

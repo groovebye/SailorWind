@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useTheme } from "@/lib/theme";
+import type { ForecastEntry } from "@/lib/weather";
 
 const LegMap = dynamic(() => import("./LegMap"), { ssr: false });
 
@@ -78,6 +79,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const legIndex = parseInt(legIndexStr, 10);
   const { theme } = useTheme();
   const [passage, setPassage] = useState<Passage | null>(null);
+  const [forecasts, setForecasts] = useState<Record<string, ForecastEntry[]> | null>(null);
   const [webcams, setWebcams] = useState<Webcam[]>([]);
 
   useEffect(() => {
@@ -112,6 +114,21 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const leg = legs[legIndex] || null;
   const dest = leg?.to.port || null;
 
+  // Fetch forecasts for leg waypoints
+  useEffect(() => {
+    if (!passage || !leg) return;
+    const legWps = passage.waypoints.filter(
+      w => w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
+           w.port.coastlineNm <= leg.to.port.coastlineNm + 0.1
+    );
+    const wps = legWps.map(w => ({ name: w.port.name, lat: w.port.lat, lon: w.port.lon, isCape: w.isCape }));
+    fetch("/api/forecast/batch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ waypoints: wps, model: passage.model }),
+    }).then(r => r.json()).then(data => { if (!data.error) setForecasts(data); }).catch(() => {});
+  }, [passage, leg]);
+
   // Fetch webcams for destination — MUST be before any early return
   useEffect(() => {
     if (dest) {
@@ -135,6 +152,67 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   );
   const capeWps = legWps.filter(w => w.isCape);
 
+  // Decision Summary — compute from forecast data
+  type Decision = { verdict: string; color: string; maxWind: number; maxGust: number; maxWave: number; maxSwell: number; worstWp: string; nightHours: number; hasForecast: boolean; bailout: string | null };
+  function computeDecision(): Decision {
+    const d: Decision = { verdict: "NO DATA", color: "var(--text-muted)", maxWind: 0, maxGust: 0, maxWave: 0, maxSwell: 0, worstWp: "", nightHours: 0, hasForecast: false, bailout: null };
+    if (!forecasts || !leg) return d;
+
+    let worstLevel = 0; // 0=GO, 1=CAUTION, 2=NO-GO
+    for (const wp of legWps) {
+      const wpForecasts = forecasts[wp.port.name] || [];
+      if (wpForecasts.length === 0) continue;
+      d.hasForecast = true;
+
+      // Find closest forecast to ETA
+      const eta = getWaypointETA(wp);
+      let best: ForecastEntry | null = null;
+      let bestDiff = Infinity;
+      for (const f of wpForecasts) {
+        const diff = Math.abs(new Date(f.time).getTime() - eta.getTime());
+        if (diff < bestDiff) { bestDiff = diff; best = f; }
+      }
+      if (!best) continue;
+
+      if (best.windKt > d.maxWind) d.maxWind = best.windKt;
+      if (best.gustKt > d.maxGust) d.maxGust = best.gustKt;
+      if (best.waveM != null && best.waveM > d.maxWave) d.maxWave = best.waveM;
+      if (best.swellM != null && best.swellM > d.maxSwell) d.maxSwell = best.swellM;
+
+      let level = 0;
+      if (best.verdict.startsWith("NO")) { level = 2; }
+      else if (best.verdict.startsWith("CAUTION")) { level = 1; }
+      if (level > worstLevel) { worstLevel = level; d.worstWp = wp.port.name; }
+    }
+
+    if (!d.hasForecast) return d;
+    d.verdict = worstLevel === 2 ? "NO-GO" : worstLevel === 1 ? "CAUTION" : "GO";
+    d.color = worstLevel === 2 ? "var(--text-red)" : worstLevel === 1 ? "var(--text-yellow)" : "var(--text-green)";
+
+    // Night hours (sunset ~20:00, sunrise ~07:00 in Spain April)
+    const depH = leg.departTime.getUTCHours();
+    const arrH = leg.arriveTime.getUTCHours();
+    if (arrH >= 20 || arrH <= 7) d.nightHours = Math.max(1, Math.min(leg.hours, arrH <= 7 ? 7 - arrH : arrH - 20));
+
+    // Bailout — nearest non-cape port that's not start/end
+    const intermediates = legWps.filter(w => !w.isCape && w.port.name !== leg.from.port.name && w.port.name !== leg.to.port.name);
+    if (intermediates.length > 0) d.bailout = intermediates[0].port.name;
+
+    return d;
+  }
+
+  function getWaypointETA(wp: Waypoint): Date {
+    if (!leg) return new Date();
+    if (wp.port.name === leg.from.port.name) return leg.departTime;
+    if (wp.port.name === leg.to.port.name) return leg.arriveTime;
+    const legDist = leg.to.port.coastlineNm - leg.from.port.coastlineNm;
+    if (legDist === 0) return leg.departTime;
+    const frac = (wp.port.coastlineNm - leg.from.port.coastlineNm) / legDist;
+    return new Date(leg.departTime.getTime() + frac * (leg.arriveTime.getTime() - leg.departTime.getTime()));
+  }
+
+  const decision = computeDecision();
+
   // Parse JSON fields safely
   const parseJson = (val: unknown): PlaceInfo[] => {
     if (!val) return [];
@@ -148,7 +226,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const groceryStores = parseJson(dest.groceryStores);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-4" style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
+    <div className="max-w-[1200px] mx-auto px-6 py-4" style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
       {/* Back */}
       <Link href={`/p/${id}`} className="text-sm mb-4 inline-block transition-colors hover:opacity-80" style={{ color: "var(--text-secondary)" }}>
         &#8592; Back to Passage
@@ -176,6 +254,28 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           </div>
         )}
       </div>
+
+      {/* Decision Summary */}
+      {decision.hasForecast && (
+        <div className="rounded-xl px-5 py-3 mb-4 flex items-center justify-between flex-wrap gap-3" style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-black px-3 py-1 rounded-lg" style={{ color: decision.color, background: decision.verdict === "GO" ? "var(--accent-go)" : decision.verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>
+              {decision.verdict}
+            </span>
+            {decision.worstWp && decision.verdict !== "GO" && (
+              <span className="text-xs" style={{ color: "var(--text-muted)" }}>Worst: {decision.worstWp}</span>
+            )}
+          </div>
+          <div className="flex gap-4 text-xs" style={{ color: "var(--text-secondary)" }}>
+            <div><span style={{ color: "var(--text-muted)" }}>Max wind</span> <strong>{Math.round(decision.maxWind)}kt</strong></div>
+            <div><span style={{ color: "var(--text-muted)" }}>Gusts</span> <strong>{Math.round(decision.maxGust)}kt</strong></div>
+            <div><span style={{ color: "var(--text-muted)" }}>Waves</span> <strong>{decision.maxWave.toFixed(1)}m</strong></div>
+            <div><span style={{ color: "var(--text-muted)" }}>Swell</span> <strong>{decision.maxSwell.toFixed(1)}m</strong></div>
+            {decision.nightHours > 0 && <div style={{ color: "var(--text-yellow)" }}>&#127769; {decision.nightHours.toFixed(0)}h night</div>}
+            {decision.bailout && <div><span style={{ color: "var(--text-muted)" }}>Bailout:</span> <strong>{decision.bailout}</strong></div>}
+          </div>
+        </div>
+      )}
 
       {/* Section 2: Leg Map */}
       <div className="rounded-xl overflow-hidden mb-3" style={{ border: `1px solid var(--border-light)`, height: 350 }}>
