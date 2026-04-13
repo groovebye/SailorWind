@@ -57,6 +57,17 @@ model Port {
   approachDescription String? // detailed approach text
   passageNotes        String? // general sailing notes for this area
 
+  // Shore services (JSON arrays beyond restaurants/shops)
+  extras             Json?     // [{category, name, phone, hours, address, description}]
+  // categories: "atm", "pharmacy", "hospital", "laundry", "gas_refill",
+  //             "taxi", "bus", "hardware", "bakery", "fish_market"
+
+  // Marina facilities detail
+  marinaFacilities   Json?     // {showers: bool, laundry: bool, wifi: bool, ...}
+
+  // Source verification for key fields
+  sourceVerification Json?     // {phone: {source, url, checkedAt}, hours: {...}, ...}
+
   // Coastline ordering (distance in NM from a reference point along coast)
   // Used to order ports between two points and estimate distances
   coastSegment  String   // e.g. "biscay-north", "galicia-west", "portugal"
@@ -107,6 +118,51 @@ model Passage {
 enum PassageMode {
   daily
   nonstop
+}
+
+// ── Leg Guides (curated pilotage knowledge) ─────────────────────
+
+model LegGuide {
+  id            String  @id @default(cuid())
+  fromSlug      String  // port slug: "gijon"
+  toSlug        String  // port slug: "luarca"
+
+  // Pilotage summary
+  difficulty    String?  // "easy" | "moderate" | "challenging" | "dangerous"
+  description   String?  // Brief leg description
+  pilotageText  String?  // Full pilotage notes (markdown)
+
+  // Milestones JSON array
+  // [{name, lat, lon, eta_offset_hours, bearing, visual_ref, notes, type}]
+  // types: "departure", "clear_breakwater", "course_change", "round_cape", "approach", "berth"
+  milestones    Json?
+
+  // Hazards JSON array
+  // [{name, lat, lon, type, severity, description, visual_ref}]
+  // types: "shoal", "rock", "current", "wind_acceleration", "traffic", "military"
+  hazards       Json?
+
+  // Fallback ports JSON array
+  // [{name, slug, distance_nm, time_hours, conditions}]
+  fallbackPorts Json?
+
+  // Tidal info
+  tidalNotes    String?  // "Tidal range 3.5m at springs. Enter Ribadeo +/- 2h HW"
+  tidalGate     String?  // "Depart Luarca HW-1 to HW+3 for fair tide"
+
+  // Current info
+  currentNotes  String?
+
+  // Best departure window
+  bestWindow    String?  // "Early morning 06:00-08:00, offshore breeze"
+
+  // Night sailing notes
+  nightNotes    String?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([fromSlug, toSlug])
 }
 
 // Junction: which ports are start/end of this passage

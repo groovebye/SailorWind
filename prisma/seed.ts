@@ -254,6 +254,18 @@ async function main() {
     });
   }
   console.log(`Seeded ${ports.length} ports with detailed data.`);
+
+  // Seed leg guides
+  const { LEG_GUIDES } = await import("./leg-guides.js");
+  console.log("Seeding leg guides...");
+  for (const lg of LEG_GUIDES) {
+    await prisma.legGuide.upsert({
+      where: { fromSlug_toSlug: { fromSlug: lg.fromSlug, toSlug: lg.toSlug } },
+      update: lg,
+      create: lg,
+    });
+  }
+  console.log(`Seeded ${LEG_GUIDES.length} leg guides.`);
 }
 
 main()
