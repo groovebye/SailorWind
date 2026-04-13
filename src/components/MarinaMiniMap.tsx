@@ -1,6 +1,6 @@
 "use client";
 
-import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Polyline, Polygon, Tooltip, useMap } from "react-leaflet";
 import { useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -60,7 +60,7 @@ export default function MarinaMiniMap({ features, center, name }: {
   name: string;
 }) {
   return (
-    <div className="rounded-lg overflow-hidden" style={{ height: 220, border: `1px solid var(--border-light)` }}>
+    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid var(--border-light)` }}>
       <MapContainer center={center} zoom={16} className="h-full w-full" style={{ background: "#0f172a" }}
         zoomControl={false} attributionControl={false}>
         <FitToFeatures features={features} center={center} />
@@ -70,19 +70,41 @@ export default function MarinaMiniMap({ features, center, name }: {
 
         {features.map((f, i) => {
           if (!f.geometry?.coordinates) return null;
-          const [lon, lat] = f.geometry.coordinates;
           const color = FEATURE_COLORS[f.type] || "#94a3b8";
+          const tooltip = (
+            <Tooltip direction="top" offset={[0, -8]} permanent={features.length <= 6}>
+              <span style={{ fontSize: 11 }}>{FEATURE_LABELS[f.type] || "📍"} {f.name}</span>
+              {f.description && <><br /><span style={{ fontSize: 10, color: "#94a3b8" }}>{f.description}</span></>}
+            </Tooltip>
+          );
+
+          if (f.geometry.type === "LineString") {
+            const positions = (f.geometry.coordinates as [number, number][]).map(([lon, lat]) => [lat, lon] as [number, number]);
+            return <Polyline key={i} positions={positions} pathOptions={{ color, weight: 3, opacity: 0.8 }}>{tooltip}</Polyline>;
+          }
+          if (f.geometry.type === "Polygon") {
+            const positions = ((f.geometry.coordinates as [number, number][][])[0] || []).map(([lon, lat]) => [lat, lon] as [number, number]);
+            return <Polygon key={i} positions={positions} pathOptions={{ fillColor: color, color, weight: 2, fillOpacity: 0.2 }}>{tooltip}</Polygon>;
+          }
+          // Default: Point
+          const [lon, lat] = f.geometry.coordinates as [number, number];
           return (
             <CircleMarker key={i} center={[lat, lon]} radius={7}
               pathOptions={{ fillColor: color, color, weight: 2, fillOpacity: 0.8 }}>
-              <Tooltip direction="top" offset={[0, -8]} permanent={features.length <= 6}>
-                <span style={{ fontSize: 11 }}>{FEATURE_LABELS[f.type] || "📍"} {f.name}</span>
-                {f.description && <><br /><span style={{ fontSize: 10, color: "#94a3b8" }}>{f.description}</span></>}
-              </Tooltip>
+              {tooltip}
             </CircleMarker>
           );
         })}
       </MapContainer>
+      {/* Legend */}
+      <div className="flex flex-wrap gap-2 px-2 py-1.5 text-[9px]" style={{ background: "var(--bg-card)", color: "var(--text-muted)" }}>
+        {[...new Set(features.map(f => f.type))].map(t => (
+          <span key={t} className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full inline-block" style={{ background: FEATURE_COLORS[t] || "#94a3b8" }} />
+            {FEATURE_LABELS[t] || "📍"} {t.replace("_", " ")}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }

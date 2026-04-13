@@ -117,7 +117,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [arrTide, setArrTide] = useState<TideData | null>(null);
   interface MarinaPrice { season: string; billingPeriod: string; price: number; currency: string; sourceName: string | null; confidence: string | null; }
   interface MarinaOptionData { id: string; name: string; slug: string; kind: string; phone: string | null; vhfCh: string | null; website: string | null; shelter: string | null; maxDraft: number | null; maxLength: number | null; berthCount: number | null; visitorBerths: number | null; fuel: boolean; water: boolean; electric: boolean; repairs: boolean; laundry: boolean; showers: boolean; toilets: boolean; wifi: boolean; customs: boolean; securityGate: boolean; pumpOut: boolean; approachDescription: string | null; notes: string | null; prices: MarinaPrice[]; }
-  interface PortAreaData { name: string; slug: string; marinas: MarinaOptionData[]; }
+  interface NearbyPlaceData { id: string; name: string; category: string; description: string | null; phone: string | null; hours: string | null; address: string | null; distanceMeters: number | null; walkMinutes: number | null; rating: number | null; reviewCount: number | null; priceLevel: string | null; isRecommended: boolean; bestFor: string | null; marinaOptionId: string | null; }
+  interface PortAreaData { name: string; slug: string; marinas: MarinaOptionData[]; nearbyPlaces: NearbyPlaceData[]; }
   const [portArea, setPortArea] = useState<PortAreaData | null>(null);
 
   useEffect(() => { fetch(`/api/passage?id=${id}`).then(r => r.json()).then(setPassage); }, [id]);
@@ -653,32 +654,50 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </Section>
       )}
 
-      {/* ══════ RESTAURANTS ══════ (Full mode only) */}
-      {viewMode === "full" && restaurants.length > 0 && (
-        <Section title={`Restaurants (${restaurants.length})`} icon="🍽️">
-          {restaurants.map((r, i) => <PlaceCard key={i} place={r} />)}
-        </Section>
-      )}
+      {/* ══════ SHORE SERVICES (NearbyPlace) ══════ (Full mode only) */}
+      {viewMode === "full" && portArea?.nearbyPlaces && portArea.nearbyPlaces.length > 0 && (() => {
+        const CATS: Record<string, { icon: string; label: string }> = {
+          restaurant: { icon: "🍽️", label: "Restaurants" }, chandlery: { icon: "⛵", label: "Chandlery" },
+          grocery: { icon: "🛒", label: "Grocery" }, market: { icon: "🏪", label: "Markets" },
+          pharmacy: { icon: "💊", label: "Pharmacy" }, laundry: { icon: "👕", label: "Laundry" },
+          atm: { icon: "🏧", label: "ATM" }, hospital: { icon: "🏥", label: "Hospital" },
+        };
+        return [...new Set(portArea.nearbyPlaces.map(p => p.category))].map(cat => {
+          const places = portArea.nearbyPlaces.filter(p => p.category === cat);
+          const m = CATS[cat] || { icon: "📍", label: cat };
+          return (
+            <Section key={cat} title={`${m.label} (${places.length})`} icon={m.icon} defaultOpen={cat === "restaurant"}>
+              {places.map(p => (
+                <div key={p.id} className="rounded-lg px-3 py-2 mb-1.5" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-xs" style={{ color: "var(--text-heading)" }}>{p.name}</span>
+                      {p.isRecommended && <span className="text-[9px] px-1 py-0.5 rounded" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>Recommended</span>}
+                    </div>
+                    {p.rating && <span className="text-[11px]" style={{ color: "var(--text-yellow)" }}>★ {p.rating}{p.reviewCount ? ` (${p.reviewCount})` : ""}</span>}
+                  </div>
+                  {p.description && <div className="text-[11px] mb-0.5" style={{ color: "var(--text-muted)" }}>{p.description}</div>}
+                  <div className="flex flex-wrap gap-2 text-[10px]" style={{ color: "var(--text-secondary)" }}>
+                    {(p.distanceMeters || p.walkMinutes) && <span>🚶 {p.distanceMeters ? `${p.distanceMeters}m` : ""}{p.distanceMeters && p.walkMinutes ? " · " : ""}{p.walkMinutes ? `${p.walkMinutes} min` : ""}</span>}
+                    {p.phone && <a href={`tel:${p.phone.replace(/\s/g, "")}`} style={{ color: "var(--text-blue-light)" }}>📞 {p.phone}</a>}
+                    {p.hours && <span>🕐 {p.hours}</span>}
+                  </div>
+                </div>
+              ))}
+            </Section>
+          );
+        });
+      })()}
 
-      {/* ══════ YACHT SHOPS ══════ (Full mode only) */}
-      {viewMode === "full" && yachtShops.length > 0 && (
-        <Section title={`Yacht & Marine (${yachtShops.length})`} icon="⛵">
-          {yachtShops.map((s, i) => <PlaceCard key={i} place={s} />)}
-        </Section>
+      {/* Fallback: old JSON data if no NearbyPlace */}
+      {viewMode === "full" && (!portArea?.nearbyPlaces?.length) && restaurants.length > 0 && (
+        <Section title={`Restaurants (${restaurants.length})`} icon="🍽️">{restaurants.map((r, i) => <PlaceCard key={i} place={r} />)}</Section>
       )}
-
-      {/* ══════ GROCERY ══════ (Full mode only) */}
-      {viewMode === "full" && groceryStores.length > 0 && (
-        <Section title={`Provisioning (${groceryStores.length})`} icon="🛒">
-          {groceryStores.map((s, i) => <PlaceCard key={i} place={s} />)}
-        </Section>
+      {viewMode === "full" && (!portArea?.nearbyPlaces?.length) && yachtShops.length > 0 && (
+        <Section title={`Yacht & Marine (${yachtShops.length})`} icon="⛵">{yachtShops.map((s, i) => <PlaceCard key={i} place={s} />)}</Section>
       )}
-
-      {/* ══════ EXTRAS ══════ (Full mode only) */}
-      {viewMode === "full" && extras.length > 0 && (
-        <Section title="Services & Extras" icon="📋">
-          {extras.map((e, i) => <PlaceCard key={i} place={e} />)}
-        </Section>
+      {viewMode === "full" && (!portArea?.nearbyPlaces?.length) && groceryStores.length > 0 && (
+        <Section title={`Provisioning (${groceryStores.length})`} icon="🛒">{groceryStores.map((s, i) => <PlaceCard key={i} place={s} />)}</Section>
       )}
 
       {/* ══════ WEBCAMS ══════ (Full mode only) */}

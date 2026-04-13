@@ -12,6 +12,7 @@ export default async function Home() {
           prices: { where: { loaMeters: 9.5, billingPeriod: "daily", season: "low" }, take: 1 },
         },
       },
+      nearbyPlaces: { where: { isRecommended: true }, take: 5 },
     },
   });
 
@@ -93,17 +94,22 @@ export default async function Home() {
             {portAreas.map((area) => {
               const totalBerths = area.marinas.reduce((s, m) => s + (m.berthCount || 0), 0);
               const cheapest = area.marinas.flatMap(m => m.prices).sort((a, b) => a.price - b.price)[0];
+              const hasRepairs = area.marinas.some(m => m.repairs);
+              const hasFuel = area.marinas.some(m => m.fuel);
+              const recommended = (area.nearbyPlaces || []).length;
               return (
                 <Link key={area.id} href={`/port/${area.slug}`}
                   className="block rounded-lg p-4 hover:opacity-80 transition-opacity"
                   style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
                   <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{area.name}</div>
                   <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                    {area.region} · {area.type.replace("_", " ")} · {area.marinas.length} marina{area.marinas.length > 1 ? "s" : ""}
+                    {area.region} · {area.marinas.length} marina{area.marinas.length > 1 ? "s" : ""} · {totalBerths} berths
                   </div>
-                  <div className="flex gap-3 mt-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
-                    {totalBerths > 0 && <span>⚓ {totalBerths} berths</span>}
-                    {cheapest && <span style={{ color: "var(--text-green)" }}>from €{cheapest.price}/day</span>}
+                  <div className="flex gap-2 mt-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
+                    {cheapest && <span style={{ color: "var(--text-green)" }}>€{cheapest.price}/day</span>}
+                    {hasFuel && <span>⛽</span>}
+                    {hasRepairs && <span>🔧</span>}
+                    {recommended > 0 && <span>⭐ {recommended}</span>}
                   </div>
                   {area.orcaRisk && area.orcaRisk !== "none" && area.orcaRisk !== "low" && (
                     <div className="text-[10px] mt-1" style={{ color: "var(--text-yellow)" }}>🐋 Orca: {area.orcaRisk}</div>

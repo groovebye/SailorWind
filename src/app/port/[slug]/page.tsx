@@ -20,7 +20,11 @@ interface MarinaOption {
   entranceNotes: string | null; waitingArea: string | null;
   bestTideEntry: string | null; swellSensitivity: string | null;
   notes: string | null; prices: MarinaPrice[];
-  mapFeatures: { type: string; name: string; geometry: { type: string; coordinates: [number, number] }; description: string | null }[];
+  sizeLabel: string | null; bestFor: string | null; drawbacks: string | null;
+  cityWalkMinutes: number | null;
+  officialLayoutImageUrl: string | null; officialLayoutPdfUrl: string | null;
+  officialLayoutSource: string | null;
+  mapFeatures: { type: string; name: string; geometry: { type: string; coordinates: unknown }; description: string | null }[];
 }
 interface NearbyPlace {
   id: string; name: string; category: string; subcategory: string | null;
@@ -262,7 +266,27 @@ export default function PortAreaPage({ params }: { params: Promise<{ slug: strin
               <div className="text-[10px] mb-2 px-2 py-1 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-muted)" }}>Map not curated yet</div>
             )}
 
-            {m.notes && <div className="text-xs" style={{ color: "var(--text-muted)" }}>{m.notes}</div>}
+            {/* Extended marina info */}
+            <div className="flex flex-wrap gap-2 text-[11px] mt-1" style={{ color: "var(--text-secondary)" }}>
+              {m.bestFor && <div>✨ <strong>Best for:</strong> {m.bestFor}</div>}
+              {m.drawbacks && <div>⚠️ {m.drawbacks}</div>}
+              {m.cityWalkMinutes && <div>🏙️ {m.cityWalkMinutes} min to town center</div>}
+              {m.sizeLabel && <div>📊 {m.sizeLabel} marina</div>}
+            </div>
+
+            {/* Official layout */}
+            {m.officialLayoutImageUrl || m.officialLayoutPdfUrl ? (
+              <div className="mt-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+                📐 <strong>Official layout:</strong>{" "}
+                {m.officialLayoutPdfUrl && <a href={m.officialLayoutPdfUrl} target="_blank" rel="noopener" style={{ color: "var(--text-blue-light)" }}>PDF</a>}
+                {m.officialLayoutImageUrl && <>{m.officialLayoutPdfUrl ? " · " : ""}<a href={m.officialLayoutImageUrl} target="_blank" rel="noopener" style={{ color: "var(--text-blue-light)" }}>Image</a></>}
+                {m.officialLayoutSource && <span style={{ color: "var(--text-muted)" }}> ({m.officialLayoutSource})</span>}
+              </div>
+            ) : (
+              <div className="mt-1 text-[10px]" style={{ color: "var(--text-muted)" }}>Official layout not added yet</div>
+            )}
+
+            {m.notes && <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{m.notes}</div>}
           </div>
         </div>
       ))}
