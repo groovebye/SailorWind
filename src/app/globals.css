@@ -58,3 +58,18 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
 }
+
+/* Print-friendly briefing mode */
+@media print {
+  body { background: white !important; color: black !important; font-size: 11pt; }
+  .sticky { position: static !important; }
+  details { display: block !important; }
+  details > summary { display: none !important; }
+  details > div, details > * { display: block !important; }
+  a { color: black !important; text-decoration: underline; }
+  button, .no-print { display: none !important; }
+  [style*="background"] { background: white !important; }
+  [style*="border"] { border-color: #ccc !important; }
+  [style*="color: var(--text"] { color: #333 !important; }
+  .rounded-xl, .rounded-lg { border: 1px solid #ccc !important; }
+}

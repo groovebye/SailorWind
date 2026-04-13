@@ -245,10 +245,11 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           <span className="font-bold" style={{ color: "var(--text-heading)" }}>{fromPort?.name} → {dest?.name}</span>
           <span className="font-black px-2 py-0.5 rounded" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
           <span style={{ color: "var(--text-muted)" }}>{leg?.nm}NM · {Math.round(maxWind)}kt · {maxWave.toFixed(1)}m</span>
-          <div className="flex rounded overflow-hidden text-[10px]" style={{ border: `1px solid var(--border)` }}>
+          <div className="flex rounded overflow-hidden text-[10px] no-print" style={{ border: `1px solid var(--border)` }}>
             <button onClick={() => setViewMode("quick")} className="px-2 py-0.5" style={{ background: viewMode === "quick" ? "var(--accent-go)" : "transparent", color: viewMode === "quick" ? "var(--text-green)" : "var(--text-muted)" }}>Quick</button>
             <button onClick={() => setViewMode("full")} className="px-2 py-0.5" style={{ background: viewMode === "full" ? "var(--accent-go)" : "transparent", color: viewMode === "full" ? "var(--text-green)" : "var(--text-muted)" }}>Full</button>
           </div>
+          <button onClick={() => window.print()} className="px-2 py-0.5 rounded text-[10px] no-print" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>🖨️</button>
         </div>
       </div>
 
