@@ -92,6 +92,7 @@ model Passage {
   speed       Float    @default(5.0)
   mode        PassageMode @default(daily)
   model       String   @default("ecmwf_ifs025")
+  source      String   @default("openmeteo")  // "openmeteo" | "windy"
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

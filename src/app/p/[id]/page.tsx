@@ -84,6 +84,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
         setSpeed(data.speed);
         setMode(data.mode);
         setModel(data.model);
+        if (data.source === "windy") setWeatherSource("windy");
       });
   }, [id]);
 
@@ -153,10 +154,10 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
       fetch("/api/passage", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, departure, speed, mode, model }),
+        body: JSON.stringify({ id, departure, speed, mode, model, source: weatherSource }),
       });
     }, 500);
-  }, [departure, speed, mode, model, id, passage]);
+  }, [departure, speed, mode, model, weatherSource, id, passage]);
 
   async function handleDelete() {
     if (!confirm("Are you sure you want to delete this passage?")) return;
