@@ -30,7 +30,7 @@ interface PlaceInfo { name: string; rating?: number; cuisine?: string; phone?: s
 interface TimelineEntry {
   hourIndex: number; time: string; lat: number; lon: number; distanceFromStartNm: number; distanceToGoNm: number;
   segmentName: string; courseTrue: number; boatHeading: number; windDir: string; windDirDeg: number; windKt: number; gustKt: number;
-  waveM: number | null; swellM: number | null; currentDir: string | null; currentDirDeg: number | null; currentKt: number; twa: number;
+  waveM: number | null; wavePeriodS: number | null; swellM: number | null; swellPeriodS: number | null; currentDir: string | null; currentDirDeg: number | null; currentKt: number; twa: number;
   pointOfSail: string; mode: "sail" | "motor" | "motorsail"; tack: "port" | "starboard" | "none"; sailConfig: string; reefLevel: 0 | 1 | 2;
   expectedBoatSpeedKt: number; expectedSogKt: number; comfortScore: number; comfort: string; warnings: string[]; notes: string;
 }
@@ -87,6 +87,26 @@ function parseJsonObject<T>(val: unknown): T | null { if (!val) return null; if 
 const DIFF_COLORS: Record<string, string> = { easy: "var(--text-green)", moderate: "var(--text-yellow)", challenging: "var(--text-red)", dangerous: "var(--text-red)" };
 const MILESTONE_ICONS: Record<string, string> = { departure: "🚀", clear_breakwater: "⚓", course_change: "🧭", round_cape: "⚠️", approach: "🔭", berth: "🏁" };
 const HAZARD_ICONS: Record<string, string> = { wind_acceleration: "💨", rock: "🪨", shoal: "⚠️", current: "🌊", traffic: "🚢", military: "🎖️", orca: "🐋" };
+
+function comfortToken(label: string) {
+  if (label === "Comfortable") return { fg: "var(--text-green)", bg: "var(--accent-go)" };
+  if (label === "Moderate") return { fg: "var(--text-blue-light)", bg: "rgba(96,165,250,0.15)" };
+  if (label === "Bumpy") return { fg: "var(--text-yellow)", bg: "var(--accent-caution)" };
+  return { fg: "var(--text-red)", bg: "var(--accent-nogo)" };
+}
+
+function modeToken(mode: "sail" | "motor" | "motorsail") {
+  if (mode === "sail") return { fg: "#86efac", bg: "rgba(34,197,94,0.12)", label: "⛵ Sail" };
+  if (mode === "motorsail") return { fg: "#fbbf24", bg: "rgba(251,191,36,0.12)", label: "⚙️ Motor-sail" };
+  return { fg: "#93c5fd", bg: "rgba(59,130,246,0.14)", label: "🚢 Motor" };
+}
+
+function segmentAccent(name: string) {
+  if (name.includes("rounding")) return { border: "#f97316", bg: "linear-gradient(90deg, rgba(249,115,22,0.10), rgba(15,23,42,0) 38%)" };
+  if (name.startsWith("Departure")) return { border: "#38bdf8", bg: "linear-gradient(90deg, rgba(56,189,248,0.10), rgba(15,23,42,0) 38%)" };
+  if (name.startsWith("Arrival")) return { border: "#4ade80", bg: "linear-gradient(90deg, rgba(74,222,128,0.10), rgba(15,23,42,0) 38%)" };
+  return { border: "#64748b", bg: "linear-gradient(90deg, rgba(100,116,139,0.10), rgba(15,23,42,0) 38%)" };
+}
 
 // ── Components ──
 
@@ -557,7 +577,15 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
           <div className="space-y-2">
             {timelineData.timeline.map((entry) => (
-              <div key={entry.hourIndex} className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+              <div
+                key={entry.hourIndex}
+                className="rounded-lg px-3 py-2"
+                style={{
+                  background: segmentAccent(entry.segmentName).bg,
+                  border: `1px solid var(--border-light)`,
+                  boxShadow: `inset 3px 0 0 ${segmentAccent(entry.segmentName).border}`,
+                }}
+              >
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
                     <div className="font-semibold text-xs" style={{ color: "var(--text-heading)" }}>
@@ -567,11 +595,13 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                       {entry.distanceFromStartNm.toFixed(1)}NM run · {entry.distanceToGoNm.toFixed(1)}NM to go
                     </div>
                   </div>
-                  <div className="text-[11px] px-2 py-0.5 rounded" style={{
-                    background: entry.comfort === "Comfortable" ? "var(--accent-go)" : entry.comfort === "Moderate" ? "rgba(96,165,250,0.15)" : entry.comfort === "Bumpy" ? "var(--accent-caution)" : "var(--accent-nogo)",
-                    color: entry.comfort === "Comfortable" ? "var(--text-green)" : entry.comfort === "Moderate" ? "var(--text-blue-light)" : entry.comfort === "Bumpy" ? "var(--text-yellow)" : "var(--text-red)"
-                  }}>
-                    {entry.comfort}
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    <span className="text-[11px] px-2 py-0.5 rounded" style={{ background: modeToken(entry.mode).bg, color: modeToken(entry.mode).fg }}>
+                      {modeToken(entry.mode).label}
+                    </span>
+                    <span className="text-[11px] px-2 py-0.5 rounded" style={{ background: comfortToken(entry.comfort).bg, color: comfortToken(entry.comfort).fg }}>
+                      {entry.comfort}
+                    </span>
                   </div>
                 </div>
 
@@ -582,7 +612,10 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                       {Math.round(entry.windKt)}kt {entry.windDir}, gust {Math.round(entry.gustKt)}kt
                     </div>
                     <div style={{ color: "var(--text-secondary)" }}>
-                      Waves {entry.waveM?.toFixed(1) ?? "—"}m · Swell {entry.swellM?.toFixed(1) ?? "—"}m
+                      Waves {entry.waveM?.toFixed(1) ?? "—"}m / {entry.wavePeriodS?.toFixed(1) ?? "—"}s
+                    </div>
+                    <div style={{ color: "var(--text-secondary)" }}>
+                      Swell {entry.swellM?.toFixed(1) ?? "—"}m / {entry.swellPeriodS?.toFixed(1) ?? "—"}s
                     </div>
                   </div>
                   <div>
@@ -614,7 +647,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 {entry.warnings.length > 0 && (
                   <div className="mt-1 flex flex-wrap gap-1">
                     {entry.warnings.map((warning, index) => (
-                      <span key={index} className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: "var(--bg-card)", color: "var(--text-yellow)", border: `1px solid var(--border-light)` }}>
+                      <span key={index} className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: "rgba(234,179,8,0.10)", color: "var(--text-yellow)", border: `1px solid rgba(234,179,8,0.18)` }}>
                         {warning}
                       </span>
                     ))}

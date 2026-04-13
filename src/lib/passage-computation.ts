@@ -53,7 +53,9 @@ export interface TimelineEntry {
   windKt: number;
   gustKt: number;
   waveM: number | null;
+  wavePeriodS: number | null;
   swellM: number | null;
+  swellPeriodS: number | null;
   currentDir: string | null;
   currentDirDeg: number | null;
   currentKt: number;
@@ -755,7 +757,9 @@ export function computeLegTimelineFromContext(
       windKt: Math.round(forecastEntry.windKt * 10) / 10,
       gustKt: Math.round(forecastEntry.gustKt * 10) / 10,
       waveM: forecastEntry.waveM !== null ? Math.round(forecastEntry.waveM * 10) / 10 : null,
+      wavePeriodS: forecastEntry.wavePeriodS !== null ? Math.round(forecastEntry.wavePeriodS * 10) / 10 : null,
       swellM: forecastEntry.swellM !== null ? Math.round(forecastEntry.swellM * 10) / 10 : null,
+      swellPeriodS: forecastEntry.swellPeriodS !== null ? Math.round(forecastEntry.swellPeriodS * 10) / 10 : null,
       currentDir: currentState?.dir ?? null,
       currentDirDeg,
       currentKt: Math.round((currentState?.rate ?? 0) * 10) / 10,
