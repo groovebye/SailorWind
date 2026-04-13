@@ -32,8 +32,9 @@
 ```
 sailplanner-next/
 ├── prisma/
-│   ├── schema.prisma          # DB schema (Port, Passage, PassageWaypoint, PassagePort)
-│   ├── seed.ts                # Seed 17 ports with facilities, phone, VHF, website
+│   ├── schema.prisma          # DB schema (Port, Passage, PassageWaypoint, LegGuide)
+│   ├── seed.ts                # Curated ports + arrival / shore-service enrichment
+│   ├── leg-guides.ts          # Curated passage plans / hazards / fallback content
 │   └── migrations/
 ├── src/
 │   ├── app/
@@ -42,7 +43,10 @@ sailplanner-next/
 │   │   ├── page.tsx           # Home — list recent passages
 │   │   ├── new/page.tsx       # Passage wizard (2-step: route -> waypoints)
 │   │   ├── p/[id]/
-│   │   │   ├── page.tsx       # Passage dashboard (forecasts, verdicts, filters)
+│   │   │   ├── page.tsx       # Passage dashboard (forecasts, verdicts, filters, day/leg tiles)
+│   │   │   ├── leg/[legIndex]/
+│   │   │   │   ├── page.tsx   # Detailed leg brief page
+│   │   │   │   └── LegMap.tsx # Leg map with route geometry + contours + OpenSeaMap
 │   │   │   └── map/
 │   │   │       ├── page.tsx   # Map page (fetches passage + forecasts, computes ETAs)
 │   │   │       └── PassageMap.tsx  # Leaflet map component
@@ -50,6 +54,7 @@ sailplanner-next/
 │   │       ├── ports/route.ts          # GET /api/ports
 │   │       ├── forecast/route.ts       # GET /api/forecast
 │   │       ├── forecast/batch/route.ts # POST /api/forecast/batch
+│   │       ├── leg/route.ts            # GET /api/leg (curated leg guide)
 │   │       └── passage/route.ts        # CRUD: GET/POST/PATCH/DELETE
 │   ├── lib/
 │   │   ├── db.ts              # Prisma client (singleton with pg adapter)
@@ -209,6 +214,24 @@ Some coastal sections are too nuanced for a sparse generic graph. In those place
 - long legs are kept as single straight offshore segments where practical
 
 The first explicit corridor of this kind is `Cudillero/Avilés -> Cabo Peñas -> Candás/Gijón`. It is drawn from fixed safe-looking passage points instead of a raw shortest-path across the graph.
+
+### Leg Brief Pages
+
+Day/leg tiles on the passage dashboard open a dedicated leg brief page. That page currently provides:
+
+- route header with difficulty and summary
+- operational verdict (`GO / CAUTION / NO-GO`) using sampled forecast along the leg
+- detailed `Passage Plan` points (departure, observation points, capes, approach, berth)
+- hazards and fallback ports
+- a leg map using the same runtime routing graph as the main map
+- arrival block with marina contacts, facilities and verification metadata
+- shore-side enrichment: restaurants, provisioning, yacht shops, practical services
+
+Important current limitations:
+
+- tides / currents are still curated text, not yet a live `HW/LW/slack` computation for the selected date
+- orca information is advisory; the UI links to Orca Ibérica / GTOA sources and GT Orcas workflow, but there is no public live GT Orcas API integration in the app yet
+- port and shore-service enrichment is curated for the current Gijón → La Coruña coastal set and should continue to be rechecked in season
 
 **Leg rendering:**
 - The master route is split visually only at route-defining anchors (typically capes)

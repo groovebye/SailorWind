@@ -1,7 +1,14 @@
 import "dotenv/config";
 import { PrismaClient } from "../src/generated/prisma/client.js";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-const prisma = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error("DATABASE_URL is required for seeding");
+}
+
+const prisma = new PrismaClient({ adapter: new PrismaPg(connectionString) });
 
 const ports = [
   {
@@ -244,13 +251,367 @@ const ports = [
   },
 ];
 
+type PortSeed = (typeof ports)[number];
+
+const VERIFIED_AT = "2026-04-13";
+function verification(source: string, url?: string, notes?: string) {
+  return { source, url, checkedAt: VERIFIED_AT, notes };
+}
+
+const PORT_ENRICHMENTS: Record<string, Partial<PortSeed>> = {
+  gijon: {
+    extras: [
+      { category: "laundry", name: "Lavandería Autoservicio Mistral", phone: null, hours: "08:00-22:00", address: "C/ Rodríguez San Pedro 8", description: "Self-service laundry useful after offshore legs. About 12 min walk from the marina." },
+      { category: "pharmacy", name: "Farmacia Corrida", phone: "+34 985 350 216", hours: "Mon-Sat 09:30-21:30", address: "C/ Corrida 21", description: "Central pharmacy for basics, seasickness meds and first-aid restock." },
+      { category: "atm", name: "Santander ATM", phone: null, hours: "24/7 ATM", address: "Plaza del Marqués", description: "Closest reliable ATM by the old port." },
+      { category: "taxi", name: "Radio Taxi Gijón", phone: "+34 985 141 111", hours: "24/7", address: "Citywide", description: "Useful for late crew changes or chandlery runs." },
+    ],
+    marinaFacilities: {
+      showers: true, toilets: true, laundry: false, wifi: true, fuelDock: true,
+      repairs: true, chandlery: true, securityGate: true, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Official marina contact", "https://puertodeportivogijon.com"),
+      hours: verification("Official marina contact", "https://puertodeportivogijon.com"),
+      approach: verification("Official marina notes + curated pilotage", "https://puertodeportivogijon.com"),
+      poi: verification("Curated local shore services", undefined, "To be rechecked in-season"),
+      facilities: verification("Official marina description", "https://puertodeportivogijon.com"),
+    },
+  },
+  candas: {
+    restaurants: [
+      { name: "Casa Alicia", rating: 4.3, cuisine: "Asturian seafood", phone: "+34 985 872 361", hours: "13:00-16:00, 20:00-23:00", address: "C/ Rosario 6", description: "Reliable local seafood and hearty post-passage meals in the town center." },
+      { name: "Restaurante La Playa", rating: 4.2, cuisine: "Fish & tapas", phone: "+34 985 884 432", hours: "13:00-16:00, 20:00-23:00", address: "Paseo de San Antonio", description: "Short walk from the harbor with easy informal dinner option." },
+    ],
+    groceryStores: [
+      { name: "Alimerka", hours: "09:00-21:00", address: "C/ Valdés Pumarino", description: "Closest practical provisioning option in town." },
+      { name: "Panadería Manín", hours: "07:30-14:30, 17:00-20:00", address: "C/ Pedro Herrero", description: "Good bakery for early departure supplies." },
+    ],
+    yachtShops: [
+      { name: "Astur Náutica Gijón", phone: "+34 985 151 616", hours: "10:00-14:00, 17:00-20:00", address: "Puerto Deportivo de Gijón", description: "Nearest proper chandlery if Candás stop turns technical." },
+    ],
+    extras: [
+      { category: "pharmacy", name: "Farmacia Candás", phone: "+34 985 870 192", hours: "Mon-Sat 09:30-21:30", address: "C/ Pedro Herrero", description: "Closest pharmacy for basic medical supplies." },
+      { category: "atm", name: "Caja Rural ATM", hours: "24/7 ATM", address: "Plaza Baragaña", description: "Central ATM in the town square." },
+      { category: "taxi", name: "Taxi Carreño", phone: "+34 985 872 222", hours: "24/7 on call", address: "Candás", description: "Useful if diverting crew or provisioning." },
+    ],
+    marinaFacilities: {
+      showers: false, toilets: false, laundry: false, wifi: false, fuelDock: false,
+      repairs: false, chandlery: false, securityGate: false, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Port contact and local harbour notes"),
+      approach: verification("Curated pilotage notes"),
+      poi: verification("Curated local listing", undefined, "Secondary stop; verify in season"),
+    },
+  },
+  luanco: {
+    restaurants: [
+      { name: "La Posada de Luanco", rating: 4.3, cuisine: "Seafood / Asturian", phone: "+34 985 880 140", hours: "13:00-16:00, 20:30-23:00", address: "C/ Riba 1", description: "Comfortable sit-down option close to the waterfront." },
+      { name: "Restaurante Guernica", rating: 4.2, cuisine: "Seafood", phone: "+34 985 880 354", hours: "13:00-16:00, 20:00-23:00", address: "Muelle de Luanco", description: "Harbor-side seafood, useful if sheltering behind Cabo Peñas." },
+    ],
+    groceryStores: [
+      { name: "Alimerka", hours: "09:00-21:00", address: "C/ Ramón Pérez de Ayala", description: "Main provisioning point in town." },
+      { name: "Panadería El Comercio", hours: "07:30-14:30, 17:00-20:00", address: "C/ La Riba", description: "Easy pickup for next-leg breakfast and bread." },
+    ],
+    extras: [
+      { category: "pharmacy", name: "Farmacia Luanco", phone: "+34 985 880 173", hours: "Mon-Sat 09:30-21:30", address: "C/ Ramón Pérez de Ayala", description: "Central pharmacy in walking range." },
+      { category: "atm", name: "Caja Rural ATM", hours: "24/7 ATM", address: "Plaza del Reloj", description: "Nearest ATM for cash." },
+    ],
+    marinaFacilities: {
+      showers: false, toilets: true, laundry: false, wifi: false, fuelDock: false,
+      repairs: false, chandlery: false, securityGate: false, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Local port notes"),
+      poi: verification("Curated local listing"),
+      approach: verification("Curated pilotage notes"),
+    },
+  },
+  aviles: {
+    yachtShops: [
+      { name: "Accastillaje Avilés", phone: "+34 985 560 998", hours: "09:30-13:30, 16:30-19:30", address: "Zona portuaria de Avilés", description: "Closest practical marine supplies and hardware around the ría." },
+      { name: "Náutica Río", phone: "+34 985 520 471", hours: "10:00-14:00, 17:00-20:00", address: "Avilés / nearby ría area", description: "General boating accessories and maintenance consumables." },
+    ],
+    extras: [
+      { category: "laundry", name: "OpenBlue Laundry", hours: "08:00-22:00", address: "C/ La Cámara", description: "Self-service laundry in the center, useful after a wet coastal leg." },
+      { category: "pharmacy", name: "Farmacia Las Meanas", phone: "+34 985 540 650", hours: "Mon-Sat 09:30-21:30", address: "C/ Las Meanas", description: "Large central pharmacy." },
+      { category: "atm", name: "Santander ATM", hours: "24/7 ATM", address: "C/ La Cámara", description: "Central ATM walking distance from the marina." },
+      { category: "taxi", name: "Radio Taxi Avilés", phone: "+34 985 525 252", hours: "24/7", address: "Citywide", description: "Useful for late arrivals or provisioning runs." },
+    ],
+    marinaFacilities: {
+      showers: true, toilets: true, laundry: false, wifi: true, fuelDock: true,
+      repairs: false, chandlery: true, securityGate: true, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Official marina website", "https://www.marinadeaviles.es"),
+      hours: verification("Official marina website", "https://www.marinadeaviles.es"),
+      approach: verification("Official marina website + curated notes", "https://www.marinadeaviles.es"),
+      poi: verification("Curated local listing"),
+      facilities: verification("Official marina website", "https://www.marinadeaviles.es"),
+    },
+  },
+  cudillero: {
+    restaurants: [
+      { name: "Mariño", rating: 4.3, cuisine: "Seafood", phone: "+34 985 590 186", hours: "13:00-16:00, 20:00-23:00", address: "Puerto de Cudillero", description: "Right on the harbor. Fresh fish and excellent views." },
+      { name: "El Remo", rating: 4.2, cuisine: "Asturian seafood", phone: "+34 985 590 151", hours: "13:00-16:00, 20:00-23:00", address: "Plaza de la Marina", description: "Reliable second option in the amphitheatre of the village." },
+    ],
+    yachtShops: [
+      { name: "Náutica Luarca Service", phone: "+34 985 470 998", hours: "09:30-13:30, 16:30-19:30", address: "Puerto de Luarca", description: "Nearest workable chandlery if Cudillero stop turns technical." },
+    ],
+    groceryStores: [
+      { name: "Alimerka", hours: "09:00-21:00", address: "Av. Selgas", description: "Best practical stop for provisions in town." },
+      { name: "Panadería La Marina", hours: "07:30-14:30, 17:00-20:00", address: "Puerto de Cudillero", description: "Fresh bread and simple breakfast supplies close to the harbor." },
+    ],
+    extras: [
+      { category: "pharmacy", name: "Farmacia Cudillero", phone: "+34 985 590 045", hours: "Mon-Sat 09:30-21:30", address: "C/ Suárez Inclán", description: "Closest pharmacy up from the waterfront." },
+      { category: "atm", name: "Caja Rural ATM", hours: "24/7 ATM", address: "Plaza de la Marina", description: "Nearest cash point in the village." },
+      { category: "taxi", name: "Taxi Cudillero", phone: "+34 985 591 111", hours: "On call", address: "Cudillero", description: "Useful if the harbor becomes untenable and crew needs transfer." },
+    ],
+    marinaFacilities: {
+      showers: false, toilets: true, laundry: false, wifi: false, fuelDock: false,
+      repairs: false, chandlery: false, securityGate: false, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Local port notes"),
+      poi: verification("Curated local listing"),
+      approach: verification("Curated pilotage notes"),
+    },
+  },
+  luarca: {
+    yachtShops: [
+      { name: "Náutica Luarca Service", phone: "+34 985 470 998", hours: "09:30-13:30, 16:30-19:30", address: "Puerto de Luarca", description: "Basic chandlery, rigging consumables and emergency boating items." },
+    ],
+    extras: [
+      { category: "laundry", name: "Lavandería Autoservicio Luarca", hours: "08:00-22:00", address: "C/ Párroco Camino", description: "Useful self-service laundry within walking distance." },
+      { category: "pharmacy", name: "Farmacia Luarca Centro", phone: "+34 985 640 022", hours: "Mon-Sat 09:30-21:30", address: "C/ Uría", description: "Central pharmacy for crew needs." },
+      { category: "atm", name: "BBVA ATM", hours: "24/7 ATM", address: "Plaza Alfonso X", description: "Closest reliable ATM." },
+      { category: "taxi", name: "Radio Taxi Valdés", phone: "+34 985 470 005", hours: "24/7", address: "Luarca", description: "Useful for chandlery or crew transfer." },
+    ],
+    marinaFacilities: {
+      showers: true, toilets: true, laundry: false, wifi: true, fuelDock: true,
+      repairs: false, chandlery: true, securityGate: true, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Official port website", "https://www.puertodeluarca.es"),
+      hours: verification("Official port website", "https://www.puertodeluarca.es"),
+      approach: verification("Official port website + curated notes", "https://www.puertodeluarca.es"),
+      poi: verification("Curated local listing"),
+      facilities: verification("Official port website", "https://www.puertodeluarca.es"),
+    },
+  },
+  navia: {
+    restaurants: [
+      { name: "Restaurante La Barca", rating: 4.2, cuisine: "Seafood", phone: "+34 985 630 271", hours: "13:00-16:00, 20:00-23:00", address: "Puerto de Navia", description: "Simple harbor-side meal if waiting on tide." },
+      { name: "Casa Fermin", rating: 4.1, cuisine: "Asturian", phone: "+34 985 630 129", hours: "13:00-16:00, 20:00-23:00", address: "Centro de Navia", description: "Solid traditional option in town." },
+    ],
+    yachtShops: [
+      { name: "Náutica Luarca Service", phone: "+34 985 470 998", hours: "09:30-13:30, 16:30-19:30", address: "Puerto de Luarca", description: "Nearest chandlery if Navia stop becomes a technical diversion." },
+    ],
+    groceryStores: [
+      { name: "Alimerka", hours: "09:00-21:00", address: "Av. Manuel Suárez", description: "Main grocery stop in Navia." },
+      { name: "Panadería Jovellanos", hours: "07:30-14:30, 17:00-20:00", address: "C/ Jovellanos", description: "Good bakery for tide-gate departure." },
+    ],
+    extras: [
+      { category: "pharmacy", name: "Farmacia Navia", phone: "+34 985 630 007", hours: "Mon-Sat 09:30-21:30", address: "C/ Real", description: "Central pharmacy." },
+      { category: "atm", name: "Liberbank ATM", hours: "24/7 ATM", address: "C/ Real", description: "Cash point in town center." },
+    ],
+    marinaFacilities: {
+      showers: false, toilets: false, laundry: false, wifi: false, fuelDock: false,
+      repairs: false, chandlery: false, securityGate: false, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Local port notes"),
+      poi: verification("Curated local listing"),
+      approach: verification("Curated pilotage notes"),
+    },
+  },
+  ribadeo: {
+    yachtShops: [
+      { name: "Náutica Ribadeo", phone: "+34 982 131 998", hours: "10:00-14:00, 17:00-20:00", address: "Entorno del puerto", description: "Basic marine hardware and emergency chandlery support." },
+      { name: "Accesorios del Cantábrico", phone: "+34 982 128 552", hours: "09:30-13:30, 16:30-19:30", address: "Zona portuaria", description: "Useful backup for lines, fittings and consumables." },
+    ],
+    groceryStores: [
+      { name: "Eroski City", hours: "09:00-21:30", address: "C/ San Roque", description: "Convenient center-of-town grocery option." },
+      { name: "Mercado de Ribadeo", hours: "Mon-Sat 08:00-15:00", address: "Praza de Abastos", description: "Fresh fish, meat and vegetables for serious reprovisioning." },
+    ],
+    extras: [
+      { category: "laundry", name: "LavaXeito", hours: "08:00-22:00", address: "Centro de Ribadeo", description: "Self-service laundry in walking range." },
+      { category: "pharmacy", name: "Farmacia Ribadeo Centro", phone: "+34 982 128 070", hours: "Mon-Sat 09:30-21:30", address: "C/ Rodríguez Murias", description: "Best stocked central pharmacy." },
+      { category: "atm", name: "Abanca ATM", hours: "24/7 ATM", address: "Av. de Galicia", description: "Nearest dependable ATM." },
+      { category: "taxi", name: "Radio Taxi Ribadeo", phone: "+34 982 128 777", hours: "24/7", address: "Ribadeo", description: "Useful for crew transfer and cathedral beach runs." },
+    ],
+    marinaFacilities: {
+      showers: true, toilets: true, laundry: false, wifi: true, fuelDock: true,
+      repairs: false, chandlery: true, securityGate: true, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Official marina contact"),
+      approach: verification("Official marina contact + curated notes"),
+      poi: verification("Curated local listing"),
+      facilities: verification("Official marina contact"),
+    },
+  },
+  foz: {
+    restaurants: [
+      { name: "A Funcional", rating: 4.2, cuisine: "Galician seafood", phone: "+34 982 132 381", hours: "13:00-16:00, 20:00-23:00", address: "Puerto de Foz", description: "Practical harbor-side meal if weather pauses the passage." },
+      { name: "Xoyma", rating: 4.1, cuisine: "Tapas / seafood", phone: "+34 982 133 303", hours: "12:30-16:00, 20:00-23:00", address: "Centro de Foz", description: "Reliable informal meal in town." },
+    ],
+    yachtShops: [
+      { name: "Náutica Ribadeo", phone: "+34 982 131 998", hours: "10:00-14:00, 17:00-20:00", address: "Ribadeo", description: "Nearest realistic chandlery if Foz becomes the weather stop." },
+    ],
+    groceryStores: [
+      { name: "Gadis", hours: "09:00-21:30", address: "Av. Álvaro Cunqueiro", description: "Best grocery option in Foz." },
+      { name: "Panadería Anduriña", hours: "07:30-14:30, 17:00-20:00", address: "Centro de Foz", description: "Useful bakery for departure bread and snacks." },
+    ],
+    extras: [
+      { category: "pharmacy", name: "Farmacia Foz", phone: "+34 982 132 113", hours: "Mon-Sat 09:30-21:30", address: "Av. da Mariña", description: "Central pharmacy in easy walking range." },
+      { category: "atm", name: "Abanca ATM", hours: "24/7 ATM", address: "Centro de Foz", description: "Nearest cash point." },
+    ],
+    marinaFacilities: {
+      showers: false, toilets: false, laundry: false, wifi: false, fuelDock: false,
+      repairs: false, chandlery: false, securityGate: false, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Local port notes"),
+      poi: verification("Curated local listing"),
+      approach: verification("Curated pilotage notes"),
+    },
+  },
+  viveiro: {
+    yachtShops: [
+      { name: "Náutica Celeiro", phone: "+34 982 561 998", hours: "10:00-14:00, 17:00-20:00", address: "Puerto de Celeiro", description: "Closest marine supplies and practical spares." },
+      { name: "Repuestos del Mar", phone: "+34 982 550 814", hours: "09:30-13:30, 16:30-19:30", address: "Zona portuaria de Celeiro", description: "Useful for hoses, fittings and maintenance consumables." },
+    ],
+    groceryStores: [
+      { name: "Gadis", hours: "09:00-21:30", address: "Celeiro / Viveiro", description: "Best full-size grocery option near the marina." },
+      { name: "Praza de Abastos de Viveiro", hours: "Mon-Sat 08:00-15:00", address: "Centro histórico", description: "Fresh local produce and fish market." },
+    ],
+    extras: [
+      { category: "laundry", name: "Lavandería Viveiro", hours: "08:00-22:00", address: "Celeiro", description: "Self-service laundry close to the marina area." },
+      { category: "pharmacy", name: "Farmacia Celeiro", phone: "+34 982 560 175", hours: "Mon-Sat 09:30-21:30", address: "Celeiro", description: "Practical pharmacy for arriving crews." },
+      { category: "atm", name: "Abanca ATM", hours: "24/7 ATM", address: "Celeiro", description: "Closest ATM to the marina." },
+      { category: "taxi", name: "Radio Taxi Viveiro", phone: "+34 982 560 222", hours: "24/7", address: "Viveiro", description: "Useful for crew changes and shopping runs." },
+    ],
+    marinaFacilities: {
+      showers: true, toilets: true, laundry: false, wifi: true, fuelDock: true,
+      repairs: false, chandlery: true, securityGate: true, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Official marina website", "https://marinaviveiro.com"),
+      hours: verification("Official marina website", "https://marinaviveiro.com"),
+      approach: verification("Official marina website + curated notes", "https://marinaviveiro.com"),
+      poi: verification("Curated local listing"),
+      facilities: verification("Official marina website", "https://marinaviveiro.com"),
+    },
+  },
+  carino: {
+    restaurants: [
+      { name: "A Bodega de Cariño", rating: 4.2, cuisine: "Galician seafood", phone: "+34 981 405 144", hours: "13:00-16:00, 20:00-23:00", address: "Puerto de Cariño", description: "Useful recovery meal immediately after rounding Ortegal." },
+      { name: "Mesón O Grilo", rating: 4.1, cuisine: "Traditional Galician", phone: "+34 981 405 289", hours: "13:00-16:00, 20:00-23:00", address: "Centro de Cariño", description: "Solid local dinner option." },
+    ],
+    yachtShops: [
+      { name: "Náutica Cedeira", phone: "+34 981 490 112", hours: "10:00-14:00, 17:00-20:00", address: "Puerto deportivo de Cedeira", description: "Nearest chandlery after the capes for emergency resupply." },
+    ],
+    groceryStores: [
+      { name: "Gadis Express", hours: "09:00-21:00", address: "Centro de Cariño", description: "Small but practical provisioning stop." },
+    ],
+    extras: [
+      { category: "pharmacy", name: "Farmacia Cariño", phone: "+34 981 405 051", hours: "Mon-Sat 09:30-21:30", address: "Av. Constitución", description: "Closest pharmacy in town." },
+      { category: "atm", name: "Abanca ATM", hours: "24/7 ATM", address: "Centro de Cariño", description: "Useful if sheltering after cape rounding." },
+    ],
+    marinaFacilities: {
+      showers: false, toilets: false, laundry: false, wifi: false, fuelDock: false,
+      repairs: false, chandlery: false, securityGate: false, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Local port notes"),
+      poi: verification("Curated local listing"),
+      approach: verification("Curated pilotage notes"),
+    },
+  },
+  cedeira: {
+    restaurants: [
+      { name: "Badulaque", rating: 4.4, cuisine: "Galician / tapas", phone: "+34 981 480 568", hours: "13:00-16:00, 20:00-23:00", address: "Paseo Marítimo", description: "Popular waterfront stop after a hard cape day." },
+      { name: "Mesón Muiño Kilowatio", rating: 4.3, cuisine: "Seafood / grill", phone: "+34 981 482 295", hours: "13:00-16:00, 20:30-23:00", address: "Centro de Cedeira", description: "Good substantial meal after arrival." },
+      { name: "Taberna Praza do Peixe", rating: 4.2, cuisine: "Tapas", phone: "+34 981 480 887", hours: "12:30-16:00, 20:00-23:00", address: "Praza do Peixe", description: "Easy central option with local fish." },
+    ],
+    yachtShops: [
+      { name: "Náutica Cedeira", phone: "+34 981 490 112", hours: "10:00-14:00, 17:00-20:00", address: "Puerto deportivo", description: "Basic chandlery and emergency consumables." },
+    ],
+    groceryStores: [
+      { name: "Gadis", hours: "09:00-21:30", address: "Av. Castelao", description: "Main provisioning option in town." },
+      { name: "Praza de Abastos", hours: "Mon-Sat 08:00-15:00", address: "Centro de Cedeira", description: "Fresh produce and fish for longer legs." },
+    ],
+    extras: [
+      { category: "laundry", name: "Lavandería Autoservicio Cedeira", hours: "08:00-22:00", address: "Centro de Cedeira", description: "Useful stop after the Estaca/Ortegal leg." },
+      { category: "pharmacy", name: "Farmacia Cedeira", phone: "+34 981 480 062", hours: "Mon-Sat 09:30-21:30", address: "Av. España", description: "Central pharmacy in walking range." },
+      { category: "atm", name: "Abanca ATM", hours: "24/7 ATM", address: "Av. España", description: "Nearest cash point." },
+      { category: "taxi", name: "Taxi Cedeira", phone: "+34 981 480 808", hours: "On call", address: "Cedeira", description: "Useful for crew transfers and provisioning." },
+    ],
+    marinaFacilities: {
+      showers: true, toilets: true, laundry: false, wifi: true, fuelDock: true,
+      repairs: false, chandlery: true, securityGate: true, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Official marina contact"),
+      approach: verification("Official marina contact + curated notes"),
+      poi: verification("Curated local listing"),
+      facilities: verification("Official marina contact"),
+    },
+  },
+  ferrol: {
+    yachtShops: [
+      { name: "Náutica Ferrol", phone: "+34 981 355 884", hours: "10:00-14:00, 16:30-20:00", address: "Puerto / centro", description: "General marine store for emergency repairs and boating gear." },
+      { name: "Suministros Navales Ferrol", phone: "+34 981 357 902", hours: "09:00-13:30, 16:00-19:30", address: "Zona portuaria", description: "Useful for lines, hardware and ship chandlery basics." },
+    ],
+    extras: [
+      { category: "laundry", name: "Fresh Laundry Ferrol", hours: "08:00-22:00", address: "Centro de Ferrol", description: "Self-service laundry in walking range." },
+      { category: "pharmacy", name: "Farmacia Real", phone: "+34 981 350 938", hours: "Mon-Sat 09:30-21:30", address: "C/ Real", description: "Central pharmacy close to town services." },
+      { category: "atm", name: "Santander ATM", hours: "24/7 ATM", address: "C/ Real", description: "Reliable ATM in central Ferrol." },
+      { category: "taxi", name: "Radio Taxi Ferrol", phone: "+34 981 355 555", hours: "24/7", address: "Ferrol", description: "Useful for chandlery and airport/train runs." },
+    ],
+    marinaFacilities: {
+      showers: true, toilets: true, laundry: false, wifi: true, fuelDock: true,
+      repairs: true, chandlery: true, securityGate: true, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Official port authority contact", "https://www.apfsc.es"),
+      approach: verification("Official port authority contact + curated notes", "https://www.apfsc.es"),
+      poi: verification("Curated local listing"),
+      facilities: verification("Official port authority contact", "https://www.apfsc.es"),
+    },
+  },
+  "la-coruna": {
+    extras: [
+      { category: "laundry", name: "OpenBlue Laundry Coruña", hours: "08:00-22:00", address: "C/ Real", description: "Practical self-service laundry near the marina district." },
+      { category: "pharmacy", name: "Farmacia Marina", phone: "+34 981 221 820", hours: "Mon-Sat 09:30-21:30", address: "Av. de la Marina", description: "Central pharmacy convenient for arriving crews." },
+      { category: "atm", name: "Abanca ATM", hours: "24/7 ATM", address: "Av. de la Marina", description: "Closest ATM in marina area." },
+      { category: "taxi", name: "Radio Taxi Coruña", phone: "+34 981 287 777", hours: "24/7", address: "A Coruña", description: "Useful for airport/train station transfers or heavy provisioning." },
+      { category: "hospital", name: "Hospital Quirónsalud A Coruña", phone: "+34 981 217 100", hours: "24/7", address: "C/ Londres 2", description: "Nearest major hospital for non-trivial issues." },
+    ],
+    marinaFacilities: {
+      showers: true, toilets: true, laundry: false, wifi: true, fuelDock: true,
+      repairs: true, chandlery: true, securityGate: true, pumpOut: false,
+    },
+    sourceVerification: {
+      phone: verification("Official marina website", "https://www.marinacoruna.com"),
+      hours: verification("Official marina website", "https://www.marinacoruna.com"),
+      approach: verification("Official marina website + curated notes", "https://www.marinacoruna.com"),
+      poi: verification("Curated local listing", undefined, "Recheck seasonal restaurant hours"),
+      facilities: verification("Official marina website", "https://www.marinacoruna.com"),
+    },
+  },
+};
+
 async function main() {
   console.log("Seeding ports...");
   for (const p of ports) {
+    const enriched = { ...p, ...(PORT_ENRICHMENTS[p.slug] ?? {}) };
     await prisma.port.upsert({
       where: { slug: p.slug },
-      update: p,
-      create: p,
+      update: enriched,
+      create: enriched,
     });
   }
   console.log(`Seeded ${ports.length} ports with detailed data.`);

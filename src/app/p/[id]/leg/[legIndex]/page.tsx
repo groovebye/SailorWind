@@ -20,9 +20,23 @@ interface Port {
   berthCount: number | null; visitorBerths: number | null; maxLength: number | null;
   accessCodes: string | null; approachNotes: string | null; approachDescription: string | null;
   restaurants: unknown; yachtShops: unknown; groceryStores: unknown; extras: unknown;
+  marinaFacilities: unknown; sourceVerification: unknown;
   orcaRisk: string | null; orcaNotes: string | null; passageNotes: string | null;
 }
 interface PlaceInfo { name: string; rating?: number; cuisine?: string; phone?: string; hours?: string; address?: string; description?: string; category?: string; }
+interface MarinaFacilities {
+  showers?: boolean; toilets?: boolean; laundry?: boolean; wifi?: boolean; fuelDock?: boolean;
+  slipway?: boolean; travelLift?: boolean; repairs?: boolean; chandlery?: boolean;
+  pumpOut?: boolean; securityGate?: boolean;
+}
+interface VerificationItem { source?: string; url?: string; checkedAt?: string; notes?: string; }
+interface SourceVerification {
+  phone?: VerificationItem;
+  hours?: VerificationItem;
+  approach?: VerificationItem;
+  poi?: VerificationItem;
+  facilities?: VerificationItem;
+}
 interface Waypoint { port: Port; isStop: boolean; isCape: boolean; sortOrder: number; }
 interface Passage {
   id: string; shortId: string; name: string | null;
@@ -46,6 +60,7 @@ function tzForPort(lon: number) { return lon >= -10 && lon <= 3 ? "Europe/Madrid
 function fmtLocal(d: Date, tz: string) { return d.toLocaleString("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).replace(" at ", " "); }
 function parseJson(val: unknown): PlaceInfo[] { if (!val) return []; if (typeof val === "string") try { return JSON.parse(val); } catch { return []; } if (Array.isArray(val)) return val; return []; }
 function parseJsonTyped<T>(val: unknown): T[] { if (!val) return []; if (typeof val === "string") try { return JSON.parse(val); } catch { return []; } if (Array.isArray(val)) return val; return []; }
+function parseJsonObject<T>(val: unknown): T | null { if (!val) return null; if (typeof val === "string") try { return JSON.parse(val); } catch { return null; } if (typeof val === "object") return val as T; return null; }
 
 const DIFF_COLORS: Record<string, string> = { easy: "var(--text-green)", moderate: "var(--text-yellow)", challenging: "var(--text-red)", dangerous: "var(--text-red)" };
 const MILESTONE_ICONS: Record<string, string> = { departure: "🚀", clear_breakwater: "⚓", course_change: "🧭", round_cape: "⚠️", approach: "🔭", berth: "🏁" };
@@ -126,7 +141,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     if (fromPort && dest) {
       fetch(`/api/leg?from=${fromPort.slug}&to=${dest.slug}`).then(r => r.json()).then(d => setGuide(d.guide)).catch(() => {});
     }
-  }, [fromPort?.slug, dest?.slug]);
+  }, [fromPort, dest]);
 
   // Fetch forecasts
   useEffect(() => {
@@ -135,10 +150,10 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     const wps = legWps.map(w => ({ name: w.port.name, lat: w.port.lat, lon: w.port.lon, isCape: w.isCape }));
     fetch("/api/forecast/batch", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ waypoints: wps, model: passage.model }) })
       .then(r => r.json()).then(data => { if (!data.error) setForecasts(data); }).catch(() => {});
-  }, [passage, leg]);
+  }, [passage, leg, dest, fromPort]);
 
   // Fetch webcams
-  useEffect(() => { if (dest) { fetch(`/api/webcams?lat=${dest.lat}&lon=${dest.lon}&radius=25`).then(r => r.json()).then(data => { if (Array.isArray(data)) setWebcams(data); }).catch(() => {}); } }, [dest?.lat, dest?.lon]);
+  useEffect(() => { if (dest) { fetch(`/api/webcams?lat=${dest.lat}&lon=${dest.lon}&radius=25`).then(r => r.json()).then(data => { if (Array.isArray(data)) setWebcams(data); }).catch(() => {}); } }, [dest]);
 
   if (!passage) return <div className="h-screen flex items-center justify-center" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>Loading...</div>;
   if (!leg || !dest || !fromPort) return <div className="p-8" style={{ color: "var(--text-red)" }}>Leg not found</div>;
@@ -184,6 +199,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const yachtShops = parseJson(dest.yachtShops);
   const groceryStores = parseJson(dest.groceryStores);
   const extras = parseJson(dest.extras);
+  const facilities = parseJsonObject<MarinaFacilities>(dest.marinaFacilities);
+  const verification = parseJsonObject<SourceVerification>(dest.sourceVerification);
 
   return (
     <div className="max-w-[1200px] mx-auto px-6 py-4" style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
@@ -261,7 +278,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
       {/* ══════ MILESTONES ══════ */}
       {milestones.length > 0 && (
-        <Section title={`Milestones (${milestones.length})`} icon="📍">
+        <Section title={`Passage Plan (${milestones.length})`} icon="📍">
           <div className="space-y-2">
             {milestones.map((m, i) => (
               <div key={i} className="flex gap-3 items-start rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
@@ -308,7 +325,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
       {/* ══════ FALLBACK ══════ */}
       {fallbacks.length > 0 && (
-        <Section title="Fallback Plan" icon="🆘" defaultOpen={false}>
+        <Section title="Fallback Plan" icon="🆘">
           {fallbacks.map((f, i) => (
             <div key={i} className="rounded-lg px-3 py-2 mb-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
               <div className="flex justify-between">
@@ -343,45 +360,65 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             {dest.repairs && <span className="px-2 py-0.5 rounded" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>Repairs</span>}
             {dest.customs && <span className="px-2 py-0.5 rounded" style={{ background: "var(--accent-caution)", color: "var(--text-yellow)" }}>Customs</span>}
           </div>
+          {facilities && (
+            <div className="flex flex-wrap gap-1.5 text-[11px] mt-2">
+              {facilities.showers && <span className="px-2 py-0.5 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: `1px solid var(--border-light)` }}>Showers</span>}
+              {facilities.toilets && <span className="px-2 py-0.5 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: `1px solid var(--border-light)` }}>Toilets</span>}
+              {facilities.laundry && <span className="px-2 py-0.5 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: `1px solid var(--border-light)` }}>Laundry</span>}
+              {facilities.wifi && <span className="px-2 py-0.5 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: `1px solid var(--border-light)` }}>Wi-Fi</span>}
+              {facilities.fuelDock && <span className="px-2 py-0.5 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: `1px solid var(--border-light)` }}>Fuel dock</span>}
+              {facilities.chandlery && <span className="px-2 py-0.5 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: `1px solid var(--border-light)` }}>Chandlery nearby</span>}
+              {facilities.securityGate && <span className="px-2 py-0.5 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: `1px solid var(--border-light)` }}>Secure gate</span>}
+              {facilities.pumpOut && <span className="px-2 py-0.5 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)", border: `1px solid var(--border-light)` }}>Pump-out</span>}
+            </div>
+          )}
           {dest.accessCodes && <div className="mt-2 text-xs" style={{ color: "var(--text-muted)" }}>🔑 {dest.accessCodes}</div>}
           {dest.approachNotes && <div className="mt-2 text-xs p-2 rounded" style={{ background: "var(--bg-primary)", color: "var(--text-blue-light)" }}>{dest.approachNotes}</div>}
+          {verification && (
+            <div className="mt-2 text-[11px] space-y-1" style={{ color: "var(--text-muted)" }}>
+              {verification.phone?.checkedAt && <div>Verified phone: {verification.phone.checkedAt.slice(0, 10)}{verification.phone.source ? ` via ${verification.phone.source}` : ""}</div>}
+              {verification.hours?.checkedAt && <div>Verified hours: {verification.hours.checkedAt.slice(0, 10)}{verification.hours.source ? ` via ${verification.hours.source}` : ""}</div>}
+              {verification.approach?.checkedAt && <div>Approach notes reviewed: {verification.approach.checkedAt.slice(0, 10)}{verification.approach.source ? ` via ${verification.approach.source}` : ""}</div>}
+            </div>
+          )}
         </Section>
       )}
 
       {/* ══════ RESTAURANTS ══════ */}
       {restaurants.length > 0 && (
-        <Section title={`Restaurants (${restaurants.length})`} icon="🍽️" defaultOpen={false}>
+        <Section title={`Restaurants (${restaurants.length})`} icon="🍽️">
           {restaurants.map((r, i) => <PlaceCard key={i} place={r} />)}
         </Section>
       )}
 
       {/* ══════ YACHT SHOPS ══════ */}
       {yachtShops.length > 0 && (
-        <Section title={`Yacht & Marine (${yachtShops.length})`} icon="⛵" defaultOpen={false}>
+        <Section title={`Yacht & Marine (${yachtShops.length})`} icon="⛵">
           {yachtShops.map((s, i) => <PlaceCard key={i} place={s} />)}
         </Section>
       )}
 
       {/* ══════ GROCERY ══════ */}
       {groceryStores.length > 0 && (
-        <Section title={`Provisioning (${groceryStores.length})`} icon="🛒" defaultOpen={false}>
+        <Section title={`Provisioning (${groceryStores.length})`} icon="🛒">
           {groceryStores.map((s, i) => <PlaceCard key={i} place={s} />)}
         </Section>
       )}
 
       {/* ══════ EXTRAS ══════ */}
       {extras.length > 0 && (
-        <Section title="Services & Extras" icon="📋" defaultOpen={false}>
+        <Section title="Services & Extras" icon="📋">
           {extras.map((e, i) => <PlaceCard key={i} place={e} />)}
         </Section>
       )}
 
       {/* ══════ WEBCAMS ══════ */}
       {webcams.length > 0 && (
-        <Section title={`Live Webcams (${webcams.length})`} icon="📹" defaultOpen={false}>
+        <Section title={`Live Webcams (${webcams.length})`} icon="📹">
           <div className="grid grid-cols-2 gap-2">
             {webcams.map(wc => (
               <a key={wc.id} href={wc.playerUrl} target="_blank" rel="noopener" className="block rounded-lg overflow-hidden hover:opacity-80" style={{ border: `1px solid var(--border-light)` }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 {wc.preview && <img src={wc.preview} alt={wc.title} className="w-full h-24 object-cover" />}
                 <div className="px-2 py-1.5 text-[11px]" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>{wc.title}</div>
               </a>
@@ -391,12 +428,17 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
       )}
 
       {/* ══════ EMERGENCY ══════ */}
-      <Section title="Emergency Contacts" icon="🚨" defaultOpen={false}>
+      <Section title="Emergency Contacts" icon="🚨">
         <div className="text-xs space-y-1" style={{ color: "var(--text-secondary)" }}>
           <div>🚨 <strong>Salvamento Marítimo:</strong> <a href="tel:900202202" style={{ color: "var(--text-blue-light)" }}>900 202 202</a> / VHF 16</div>
           <div>🏥 <strong>Emergencias:</strong> <a href="tel:112" style={{ color: "var(--text-blue-light)" }}>112</a></div>
           <div>⚓ <strong>MRCC Gijón:</strong> VHF 16, 70 (DSC)</div>
-          <div>🐋 <strong>GT Orcas app:</strong> Report & track orca interactions</div>
+          <div>
+            🐋 <strong>Orca advisory:</strong> Monitor GT Orcas app onboard and cross-check recent{" "}
+            <a href="https://www.orcaiberica.org/en/recomendaciones" target="_blank" rel="noopener" style={{ color: "var(--text-blue-light)" }}>Orca Ibérica recommendations</a>
+            {" "} / {" "}
+            <a href="https://www.orcaiberica.org/interacciones-registradas" target="_blank" rel="noopener" style={{ color: "var(--text-blue-light)" }}>interaction reports</a>.
+          </div>
           {guide?.nightNotes && <div className="mt-2 p-2 rounded" style={{ background: "var(--bg-primary)" }}>🌙 <strong>Night sailing:</strong> {guide.nightNotes}</div>}
         </div>
       </Section>

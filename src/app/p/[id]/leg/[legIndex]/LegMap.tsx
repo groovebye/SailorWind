@@ -1,7 +1,7 @@
 "use client";
 
 import { MapContainer, TileLayer, CircleMarker, Tooltip, Polyline, Rectangle, useMap, GeoJSON as GeoJSONLayer } from "react-leaflet";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { buildSeaRoute } from "@/lib/coastline";
@@ -37,11 +37,15 @@ const ORCA_ZONES = [
 
 function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap();
+  const didFit = useRef(false);
   useEffect(() => {
+    if (didFit.current) return;
     if (positions.length > 1) {
       map.fitBounds(L.latLngBounds(positions.map(p => L.latLng(p[0], p[1]))), { padding: [40, 40] });
+      didFit.current = true;
     } else if (positions.length === 1) {
       map.setView(positions[0], 13);
+      didFit.current = true;
     }
   }, [map, positions]);
   return null;
@@ -59,33 +63,35 @@ export default function LegMap({ waypoints, fromPort, toPort, theme }: {
     fetch("/data/contours.json").then(r => r.json()).then(setContours).catch(() => {});
   }, []);
 
-  const positions = waypoints.map(w => [w.port.lat, w.port.lon] as [number, number]);
-
-  // Build route geometry using the same routing graph as main map
-  const routeAnchors = waypoints.filter((w, i) =>
-    i === 0 || i === waypoints.length - 1 || w.isCape
+  const positions = useMemo(
+    () => waypoints.map((w) => [w.port.lat, w.port.lon] as [number, number]),
+    [waypoints]
   );
 
-  const routePositions: [number, number][] = [];
-  for (let i = 0; i < routeAnchors.length - 1; i++) {
-    const from = routeAnchors[i];
-    const to = routeAnchors[i + 1];
-    // Use cape rounding names if applicable
-    const fromName = from.isCape && from.port.name !== fromPort.name
-      ? `${from.port.name} Rounding` : from.port.name;
-    const toName = to.isCape && to.port.name !== toPort.name
-      ? `${to.port.name} Rounding` : to.port.name;
+  // Build route geometry using the same routing graph as main map
+  const routePositions = useMemo(() => {
+    const routeAnchors = [
+      { port: fromPort, isCape: false },
+      ...waypoints.filter((w) => w.isCape).map((w) => ({ port: w.port, isCape: true })),
+      { port: toPort, isCape: false },
+    ];
 
-    const seg = buildSeaRoute(
-      { name: fromName, lat: from.port.lat, lon: from.port.lon },
-      { name: toName, lat: to.port.lat, lon: to.port.lon }
-    );
-    if (routePositions.length > 0 && seg.length > 0) {
-      routePositions.push(...seg.slice(1));
-    } else {
-      routePositions.push(...seg);
+    const merged: [number, number][] = [];
+    for (let i = 0; i < routeAnchors.length - 1; i++) {
+      const from = routeAnchors[i];
+      const to = routeAnchors[i + 1];
+      const fromName = from.isCape ? `${from.port.name} Rounding` : from.port.name;
+      const toName = to.isCape ? `${to.port.name} Rounding` : to.port.name;
+      const seg = buildSeaRoute(
+        { name: fromName, lat: from.port.lat, lon: from.port.lon },
+        { name: toName, lat: to.port.lat, lon: to.port.lon }
+      );
+
+      if (merged.length > 0 && seg.length > 0) merged.push(...seg.slice(1));
+      else merged.push(...seg);
     }
-  }
+    return merged;
+  }, [fromPort, toPort, waypoints]);
 
   const tileUrl = theme === "light" ? LIGHT_TILES : DARK_TILES;
   const legBounds = positions.length > 1
