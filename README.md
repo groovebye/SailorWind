@@ -5,6 +5,19 @@
 **Лодка:** Bossanova (Hallberg-Rassy Monsun 31, осадка 1.5м)
 **Маршрут:** Gijon (Испания) -> Греция, multi-year voyage
 
+### Current Status
+
+| Component | Coverage | Quality |
+|-----------|----------|---------|
+| Ports database | 19 ports + 3 capes (Gijón→La Coruña) | All have phone, VHF, restaurants, grocery, orca risk |
+| Weather forecasts | Open-Meteo (ECMWF/GFS/ICON/AROME) + Windy (GFS+gfsWave) | Live, cached in DB per source/model |
+| Tidal predictions | 18 ports with HW/LW/spring/neap | Harmonic model ~15-30min accuracy |
+| Leg guides | 5 legs with pilotage, milestones, hazards, fallbacks | Curated pilotage text + structured data |
+| Route geometry | Hand-authored graph (64 nodes, 61 edges, Dijkstra) | Good offshore corridors, some coast-crossing at fine zoom |
+| Orca zones | 2 advisory zones (Galicia, Finisterre) | GTOA source, seasonal notes |
+| Leg scoring | 0-100 rule-based (wind/wave/cape/night penalties) | Functional |
+| Marina data | 16 non-cape ports with facilities, approach, shore services | Major ports fully enriched, minor ports basic |
+
 ---
 
 ## Tech Stack
