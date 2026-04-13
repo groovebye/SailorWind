@@ -22,6 +22,15 @@ interface MarinaOption {
   notes: string | null; prices: MarinaPrice[];
   mapFeatures: { type: string; name: string; geometry: { type: string; coordinates: [number, number] }; description: string | null }[];
 }
+interface NearbyPlace {
+  id: string; name: string; category: string; subcategory: string | null;
+  description: string | null; address: string | null; phone: string | null;
+  hours: string | null; distanceMeters: number | null; walkMinutes: number | null;
+  rating: number | null; reviewCount: number | null; priceLevel: string | null;
+  isRecommended: boolean; bestFor: string | null; marinaOptionId: string | null;
+  sourceName: string | null; confidence: string | null;
+}
+
 interface PortArea {
   name: string; slug: string; country: string; region: string | null;
   lat: number; lon: number; type: string;
@@ -31,6 +40,51 @@ interface PortArea {
   restaurants: unknown; yachtShops: unknown; groceryStores: unknown; extras: unknown;
   orcaRisk: string | null; orcaNotes: string | null;
   marinas: MarinaOption[];
+  nearbyPlaces: NearbyPlace[];
+}
+
+const CATEGORY_LABELS: Record<string, { icon: string; label: string }> = {
+  restaurant: { icon: "🍽️", label: "Restaurants" },
+  cafe: { icon: "☕", label: "Cafés" },
+  bar: { icon: "🍺", label: "Bars" },
+  chandlery: { icon: "⛵", label: "Chandlery & Marine" },
+  marine_service: { icon: "🔧", label: "Marine Services" },
+  grocery: { icon: "🛒", label: "Grocery" },
+  market: { icon: "🏪", label: "Markets" },
+  bakery: { icon: "🍞", label: "Bakery" },
+  pharmacy: { icon: "💊", label: "Pharmacy" },
+  laundry: { icon: "👕", label: "Laundry" },
+  atm: { icon: "🏧", label: "ATM" },
+  hospital: { icon: "🏥", label: "Hospital" },
+  taxi: { icon: "🚕", label: "Taxi" },
+};
+
+function NearbyPlaceCard({ place }: { place: NearbyPlace }) {
+  return (
+    <div className="rounded-lg px-3 py-2 mb-1.5" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+      <div className="flex items-center justify-between mb-0.5">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-xs" style={{ color: "var(--text-heading)" }}>{place.name}</span>
+          {place.isRecommended && <span className="text-[9px] px-1 py-0.5 rounded" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>Recommended</span>}
+        </div>
+        <div className="flex items-center gap-2 text-[11px]">
+          {place.rating && (
+            <span style={{ color: "var(--text-yellow)" }}>★ {place.rating}{place.reviewCount ? ` (${place.reviewCount})` : ""}</span>
+          )}
+          {place.priceLevel && <span style={{ color: "var(--text-muted)" }}>{place.priceLevel}</span>}
+        </div>
+      </div>
+      {place.description && <div className="text-[11px] mb-1" style={{ color: "var(--text-muted)" }}>{place.description}</div>}
+      <div className="flex flex-wrap gap-2 text-[10px]" style={{ color: "var(--text-secondary)" }}>
+        {(place.distanceMeters || place.walkMinutes) && (
+          <span>🚶 {place.distanceMeters ? `${place.distanceMeters}m` : ""}{place.distanceMeters && place.walkMinutes ? " · " : ""}{place.walkMinutes ? `${place.walkMinutes} min` : ""}</span>
+        )}
+        {place.phone && <a href={`tel:${place.phone.replace(/\s/g, "")}`} style={{ color: "var(--text-blue-light)" }}>📞 {place.phone}</a>}
+        {place.hours && <span>🕐 {place.hours}</span>}
+        {place.address && <span>📍 {place.address}</span>}
+      </div>
+    </div>
+  );
 }
 
 function marinaSize(berths: number | null): string {
@@ -212,6 +266,21 @@ export default function PortAreaPage({ params }: { params: Promise<{ slug: strin
           </div>
         </div>
       ))}
+
+      {/* Nearby Places by category */}
+      {area.nearbyPlaces && area.nearbyPlaces.length > 0 && (() => {
+        const cats = [...new Set(area.nearbyPlaces.map(p => p.category))];
+        return cats.map(cat => {
+          const places = area.nearbyPlaces.filter(p => p.category === cat);
+          const meta = CATEGORY_LABELS[cat] || { icon: "📍", label: cat };
+          return (
+            <div key={cat} className="mb-4">
+              <h3 className="text-sm font-semibold mb-1.5" style={{ color: "var(--text-heading)" }}>{meta.icon} {meta.label} ({places.length})</h3>
+              {places.map(p => <NearbyPlaceCard key={p.id} place={p} />)}
+            </div>
+          );
+        });
+      })()}
 
       <div className="text-center text-[10px] mt-6 pt-4" style={{ color: "var(--text-muted)", borderTop: `1px solid var(--border-light)` }}>
         Data verified where indicated. Cross-check critical info before arrival.

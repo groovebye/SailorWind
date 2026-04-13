@@ -12,6 +12,9 @@ export async function GET(req: NextRequest) {
           include: { prices: true, mapFeatures: { orderBy: { sortOrder: "asc" } } },
           orderBy: { berthCount: "desc" },
         },
+        nearbyPlaces: {
+          orderBy: [{ isRecommended: "desc" }, { sortOrder: "asc" }],
+        },
       },
     });
     if (!area) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -24,6 +27,10 @@ export async function GET(req: NextRequest) {
       marinas: {
         include: { prices: { where: { loaMeters: 9.5 } } },
         orderBy: { berthCount: "desc" },
+      },
+      nearbyPlaces: {
+        where: { isRecommended: true },
+        take: 3,
       },
     },
   });

@@ -202,7 +202,8 @@ model PortArea {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  marinas   MarinaOption[]
+  marinas      MarinaOption[]
+  nearbyPlaces NearbyPlace[]
 }
 
 model MarinaOption {
@@ -247,13 +248,28 @@ model MarinaOption {
   swellSensitivity    String?
   notes               String?
 
-  sourceVerification  Json?  // {phone: {source, checkedAt}, ...}
+  sourceVerification  Json?
+
+  // Extended marina intelligence
+  sizeLabel       String?  // "Small" | "Medium" | "Large" | "Major"
+  cityWalkMinutes Int?
+  bestFor         String?  // "budget, transient, repairs, provisioning"
+  drawbacks       String?
+  fuelNotes       String?
+  visitorBerthNotes String?
+  berthingNotes   String?
+  exitNotes       String?
+  officialLayoutImageUrl String?
+  officialLayoutPdfUrl   String?
+  officialLayoutSource   String?
+  officialLayoutCheckedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  prices    MarinaPrice[]
-  mapFeatures MarinaMapFeature[]
+  prices       MarinaPrice[]
+  mapFeatures  MarinaMapFeature[]
+  nearbyPlaces NearbyPlace[]
 }
 
 model MarinaPrice {
@@ -296,6 +312,46 @@ model MarinaMapFeature {
   updatedAt DateTime @updatedAt
 
   @@index([marinaOptionId])
+}
+
+model NearbyPlace {
+  id              String   @id @default(cuid())
+  portArea        PortArea @relation(fields: [portAreaId], references: [id], onDelete: Cascade)
+  portAreaId      String
+  marina          MarinaOption? @relation(fields: [marinaOptionId], references: [id], onDelete: SetNull)
+  marinaOptionId  String?
+
+  name            String
+  category        String   // restaurant, chandlery, grocery, pharmacy, laundry, atm, etc.
+  subcategory     String?
+  description     String?
+  address         String?
+  phone           String?
+  website         String?
+  hours           String?
+  lat             Float?
+  lon             Float?
+
+  distanceMeters  Int?
+  walkMinutes     Int?
+  rating          Float?
+  reviewCount     Int?
+  priceLevel      String?  // "$" | "$$" | "$$$"
+  isRecommended   Boolean  @default(false)
+  bestFor         String?
+
+  sourceName      String?
+  sourceUrl       String?
+  checkedAt       DateTime?
+  confidence      String?  // "official" | "curated" | "estimated"
+  notes           String?
+  sortOrder       Int      @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([portAreaId, category])
+  @@index([marinaOptionId, category])
 }
 
 // Junction: which ports are start/end of this passage
