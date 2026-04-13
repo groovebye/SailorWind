@@ -116,10 +116,12 @@ export async function fetchWindyForecast(
   const windyData = await res.json();
 
   // Also fetch marine data (waves/swell) from Open-Meteo (free)
+  // Use offshore coords — ports inside rías return null in marine model
+  const marineLat = Math.min(lat + 0.05, 44.0);
   let marineData: Record<string, number[]> = {};
   try {
     const marineRes = await fetch(
-      `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}` +
+      `https://marine-api.open-meteo.com/v1/marine?latitude=${marineLat}&longitude=${lon}` +
       `&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction` +
       `&timezone=UTC&forecast_days=14`
     );

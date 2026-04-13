@@ -57,6 +57,17 @@ function kmhToKt(kmh: number) {
   return kmh * 0.539957;
 }
 
+/**
+ * Shift coordinates slightly offshore for marine API.
+ * Ports inside rías return null wave data because they're on "land"
+ * in the marine model grid. Moving ~0.05° (~3NM) northward puts us
+ * in open water where marine data is available.
+ */
+function offshoreCoords(lat: number, lon: number): { lat: number; lon: number } {
+  // North Spain coast faces N — shift north for open water
+  return { lat: Math.min(lat + 0.05, 44.0), lon };
+}
+
 function beaufort(kt: number): string {
   const t: [number, string][] = [
     [1,"F0"],[4,"F1"],[7,"F2"],[11,"F3"],[17,"F4"],[22,"F5"],
@@ -134,8 +145,10 @@ async function fetchRaw(
     `${FORECAST_URL}?latitude=${lat}&longitude=${lon}&hourly=wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation,cloud_cover,weather_code&timezone=UTC&forecast_days=10&models=${model}`,
     "Weather API"
   );
+  // Use offshore coords for marine data — ports inside rías return null
+  const marine = offshoreCoords(lat, lon);
   const marineRes = await fetchWithRetry(
-    `${MARINE_URL}?latitude=${lat}&longitude=${lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=UTC&forecast_days=10`,
+    `${MARINE_URL}?latitude=${marine.lat}&longitude=${marine.lon}&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction&timezone=UTC&forecast_days=10`,
     "Marine API"
   );
 
