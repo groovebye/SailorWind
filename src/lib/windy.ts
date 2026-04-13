@@ -158,20 +158,22 @@ export async function fetchWindyForecast(
     ) * 100; // Windy returns 0-1, convert to %
 
     // Marine data from Open-Meteo — match by hour
-    let waveM = 0, wavePeriodS = 0, waveDirDeg = 0;
-    let swellM = 0, swellPeriodS = 0, swellDirDeg = 0;
+    let hasMarine = false;
+    let waveM: number | null = null, wavePeriodS: number | null = null, waveDirDeg2 = 0;
+    let swellM: number | null = null, swellPeriodS: number | null = null, swellDirDeg2 = 0;
 
     if (marineData.time) {
       const marineIdx = (marineData.time as unknown as string[]).findIndex(
         (t: string) => t.slice(0, 13) === timeHour
       );
-      if (marineIdx >= 0) {
-        waveM = marineData.wave_height?.[marineIdx] || 0;
+      if (marineIdx >= 0 && marineData.wave_height?.[marineIdx] != null) {
+        hasMarine = true;
+        waveM = marineData.wave_height[marineIdx] || 0;
         wavePeriodS = marineData.wave_period?.[marineIdx] || 0;
-        waveDirDeg = marineData.wave_direction?.[marineIdx] || 0;
+        waveDirDeg2 = marineData.wave_direction?.[marineIdx] || 0;
         swellM = marineData.swell_wave_height?.[marineIdx] || 0;
         swellPeriodS = marineData.swell_wave_period?.[marineIdx] || 0;
-        swellDirDeg = marineData.swell_wave_direction?.[marineIdx] || 0;
+        swellDirDeg2 = marineData.swell_wave_direction?.[marineIdx] || 0;
       }
     }
 
@@ -182,18 +184,20 @@ export async function fetchWindyForecast(
       windDir: windDirection(windDirDeg),
       beaufort: beaufortScale(windKt),
       gustKt: Math.round(gustKt * 10) / 10,
-      waveM: Math.round(waveM * 10) / 10,
-      wavePeriodS: Math.round(wavePeriodS * 10) / 10,
-      waveDirDeg: Math.round(waveDirDeg),
-      waveDir: windDirection(waveDirDeg),
-      swellM: Math.round(swellM * 10) / 10,
-      swellPeriodS: Math.round(swellPeriodS * 10) / 10,
-      swellDirDeg: Math.round(swellDirDeg),
-      swellDir: windDirection(swellDirDeg),
+      waveM: hasMarine ? Math.round(waveM! * 10) / 10 : null,
+      wavePeriodS: hasMarine ? Math.round(wavePeriodS! * 10) / 10 : null,
+      waveDirDeg: Math.round(waveDirDeg2),
+      waveDir: windDirection(waveDirDeg2),
+      swellM: hasMarine ? Math.round(swellM! * 10) / 10 : null,
+      swellPeriodS: hasMarine ? Math.round(swellPeriodS! * 10) / 10 : null,
+      swellDirDeg: Math.round(swellDirDeg2),
+      swellDir: windDirection(swellDirDeg2),
       precipMm: Math.round(precipMm * 10) / 10,
       cloudPct: Math.round(cloudPct),
       weather: weatherFromClouds(cloudPct, precipMm),
-      verdict: goNogo(windKt, gustKt, waveM, isCape),
+      verdict: hasMarine
+        ? goNogo(windKt, gustKt, waveM!, isCape)
+        : goNogo(windKt, gustKt, 0, isCape) + (windKt > 0 ? " (no wave data)" : ""),
     });
   }
 

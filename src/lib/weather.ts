@@ -15,12 +15,12 @@ export interface ForecastEntry {
   windDir: string;
   beaufort: string;
   gustKt: number;
-  waveM: number;
-  wavePeriodS: number;
+  waveM: number | null;      // null = no marine data available
+  wavePeriodS: number | null;
   waveDirDeg: number;
   waveDir: string;
-  swellM: number;
-  swellPeriodS: number;
+  swellM: number | null;
+  swellPeriodS: number | null;
   swellDirDeg: number;
   swellDir: string;
   precipMm: number;
@@ -215,7 +215,8 @@ export async function fetchForecast(
 
     const wKt = kmhToKt(windKmh);
     const gKt = kmhToKt(gustKmh);
-    const mr = marineLookup.get(timesW[i]) ?? lastMarine;
+    const mr = marineLookup.get(timesW[i]);
+    const hasMarine = !!mr;
 
     entries.push({
       time: dt.toISOString(),
@@ -224,18 +225,20 @@ export async function fetchForecast(
       windDir: dirName(windDeg),
       beaufort: beaufort(wKt),
       gustKt: Math.round(gKt * 10) / 10,
-      waveM: Math.round(mr.waveH * 10) / 10,
-      wavePeriodS: Math.round(mr.waveP),
-      waveDirDeg: Math.round(mr.waveD),
-      waveDir: dirName(mr.waveD),
-      swellM: Math.round(mr.swellH * 10) / 10,
-      swellPeriodS: Math.round(mr.swellP),
-      swellDirDeg: Math.round(mr.swellD),
-      swellDir: dirName(mr.swellD),
+      waveM: hasMarine ? Math.round(mr.waveH * 10) / 10 : null,
+      wavePeriodS: hasMarine ? Math.round(mr.waveP) : null,
+      waveDirDeg: Math.round(mr?.waveD ?? 0),
+      waveDir: dirName(mr?.waveD ?? 0),
+      swellM: hasMarine ? Math.round(mr.swellH * 10) / 10 : null,
+      swellPeriodS: hasMarine ? Math.round(mr.swellP) : null,
+      swellDirDeg: Math.round(mr?.swellD ?? 0),
+      swellDir: dirName(mr?.swellD ?? 0),
       precipMm: Math.round(precip * 100) / 100,
       cloudPct: Math.round(cloud),
       weather: wmoToWeather(wmo),
-      verdict: goNogo(wKt, gKt, mr.waveH, isCape),
+      verdict: hasMarine
+        ? goNogo(wKt, gKt, mr.waveH, isCape)
+        : goNogo(wKt, gKt, 0, isCape) + (wKt > 0 ? " (no wave data)" : ""),
     });
   }
 

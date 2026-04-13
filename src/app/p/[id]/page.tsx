@@ -420,11 +420,11 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                             <td className="px-2 py-1.5 text-center">{Math.round(f.gustKt)}</td>
                             <td className="px-2 py-1.5 whitespace-nowrap">
                               <span className="inline-block" style={{ transform: `rotate(${f.waveDirDeg}deg)` }}>&darr;</span>
-                              {" "}{f.waveM}m / {f.wavePeriodS}s
+                              {" "}{f.waveM != null ? `${f.waveM}m / ${f.wavePeriodS}s` : "—"}
                             </td>
                             <td className="px-2 py-1.5 whitespace-nowrap">
                               <span className="inline-block" style={{ transform: `rotate(${f.swellDirDeg}deg)` }}>&darr;</span>
-                              {" "}{f.swellM}m / {f.swellPeriodS}s
+                              {" "}{f.swellM != null ? `${f.swellM}m / ${f.swellPeriodS}s` : "—"}
                             </td>
                             <td className="px-2 py-1.5 text-right">
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={vc(f.verdict)}>
@@ -512,11 +512,11 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                               <td className="px-2 py-1 text-center w-14">{Math.round(f.gustKt)}</td>
                               <td className="px-2 py-1">
                                 <span className="inline-block" style={{ transform: `rotate(${f.waveDirDeg}deg)` }}>&darr;</span>
-                                {" "}{f.waveM}m / {f.wavePeriodS}s
+                                {" "}{f.waveM != null ? `${f.waveM}m / ${f.wavePeriodS}s` : "—"}
                               </td>
                               <td className="px-2 py-1">
                                 <span className="inline-block" style={{ transform: `rotate(${f.swellDirDeg}deg)` }}>&darr;</span>
-                                {" "}{f.swellM}m / {f.swellPeriodS}s
+                                {" "}{f.swellM != null ? `${f.swellM}m / ${f.swellPeriodS}s` : "—"}
                               </td>
                               <td className="px-2 py-1 text-center w-16">
                                 <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={vc(f.verdict)}>
