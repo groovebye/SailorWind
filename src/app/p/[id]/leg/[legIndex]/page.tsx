@@ -633,7 +633,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           <div className="flex items-center gap-1 no-print">
             {!isEditingRoute ? (
               <>
-                <button onClick={() => { setIsEditingRoute(true); setRouteDraft([{ lat: fromPort.lat, lon: fromPort.lon, label: fromPort.name }]); }} className="px-2 py-1 rounded" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }}>
+                <button onClick={() => { setIsEditingRoute(true); setRouteDraft([]); }} className="px-2 py-1 rounded" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }}>
                   Modify Route
                 </button>
                 {routeMode === "manual" && (
@@ -647,8 +647,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 <span style={{ color: "var(--text-muted)" }}>{routeDraft.length} pts</span>
                 <button onClick={() => setRouteDraft(prev => prev.slice(0, -1))} disabled={routeDraft.length <= 1} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Undo</button>
                 <button onClick={() => setIsEditingRoute(false)} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Cancel</button>
-                <button onClick={() => { setRouteDraft(prev => [...prev, { lat: dest.lat, lon: dest.lon, label: dest.name }]); handleSaveRoute(); }} disabled={isSavingRoute || routeDraft.length < 1} className="px-2 py-1 rounded font-semibold" style={{ color: "var(--text-green)", background: "var(--accent-go)", border: `1px solid var(--text-green)30` }}>
-                  {isSavingRoute ? "Saving..." : "Save Route"}
+                <button onClick={handleSaveRoute} disabled={isSavingRoute || routeDraft.length < 2} className="px-2 py-1 rounded font-semibold" style={{ color: routeDraft.length < 2 ? "var(--text-muted)" : "var(--text-green)", background: routeDraft.length < 2 ? "transparent" : "var(--accent-go)", border: `1px solid ${routeDraft.length < 2 ? "var(--border)" : "var(--text-green)30"}` }}>
+                  {isSavingRoute ? "Saving..." : `Save (${routeDraft.length} pts)`}
                 </button>
               </>
             )}
@@ -656,7 +656,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </div>
         {isEditingRoute && (
           <div className="px-3 py-1.5 text-[11px]" style={{ background: "var(--accent-caution)", color: "var(--text-yellow)" }}>
-            Click on the map to add waypoints. First point = departure, last = arrival. Points will be connected in order.
+            Click on the map to place waypoints in order. Start in open water near {fromPort.name}, end near {dest.name}. Click existing points to remove. Min 2 points.
           </div>
         )}
         <div className="rounded-b-xl overflow-hidden" style={{ border: `1px solid var(--border-light)`, borderTop: "none", height: 400 }}>

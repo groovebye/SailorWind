@@ -178,20 +178,22 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
         </Rectangle>
       ))}
 
-      {/* Route line from routing graph */}
-      {routePositions.length > 1 && (
+      {/* Route line from routing graph (hidden in edit mode) */}
+      {!isEditing && routePositions.length > 1 && (
         <Polyline positions={routePositions}
           pathOptions={{ color: "#3b82f6", weight: 3, opacity: 0.8 }} />
       )}
 
-      {/* Waypoints */}
+      {/* Waypoints (dimmed in edit mode) */}
       {waypoints.map((w, i) => (
         <CircleMarker key={i} center={[w.port.lat, w.port.lon]}
           radius={w.isCape ? 6 : w.port.tier === "major" ? 11 : w.port.tier === "medium" ? 8 : 5}
           pathOptions={{
             fillColor: COLORS[w.port.type] || "#60a5fa",
             color: COLORS[w.port.type] || "#1e40af",
-            weight: 2, fillOpacity: 0.9,
+            opacity: isEditing ? 0.3 : 1,
+            fillOpacity: isEditing ? 0.2 : 0.9,
+            weight: 2,
           }}>
           <Tooltip direction="top" offset={[0, -8]}>
             <strong>{w.port.name}</strong><br />
@@ -245,7 +247,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
           {routeDraft.map((p, i) => (
             <CircleMarker key={`draft-${i}`} center={[p.lat, p.lon]} radius={7}
               pathOptions={{ fillColor: i === 0 ? "#4ade80" : "#f97316", color: "#fff", weight: 2, fillOpacity: 0.9 }}
-              eventHandlers={onRemovePoint && i > 0 ? { click: (e) => { e.originalEvent.stopPropagation(); onRemovePoint(i); } } : {}}>
+              eventHandlers={onRemovePoint ? { click: (e) => { e.originalEvent.stopPropagation(); onRemovePoint(i); } } : {}}>
               <Tooltip permanent direction="top" offset={[0, -10]}>
                 <span style={{ fontSize: 10, fontWeight: 700 }}>{i + 1}{p.label ? ` ${p.label}` : ""}</span>
               </Tooltip>
