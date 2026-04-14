@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { buildSeaRoute } from "@/lib/coastline";
+import { buildSeaRoute, type LatLon } from "@/lib/coastline";
+import { getLegRoute } from "@/lib/leg-route";
 import { fetchForecast, type ForecastEntry, type WeatherModel } from "@/lib/weather";
 import { getTidePrediction, tideStateAt, type TidePrediction, type TidalStream } from "@/lib/tides";
 
@@ -607,11 +608,23 @@ export async function resolveLegTimelineContext(
     { name: leg.to.port.name, lat: leg.to.port.lat, lon: leg.to.port.lon },
   ];
 
-  const routeGeometry = routeAnchors.flatMap((anchor, index) => {
-    if (index === routeAnchors.length - 1) return [];
-    const segment = buildSeaRoute(anchor, routeAnchors[index + 1]);
-    return index === 0 ? segment : segment.slice(1);
-  });
+  // Check for manual route override
+  const manualRoute = await getLegRoute(
+    passage.id, legIndex,
+    { name: leg.from.port.name, lat: leg.from.port.lat, lon: leg.from.port.lon },
+    { name: leg.to.port.name, lat: leg.to.port.lat, lon: leg.to.port.lon },
+  );
+
+  let routeGeometry: LatLon[];
+  if (manualRoute.mode === "manual") {
+    routeGeometry = manualRoute.points.map(p => [p.lat, p.lon] as LatLon);
+  } else {
+    routeGeometry = routeAnchors.flatMap((anchor, index) => {
+      if (index === routeAnchors.length - 1) return [];
+      const segment = buildSeaRoute(anchor, routeAnchors[index + 1]);
+      return index === 0 ? segment : segment.slice(1);
+    });
+  }
 
   const routeCumulative = buildCumulativeRoute(routeGeometry);
   const routeDistanceNm = routeCumulative[routeCumulative.length - 1] ?? leg.nm;

@@ -73,7 +73,7 @@ const HAZARD_COLORS: Record<string, string> = {
   critical: "#ef4444", high: "#f97316", medium: "#eab308", low: "#94a3b8",
 };
 
-export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [], milestones = [], isEditing = false, routeDraft = [], onMapClick }: {
+export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [], milestones = [], isEditing = false, routeDraft = [], onMapClick, onRemovePoint }: {
   waypoints: Waypoint[];
   fromPort: Port;
   toPort: Port;
@@ -83,6 +83,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
   isEditing?: boolean;
   routeDraft?: { lat: number; lon: number; label?: string }[];
   onMapClick?: (lat: number, lon: number) => void;
+  onRemovePoint?: (index: number) => void;
 }) {
   const [contours, setContours] = useState<FeatureCollection | null>(null);
 
@@ -242,9 +243,10 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
         <>
           <Polyline positions={routeDraft.map(p => [p.lat, p.lon] as [number, number])} pathOptions={{ color: "#f97316", weight: 3, dashArray: "8 4" }} />
           {routeDraft.map((p, i) => (
-            <CircleMarker key={`draft-${i}`} center={[p.lat, p.lon]} radius={6}
-              pathOptions={{ fillColor: i === 0 ? "#4ade80" : "#f97316", color: "#fff", weight: 2, fillOpacity: 0.9 }}>
-              <Tooltip permanent direction="top" offset={[0, -8]}>
+            <CircleMarker key={`draft-${i}`} center={[p.lat, p.lon]} radius={7}
+              pathOptions={{ fillColor: i === 0 ? "#4ade80" : "#f97316", color: "#fff", weight: 2, fillOpacity: 0.9 }}
+              eventHandlers={onRemovePoint && i > 0 ? { click: (e) => { e.originalEvent.stopPropagation(); onRemovePoint(i); } } : {}}>
+              <Tooltip permanent direction="top" offset={[0, -10]}>
                 <span style={{ fontSize: 10, fontWeight: 700 }}>{i + 1}{p.label ? ` ${p.label}` : ""}</span>
               </Tooltip>
             </CircleMarker>

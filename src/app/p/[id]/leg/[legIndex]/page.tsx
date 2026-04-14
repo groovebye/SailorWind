@@ -653,6 +653,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             isEditing={isEditingRoute}
             routeDraft={routeDraft}
             onMapClick={isEditingRoute ? (lat: number, lon: number) => setRouteDraft(prev => [...prev, { lat, lon }]) : undefined}
+            onRemovePoint={isEditingRoute ? (idx: number) => setRouteDraft(prev => prev.filter((_, i) => i !== idx)) : undefined}
           />
         </div>
       </div>
@@ -1158,21 +1159,39 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
             {/* Quick actions */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
-              <button onClick={() => handleAddCheckpoint("departure", "Departed")} className="px-2 py-1.5 rounded text-[11px]" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🚀 Departure</button>
-              <button onClick={() => handleAddCheckpoint("cape", "Cape rounded")} className="px-2 py-1.5 rounded text-[11px]" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>⚡ Cape</button>
-              <button onClick={() => handleAddCheckpoint("reef_in", "Reefed")} className="px-2 py-1.5 rounded text-[11px]" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🪢 Reef In</button>
-              <button onClick={() => handleAddCheckpoint("arrival", "Arrived")} className="px-2 py-1.5 rounded text-[11px]" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🏁 Arrival</button>
+              <button onClick={() => handleAddCheckpoint("departure", "Departed")} className="px-3 py-2.5 rounded-lg text-xs touch-manipulation" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🚀 Departure</button>
+              <button onClick={() => handleAddCheckpoint("cape", "Cape rounded")} className="px-3 py-2.5 rounded-lg text-xs touch-manipulation" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>⚡ Cape</button>
+              <button onClick={() => handleAddCheckpoint("reef_in", "Reefed")} className="px-3 py-2.5 rounded-lg text-xs touch-manipulation" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🪢 Reef In</button>
+              <button onClick={() => handleAddCheckpoint("arrival", "Arrived")} className="px-3 py-2.5 rounded-lg text-xs touch-manipulation" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🏁 Arrival</button>
             </div>
 
             {/* Add observation form */}
             <details className="mb-3">
               <summary className="text-xs cursor-pointer" style={{ color: "var(--text-blue-light)" }}>+ Add Observation</summary>
-              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                {["comfortable", "moderate", "bumpy", "demanding", "hard_work"].map(c => (
-                  <button key={c} onClick={() => handleAddObservation({ comfort: c })} className="px-2 py-1 rounded capitalize" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>
-                    {c.replace("_", " ")}
-                  </button>
-                ))}
+              <div className="mt-2 space-y-2">
+                <div className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Comfort level</div>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { val: "comfortable", color: "var(--text-green)" },
+                    { val: "moderate", color: "var(--text-blue-light)" },
+                    { val: "bumpy", color: "var(--text-yellow)" },
+                    { val: "demanding", color: "var(--text-red)" },
+                    { val: "hard_work", color: "var(--text-red)" },
+                  ].map(c => (
+                    <button key={c.val} onClick={() => handleAddObservation({ comfort: c.val })} className="px-2 py-1 rounded text-[11px] capitalize" style={{ color: c.color, border: `1px solid ${c.color}30` }}>
+                      {c.val.replace("_", " ")}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[10px] uppercase mt-2" style={{ color: "var(--text-muted)" }}>Quick conditions</div>
+                <div className="flex flex-wrap gap-1">
+                  <button onClick={() => handleAddObservation({ note: "Calm, flat seas" })} className="px-2 py-1 rounded text-[11px]" style={{ border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🌊 Calm</button>
+                  <button onClick={() => handleAddObservation({ note: "Choppy" })} className="px-2 py-1 rounded text-[11px]" style={{ border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🌊 Choppy</button>
+                  <button onClick={() => handleAddObservation({ note: "Rough seas" })} className="px-2 py-1 rounded text-[11px]" style={{ border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🌊 Rough</button>
+                  <button onClick={() => handleAddObservation({ note: "Motoring" })} className="px-2 py-1 rounded text-[11px]" style={{ border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🚢 Motor</button>
+                  <button onClick={() => handleAddObservation({ note: "Sailing well" })} className="px-2 py-1 rounded text-[11px]" style={{ border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>⛵ Sailing</button>
+                  <button onClick={() => handleAddObservation({ note: "Reefed" })} className="px-2 py-1 rounded text-[11px]" style={{ border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🪢 Reefed</button>
+                </div>
               </div>
             </details>
 
@@ -1222,6 +1241,69 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 ))}
               </div>
             )}
+            {/* Planned vs Actual comparison */}
+            {execution.startedAt && (
+              <div className="mt-3 rounded-lg p-3" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+                <div className="text-[10px] uppercase mb-2" style={{ color: "var(--text-muted)" }}>Planned vs Actual</div>
+                <div className="grid grid-cols-3 gap-2 text-xs" style={{ color: "var(--text-secondary)" }}>
+                  <div></div>
+                  <div className="text-center font-semibold" style={{ color: "var(--text-muted)" }}>Planned</div>
+                  <div className="text-center font-semibold" style={{ color: "var(--text-muted)" }}>Actual</div>
+
+                  <div style={{ color: "var(--text-muted)" }}>Departure</div>
+                  <div className="text-center">{fmtLocal(leg.departTime, fromTz)}</div>
+                  <div className="text-center" style={{ color: "var(--text-blue-light)" }}>{new Date(execution.startedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: fromTz })}</div>
+
+                  <div style={{ color: "var(--text-muted)" }}>Arrival</div>
+                  <div className="text-center">{fmtLocal(leg.arriveTime, toTz)}</div>
+                  <div className="text-center" style={{ color: execution.endedAt ? "var(--text-blue-light)" : "var(--text-muted)" }}>
+                    {execution.endedAt ? new Date(execution.endedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: toTz }) : "—"}
+                  </div>
+
+                  <div style={{ color: "var(--text-muted)" }}>Duration</div>
+                  <div className="text-center">{leg.hours.toFixed(1)}h</div>
+                  <div className="text-center" style={{ color: "var(--text-blue-light)" }}>
+                    {execution.endedAt ? ((new Date(execution.endedAt).getTime() - new Date(execution.startedAt).getTime()) / 3600000).toFixed(1) + "h" : "ongoing"}
+                  </div>
+
+                  <div style={{ color: "var(--text-muted)" }}>Comfort</div>
+                  <div className="text-center" style={{ color: comfortColor }}>{comfortLabel}</div>
+                  <div className="text-center" style={{ color: "var(--text-blue-light)" }}>
+                    {execution.observations.filter(o => o.comfort).length > 0
+                      ? execution.observations.filter(o => o.comfort).slice(-1)[0]?.comfort?.replace("_", " ") || "—"
+                      : "—"}
+                  </div>
+
+                  <div style={{ color: "var(--text-muted)" }}>Wind (max)</div>
+                  <div className="text-center">{Math.round(maxWind)}kt</div>
+                  <div className="text-center" style={{ color: "var(--text-blue-light)" }}>
+                    {execution.observations.filter(o => o.observedWindKt).length > 0
+                      ? Math.round(Math.max(...execution.observations.filter(o => o.observedWindKt).map(o => o.observedWindKt!))) + "kt"
+                      : "—"}
+                  </div>
+
+                  <div style={{ color: "var(--text-muted)" }}>Waves (max)</div>
+                  <div className="text-center">{maxWave.toFixed(1)}m</div>
+                  <div className="text-center" style={{ color: "var(--text-blue-light)" }}>
+                    {execution.observations.filter(o => o.observedWaveM).length > 0
+                      ? Math.max(...execution.observations.filter(o => o.observedWaveM).map(o => o.observedWaveM!)).toFixed(1) + "m"
+                      : "—"}
+                  </div>
+                </div>
+
+                {/* Delta highlights */}
+                {execution.endedAt && (() => {
+                  const actualH = (new Date(execution.endedAt).getTime() - new Date(execution.startedAt).getTime()) / 3600000;
+                  const delta = actualH - leg.hours;
+                  return Math.abs(delta) > 0.5 ? (
+                    <div className="mt-2 text-[11px]" style={{ color: delta > 0 ? "var(--text-yellow)" : "var(--text-green)" }}>
+                      {delta > 0 ? `⏰ +${delta.toFixed(1)}h slower than planned` : `⚡ ${Math.abs(delta).toFixed(1)}h faster than planned`}
+                    </div>
+                  ) : null;
+                })()}
+              </div>
+            )}
+
             <button onClick={handleStartExecution} className="mt-2 px-3 py-1 rounded text-xs" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }}>▶ Start New Passage</button>
           </div>
         )}
