@@ -240,7 +240,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   useEffect(() => {
     if (!passage || !leg || !fromPort || !dest) return;
     const c = new AbortController();
-    fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${fromPort.name}&fromLat=${fromPort.lat}&fromLon=${fromPort.lon}&toName=${dest.name}&toLat=${dest.lat}&toLon=${dest.lon}`, { signal: c.signal })
+    fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${encodeURIComponent(fromPort.name)}&fromLat=${fromPort.lat}&fromLon=${fromPort.lon}&toName=${encodeURIComponent(dest.name)}&toLat=${dest.lat}&toLon=${dest.lon}`, { signal: c.signal })
       .then(r => r.json()).then(d => {
         if (d.mode) setRouteMode(d.mode);
         if (d.mode === "manual" && d.points?.length >= 2) {
