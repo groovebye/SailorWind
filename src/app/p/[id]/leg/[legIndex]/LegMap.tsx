@@ -99,6 +99,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
   );
 
   // Build route geometry — use manual/resolved route if provided, otherwise auto
+  console.log("[SailorWind] LegMap render: manualRoutePoints=", manualRoutePoints?.length ?? "null", "hideRoute=", hideRoute);
   let routePositions: [number, number][];
   if (manualRoutePoints && manualRoutePoints.length >= 2) {
     routePositions = manualRoutePoints.map(p => [p.lat, p.lon] as [number, number]);

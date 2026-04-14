@@ -309,6 +309,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     const c = new AbortController();
     fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${encodeURIComponent(fromPort.name)}&fromLat=${fromPort.lat}&fromLon=${fromPort.lon}&toName=${encodeURIComponent(dest.name)}&toLat=${dest.lat}&toLon=${dest.lon}`, { signal: c.signal })
       .then(r => r.json()).then(d => {
+        console.log("[SailorWind] leg-route response:", d.mode, d.points?.length, "pts");
         if (d.mode) setRouteMode(d.mode);
         if (d.points?.length >= 2) {
           setResolvedRoutePoints(d.points);
@@ -318,7 +319,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           setResolvedRouteDistanceNm(null);
         }
         setRouteLoaded(true);
-      }).catch(() => { setRouteLoaded(true); });
+      }).catch((err) => { console.log("[SailorWind] leg-route error:", err); setRouteLoaded(true); });
     return () => c.abort();
   }, [passage, leg, fromPort, dest, id, legIndex, routeRefreshKey]);
 
