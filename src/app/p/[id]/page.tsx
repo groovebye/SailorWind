@@ -240,8 +240,10 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
     }
   }
 
-  function getWaypointETA(wp: Waypoint): Date {
-    for (const leg of legs) {
+  function getWaypointETA(wp: Waypoint, forLeg?: typeof legs[0]): Date {
+    // If a specific leg is provided, use its times
+    const searchLegs = forLeg ? [forLeg] : legs;
+    for (const leg of searchLegs) {
       if (wp.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
           wp.port.coastlineNm <= leg.to.port.coastlineNm + 0.1) {
         if (wp.port.name === leg.from.port.name) return leg.departTime;
@@ -453,7 +455,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                     </td>
                   </tr>,
                   ...legWps.map((wp) => {
-                    const eta = getWaypointETA(wp);
+                    const eta = getWaypointETA(wp, leg);
                     const tz = tzForPort(wp.port.lon);
                     const wpF = activeForecasts[wp.port.name] || [];
                     const f = closestForecast(wpF, eta);
