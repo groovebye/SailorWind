@@ -59,6 +59,17 @@ body {
   color: var(--text-primary);
 }
 
+/* Depth contour labels */
+.depth-label-permanent {
+  background: rgba(0, 0, 0, 0.7) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #ef4444 !important;
+  font-size: 9px !important;
+  font-weight: 700 !important;
+  padding: 1px 3px !important;
+  border-radius: 2px !important;
+}
+
 /* Print-friendly briefing mode */
 @media print {
   body { background: white !important; color: black !important; font-size: 11pt; }

@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import type { ForecastEntry } from "@/lib/weather";
 import { buildSeaRoute } from "@/lib/coastline";
 import type { FeatureCollection } from "geojson";
+// OpenSeaMap tiles used for reliability
 
 interface Port {
   id: string; name: string; slug: string; lat: number; lon: number; type: string;
@@ -29,10 +30,6 @@ const COLORS: Record<string, { fill: string; stroke: string }> = {
 
 const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png";
-// OpenSeaMap currently serves seamark tiles from the t1 host. The legacy
-// tiles.openseamap.org endpoint now returns 404s.
-const OPENSEAMAP_TILES = "https://t1.openseamap.org/seamark/{z}/{x}/{y}.png";
-
 // Contour line colors by depth
 const CONTOUR_STYLES: Record<number, { color: string; weight: number; dash?: string }> = {
   5:   { color: "#ef4444", weight: 1.5 },          // red — danger
@@ -264,12 +261,9 @@ export default function PassageMap({ waypoints, theme }: { waypoints: WaypointWi
         />
       )}
 
-      {/* OpenSeaMap nautical overlay */}
-      <TileLayer
-        url={OPENSEAMAP_TILES}
-        attribution='&copy; <a href="https://www.openseamap.org">OpenSeaMap</a>'
-        opacity={0.8}
-      />
+      {/* Seamarks — buoys, lights, beacons, landmarks */}
+      {/* OpenSeaMap — buoys, lights, marks */}
+      <TileLayer url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png" opacity={0.85} />
 
       {/* Colored route segments — one continuous passage geometry split only at capes */}
       {routeSegments.map((seg, i) => seg.positions.length > 1 && (
