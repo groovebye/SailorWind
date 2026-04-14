@@ -728,7 +728,17 @@ export function computeLegTimelineFromContext(
       currentState && currentDirDeg !== null
         ? currentState.rate * Math.cos(toRad(absoluteAngleDiff(currentDirDeg, courseTrue)))
         : 0;
-    const expectedSogKt = Math.max(1.5, expectedBoatSpeedKt + currentAlongTrack);
+    let expectedSogKt = Math.max(1.5, expectedBoatSpeedKt + currentAlongTrack);
+
+    // If SOG drops below 4.5kt under sail, switch to motor — Bossanova rule
+    let actualMode = mode;
+    if (actualMode === "sail" && expectedSogKt < 4.5) {
+      actualMode = "motor";
+      expectedSogKt = vessel.engineCruiseKt;
+    } else if (actualMode === "motorsail" && expectedSogKt < 4.5) {
+      actualMode = "motor";
+      expectedSogKt = vessel.engineCruiseKt;
+    }
 
     const isNight = sampleTime.getUTCHours() >= 20 || sampleTime.getUTCHours() < 6;
     const segmentName = pickSegmentName(fraction, routeDistanceNm - distanceFromStartNm, capes, leg.from, leg.to);
@@ -737,7 +747,7 @@ export function computeLegTimelineFromContext(
       gustKt: forecastEntry.gustKt,
       waveM: forecastEntry.waveM,
       swellM: forecastEntry.swellM,
-      mode,
+      mode: actualMode,
       pointOfSail,
       isCape: segmentName.includes("rounding"),
       isArrival: segmentName.startsWith("Arrival"),
@@ -749,7 +759,7 @@ export function computeLegTimelineFromContext(
     if (forecastEntry.gustKt > 22) warnings.push("gusty");
     if ((forecastEntry.waveM ?? 0) > 1.8) warnings.push("rougher sea");
     if (segmentName.includes("rounding")) warnings.push("cape acceleration");
-    if (mode !== "sail") warnings.push(mode === "motor" ? "engine likely" : "motor-sail likely");
+    if (actualMode !== "sail") warnings.push(actualMode === "motor" ? "engine likely" : "motor-sail likely");
     if (reefLevel > 0) warnings.push(`reef ${reefLevel} likely`);
     if (isNight) warnings.push("low-light");
     if (segmentName.startsWith("Arrival")) warnings.push("prepare harbor entry");
@@ -778,9 +788,9 @@ export function computeLegTimelineFromContext(
       currentKt: Math.round((currentState?.rate ?? 0) * 10) / 10,
       twa: Math.round(twa),
       pointOfSail,
-      mode,
-      tack: mode === "motor" ? "none" : signedSide(forecastEntry.windDirDeg, courseTrue),
-      sailConfig: determineSailConfig(mode, pointOfSail, reefLevel, forecastEntry.windKt),
+      mode: actualMode,
+      tack: actualMode === "motor" ? "none" : signedSide(forecastEntry.windDirDeg, courseTrue),
+      sailConfig: determineSailConfig(actualMode, pointOfSail, reefLevel, forecastEntry.windKt),
       reefLevel,
       expectedBoatSpeedKt: Math.round(expectedBoatSpeedKt * 10) / 10,
       expectedSogKt: Math.round(expectedSogKt * 10) / 10,
