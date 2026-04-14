@@ -157,6 +157,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [isEditingRoute, setIsEditingRoute] = useState(false);
   const [routeDraft, setRouteDraft] = useState<{ lat: number; lon: number; label?: string }[]>([]);
   const [routeMode, setRouteMode] = useState<"auto" | "manual">("auto");
+  const [manualRoutePoints, setManualRoutePoints] = useState<{ lat: number; lon: number }[] | null>(null);
+  const [manualDistanceNm, setManualDistanceNm] = useState<number | null>(null);
   const [isSavingRoute, setIsSavingRoute] = useState(false);
 
   // Execution state
@@ -239,7 +241,16 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     if (!passage || !leg || !fromPort || !dest) return;
     const c = new AbortController();
     fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${fromPort.name}&fromLat=${fromPort.lat}&fromLon=${fromPort.lon}&toName=${dest.name}&toLat=${dest.lat}&toLon=${dest.lon}`, { signal: c.signal })
-      .then(r => r.json()).then(d => { if (d.mode) setRouteMode(d.mode); }).catch(() => {});
+      .then(r => r.json()).then(d => {
+        if (d.mode) setRouteMode(d.mode);
+        if (d.mode === "manual" && d.points?.length >= 2) {
+          setManualRoutePoints(d.points);
+          setManualDistanceNm(d.distanceNm);
+        } else {
+          setManualRoutePoints(null);
+          setManualDistanceNm(null);
+        }
+      }).catch(() => {});
     return () => c.abort();
   }, [passage, leg, fromPort, dest, id, legIndex]);
 
@@ -260,6 +271,17 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ passageId: id, legIndex, points: routeDraft }),
     });
+    // Immediately show the saved manual route
+    setManualRoutePoints(routeDraft.map(p => ({ lat: p.lat, lon: p.lon })));
+    // Compute distance from draft
+    let dist = 0;
+    for (let i = 1; i < routeDraft.length; i++) {
+      const dLat = (routeDraft[i].lat - routeDraft[i-1].lat) * Math.PI / 180;
+      const dLon = (routeDraft[i].lon - routeDraft[i-1].lon) * Math.PI / 180;
+      const a = Math.sin(dLat/2)**2 + Math.cos(routeDraft[i-1].lat*Math.PI/180) * Math.cos(routeDraft[i].lat*Math.PI/180) * Math.sin(dLon/2)**2;
+      dist += 3440.065 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+    setManualDistanceNm(Math.round(dist * 10) / 10);
     setRouteMode("manual");
     setIsEditingRoute(false);
     setIsSavingRoute(false);
@@ -268,6 +290,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   async function handleResetRoute() {
     await fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}`, { method: "DELETE" });
     setRouteMode("auto");
+    setManualRoutePoints(null);
+    setManualDistanceNm(null);
     setRouteDraft([]);
     setIsEditingRoute(false);
   }
@@ -627,7 +651,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         <div className="flex items-center justify-between px-3 py-1.5 rounded-t-xl text-xs" style={{ background: "var(--bg-card)", borderBottom: `1px solid var(--border-light)` }}>
           <div className="flex items-center gap-2">
             <span style={{ color: routeMode === "manual" ? "var(--text-yellow)" : "var(--text-muted)" }}>
-              {routeMode === "manual" ? "🖊 Manual route" : "🤖 Auto route"}
+              {routeMode === "manual" ? `🖊 Manual route${manualDistanceNm ? ` (${manualDistanceNm} NM)` : ""}` : "🤖 Auto route"}
             </span>
           </div>
           <div className="flex items-center gap-1 no-print">
@@ -667,6 +691,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             routeDraft={routeDraft}
             onMapClick={isEditingRoute ? (lat: number, lon: number) => setRouteDraft(prev => [...prev, { lat, lon }]) : undefined}
             onRemovePoint={isEditingRoute ? (idx: number) => setRouteDraft(prev => prev.filter((_, i) => i !== idx)) : undefined}
+            manualRoutePoints={!isEditingRoute ? manualRoutePoints : null}
           />
         </div>
       </div>

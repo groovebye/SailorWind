@@ -73,7 +73,7 @@ const HAZARD_COLORS: Record<string, string> = {
   critical: "#ef4444", high: "#f97316", medium: "#eab308", low: "#94a3b8",
 };
 
-export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [], milestones = [], isEditing = false, routeDraft = [], onMapClick, onRemovePoint }: {
+export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [], milestones = [], isEditing = false, routeDraft = [], onMapClick, onRemovePoint, manualRoutePoints }: {
   waypoints: Waypoint[];
   fromPort: Port;
   toPort: Port;
@@ -84,6 +84,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
   routeDraft?: { lat: number; lon: number; label?: string }[];
   onMapClick?: (lat: number, lon: number) => void;
   onRemovePoint?: (index: number) => void;
+  manualRoutePoints?: { lat: number; lon: number }[] | null;
 }) {
   const [contours, setContours] = useState<FeatureCollection | null>(null);
 
@@ -96,8 +97,13 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
     [waypoints]
   );
 
-  // Build route geometry using the same routing graph as main map
+  // Build route geometry — use manual route if provided, otherwise auto
   const routePositions = useMemo(() => {
+    if (manualRoutePoints && manualRoutePoints.length >= 2) {
+      return manualRoutePoints.map(p => [p.lat, p.lon] as [number, number]);
+    }
+
+    // Auto-route from routing graph
     const routeAnchors = [
       { port: fromPort, isCape: false },
       ...waypoints.filter((w) => w.isCape).map((w) => ({ port: w.port, isCape: true })),
@@ -119,7 +125,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
       else merged.push(...seg);
     }
     return merged;
-  }, [fromPort, toPort, waypoints]);
+  }, [fromPort, toPort, waypoints, manualRoutePoints]);
 
   const tileUrl = theme === "light" ? LIGHT_TILES : DARK_TILES;
   const legBounds = positions.length > 1
