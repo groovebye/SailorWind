@@ -216,6 +216,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [routeDraft, setRouteDraft] = useState<{ lat: number; lon: number; label?: string }[]>([]);
   const [routeMode, setRouteMode] = useState<"auto" | "manual">("auto");
   const [resolvedRoutePoints, setResolvedRoutePoints] = useState<{ lat: number; lon: number }[] | null>(null);
+  const [routeLoaded, setRouteLoaded] = useState(false);
   const [resolvedRouteDistanceNm, setResolvedRouteDistanceNm] = useState<number | null>(null);
   const [isSavingRoute, setIsSavingRoute] = useState(false);
   const [routeRefreshKey, setRouteRefreshKey] = useState(0);
@@ -316,7 +317,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           setResolvedRoutePoints(null);
           setResolvedRouteDistanceNm(null);
         }
-      }).catch(() => {});
+        setRouteLoaded(true);
+      }).catch(() => { setRouteLoaded(true); });
     return () => c.abort();
   }, [passage, leg, fromPort, dest, id, legIndex, routeRefreshKey]);
 
@@ -790,6 +792,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             onMapClick={isEditingRoute ? addDraftPoint : undefined}
             onRemovePoint={isEditingRoute ? removeDraftPoint : undefined}
             manualRoutePoints={!isEditingRoute ? resolvedRoutePoints : null}
+            hideRoute={!routeLoaded && !isEditingRoute}
           />
         </div>
       </div>

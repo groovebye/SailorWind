@@ -72,7 +72,7 @@ const HAZARD_COLORS: Record<string, string> = {
   critical: "#ef4444", high: "#f97316", medium: "#eab308", low: "#94a3b8",
 };
 
-export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [], milestones = [], isEditing = false, routeDraft = [], onMapClick, onRemovePoint, manualRoutePoints }: {
+export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [], milestones = [], isEditing = false, routeDraft = [], onMapClick, onRemovePoint, manualRoutePoints, hideRoute = false }: {
   waypoints: Waypoint[];
   fromPort: Port;
   toPort: Port;
@@ -84,6 +84,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
   onMapClick?: (lat: number, lon: number) => void;
   onRemovePoint?: (index: number) => void;
   manualRoutePoints?: { lat: number; lon: number }[] | null;
+  hideRoute?: boolean;
 }) {
   const [contours, setContours] = useState<FeatureCollection | null>(null);
   const markerClickedRef = useRef(false);
@@ -193,8 +194,8 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
         </Rectangle>
       ))}
 
-      {/* Route line from routing graph (hidden in edit mode) */}
-      {!isEditing && routePositions.length > 1 && (
+      {/* Route line (hidden during edit mode or while route is loading) */}
+      {!isEditing && !hideRoute && routePositions.length > 1 && (
         <Polyline positions={routePositions}
           pathOptions={{ color: "#3b82f6", weight: 3, opacity: 0.8 }} />
       )}
