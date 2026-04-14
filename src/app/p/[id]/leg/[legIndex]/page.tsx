@@ -789,7 +789,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             routeDraft={routeDraft}
             onMapClick={isEditingRoute ? addDraftPoint : undefined}
             onRemovePoint={isEditingRoute ? removeDraftPoint : undefined}
-            manualRoutePoints={!isEditingRoute && routeMode === "manual" ? resolvedRoutePoints : null}
+            manualRoutePoints={!isEditingRoute ? resolvedRoutePoints : null}
           />
         </div>
       </div>
