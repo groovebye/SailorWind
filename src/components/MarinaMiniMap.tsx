@@ -5,6 +5,10 @@ import { useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
+// OpenSeaMap currently serves seamark tiles from the t1 host. The older
+// tiles.openseamap.org endpoint returns 404s, which makes buoys/lights vanish.
+const OPENSEAMAP_TILES = "https://t1.openseamap.org/seamark/{z}/{x}/{y}.png";
+
 interface MapFeature {
   type: string;
   name: string;
@@ -66,7 +70,7 @@ export default function MarinaMiniMap({ features, center, name }: {
         <FitToFeatures features={features} center={center} />
 
         <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-        <TileLayer url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png" opacity={0.8} />
+        <TileLayer url={OPENSEAMAP_TILES} opacity={0.8} />
 
         {features.map((f, i) => {
           if (!f.geometry?.coordinates) return null;

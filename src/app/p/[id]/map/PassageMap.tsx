@@ -29,7 +29,9 @@ const COLORS: Record<string, { fill: string; stroke: string }> = {
 
 const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png";
-const OPENSEAMAP_TILES = "https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png";
+// OpenSeaMap currently serves seamark tiles from the t1 host. The legacy
+// tiles.openseamap.org endpoint now returns 404s.
+const OPENSEAMAP_TILES = "https://t1.openseamap.org/seamark/{z}/{x}/{y}.png";
 
 // Contour line colors by depth
 const CONTOUR_STYLES: Record<number, { color: string; weight: number; dash?: string }> = {

@@ -17,7 +17,10 @@ interface Milestone { name: string; lat: number; lon: number; eta_offset_hours: 
 
 const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
 const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png";
-const OPENSEAMAP = "https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png";
+// OpenSeaMap currently serves seamark tiles from the t1 host. The older
+// tiles.openseamap.org endpoint returns 404s, which makes all nautical marks
+// silently disappear from the map.
+const OPENSEAMAP = "https://t1.openseamap.org/seamark/{z}/{x}/{y}.png";
 
 const COLORS: Record<string, string> = {
   cape: "#facc15", marina: "#4ade80", port: "#60a5fa", anchorage: "#c084fc",
