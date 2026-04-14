@@ -59,13 +59,64 @@ export async function getLegRoute(
     };
   }
 
-  // Fall back to auto-route
-  const autoRoute = buildSeaRoute(
-    { name: fromPort.name, lat: fromPort.lat, lon: fromPort.lon },
-    { name: toPort.name, lat: toPort.lat, lon: toPort.lon },
-  );
+  // Fall back to auto-route, using the same from -> capes -> to anchor model as
+  // the leg page and timeline so all route-dependent calculations stay aligned.
+  const passage = await prisma.passage.findUnique({
+    where: { id: passageId },
+    include: {
+      waypoints: {
+        include: { port: true },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  });
 
-  const pts = autoRoute.map(([lat, lon]: LatLon) => ({ lat, lon }));
+  let pts: { lat: number; lon: number }[];
+  if (passage) {
+    const stops = passage.waypoints.filter((w) => w.isStop);
+    const leg = stops[legIndex] && stops[legIndex + 1]
+      ? { from: stops[legIndex], to: stops[legIndex + 1] }
+      : null;
+
+    if (leg) {
+      const capes = passage.waypoints.filter(
+        (w) =>
+          w.isCape &&
+          w.port.coastlineNm >= leg.from.port.coastlineNm - 0.1 &&
+          w.port.coastlineNm <= leg.to.port.coastlineNm + 0.1
+      );
+
+      const routeAnchors = [
+        { name: leg.from.port.name, lat: leg.from.port.lat, lon: leg.from.port.lon },
+        ...capes.map((cape) => ({
+          name: `${cape.port.name} Rounding`,
+          lat: cape.port.lat,
+          lon: cape.port.lon,
+        })),
+        { name: leg.to.port.name, lat: leg.to.port.lat, lon: leg.to.port.lon },
+      ];
+
+      const merged: { lat: number; lon: number }[] = [];
+      for (let i = 0; i < routeAnchors.length - 1; i++) {
+        const segment = buildSeaRoute(routeAnchors[i], routeAnchors[i + 1]);
+        const mapped = segment.map(([lat, lon]: LatLon) => ({ lat, lon }));
+        if (merged.length > 0) merged.push(...mapped.slice(1));
+        else merged.push(...mapped);
+      }
+      pts = merged;
+    } else {
+      pts = buildSeaRoute(
+        { name: fromPort.name, lat: fromPort.lat, lon: fromPort.lon },
+        { name: toPort.name, lat: toPort.lat, lon: toPort.lon },
+      ).map(([lat, lon]: LatLon) => ({ lat, lon }));
+    }
+  } else {
+    pts = buildSeaRoute(
+      { name: fromPort.name, lat: fromPort.lat, lon: fromPort.lon },
+      { name: toPort.name, lat: toPort.lat, lon: toPort.lon },
+    ).map(([lat, lon]: LatLon) => ({ lat, lon }));
+  }
+
   return {
     mode: "auto",
     points: pts,

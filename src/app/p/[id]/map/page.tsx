@@ -35,6 +35,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
   const [passage, setPassage] = useState<Passage | null>(null);
   const [forecasts, setForecasts] = useState<Record<string, ForecastEntry[]> | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resolvedLegDistances, setResolvedLegDistances] = useState<Record<number, number>>({});
 
   useEffect(() => {
     fetch(`/api/passage?id=${id}`)
@@ -59,6 +60,27 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
       .catch(() => setLoading(false));
   }, [id]);
 
+  useEffect(() => {
+    if (!passage) return;
+    const stops = passage.waypoints.filter((w) => w.isStop);
+    if (stops.length < 2) return;
+    let cancelled = false;
+
+    Promise.all(stops.slice(0, -1).map(async (from, index) => {
+      const to = stops[index + 1];
+      const response = await fetch(
+        `/api/leg-route?passageId=${id}&legIndex=${index}&fromName=${encodeURIComponent(from.port.name)}&fromLat=${from.port.lat}&fromLon=${from.port.lon}&toName=${encodeURIComponent(to.port.name)}&toLat=${to.port.lat}&toLon=${to.port.lon}`
+      );
+      const data = await response.json();
+      return [index, typeof data.distanceNm === "number" ? data.distanceNm : to.port.coastlineNm - from.port.coastlineNm] as const;
+    })).then((entries) => {
+      if (cancelled) return;
+      setResolvedLegDistances(Object.fromEntries(entries));
+    }).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [passage, id]);
+
   if (!passage) return (
     <div className="h-screen flex items-center justify-center" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>
       Loading...
@@ -75,7 +97,7 @@ export default function MapPage({ params }: { params: Promise<{ id: string }> })
   const legs: Leg[] = [];
 
   for (let i = 0; i < stops.length - 1; i++) {
-    const nm = stops[i + 1].port.coastlineNm - stops[i].port.coastlineNm;
+    const nm = resolvedLegDistances[i] ?? (stops[i + 1].port.coastlineNm - stops[i].port.coastlineNm);
     const hours = nm / passage.speed;
     const departTime = new Date(currentTime);
     const arriveTime = new Date(currentTime + hours * 3600000);

@@ -84,6 +84,64 @@ function parseJson(val: unknown): PlaceInfo[] { if (!val) return []; if (typeof 
 function parseJsonTyped<T>(val: unknown): T[] { if (!val) return []; if (typeof val === "string") try { return JSON.parse(val); } catch { return []; } if (Array.isArray(val)) return val; return []; }
 function parseJsonObject<T>(val: unknown): T | null { if (!val) return null; if (typeof val === "string") try { return JSON.parse(val); } catch { return null; } if (typeof val === "object") return val as T; return null; }
 
+function haversineNm(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 3440.065;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function polylineDistanceNm(points: { lat: number; lon: number }[]) {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    total += haversineNm(points[i - 1].lat, points[i - 1].lon, points[i].lat, points[i].lon);
+  }
+  return Math.round(total * 10) / 10;
+}
+
+function projectWaypointFraction(points: { lat: number; lon: number }[], lat: number, lon: number) {
+  if (points.length < 2) return null;
+
+  const cumulative = [0];
+  for (let i = 1; i < points.length; i++) {
+    cumulative[i] = cumulative[i - 1] + haversineNm(points[i - 1].lat, points[i - 1].lon, points[i].lat, points[i].lon);
+  }
+  const total = cumulative[cumulative.length - 1] || 0;
+  if (total <= 0) return 0;
+
+  let bestDistance = Number.POSITIVE_INFINITY;
+  let bestAlongTrack = 0;
+
+  for (let i = 1; i < points.length; i++) {
+    const start = points[i - 1];
+    const end = points[i];
+    const scale = Math.cos(((start.lat + end.lat) / 2) * Math.PI / 180);
+
+    const ax = start.lon * scale;
+    const ay = start.lat;
+    const bx = end.lon * scale;
+    const by = end.lat;
+    const px = lon * scale;
+    const py = lat;
+
+    const abx = bx - ax;
+    const aby = by - ay;
+    const ab2 = abx * abx + aby * aby;
+    const t = ab2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * abx + (py - ay) * aby) / ab2)) : 0;
+    const projX = ax + abx * t;
+    const projY = ay + aby * t;
+    const dist2 = (px - projX) ** 2 + (py - projY) ** 2;
+
+    if (dist2 < bestDistance) {
+      bestDistance = dist2;
+      bestAlongTrack = cumulative[i - 1] + (cumulative[i] - cumulative[i - 1]) * t;
+    }
+  }
+
+  return bestAlongTrack / total;
+}
+
 const DIFF_COLORS: Record<string, string> = { easy: "var(--text-green)", moderate: "var(--text-yellow)", challenging: "var(--text-red)", dangerous: "var(--text-red)" };
 const MILESTONE_ICONS: Record<string, string> = { departure: "🚀", clear_breakwater: "⚓", course_change: "🧭", round_cape: "⚠️", approach: "🔭", berth: "🏁" };
 const HAZARD_ICONS: Record<string, string> = { wind_acceleration: "💨", rock: "🪨", shoal: "⚠️", current: "🌊", traffic: "🚢", military: "🎖️", orca: "🐋" };
@@ -157,9 +215,10 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [isEditingRoute, setIsEditingRoute] = useState(false);
   const [routeDraft, setRouteDraft] = useState<{ lat: number; lon: number; label?: string }[]>([]);
   const [routeMode, setRouteMode] = useState<"auto" | "manual">("auto");
-  const [manualRoutePoints, setManualRoutePoints] = useState<{ lat: number; lon: number }[] | null>(null);
-  const [manualDistanceNm, setManualDistanceNm] = useState<number | null>(null);
+  const [resolvedRoutePoints, setResolvedRoutePoints] = useState<{ lat: number; lon: number }[] | null>(null);
+  const [resolvedRouteDistanceNm, setResolvedRouteDistanceNm] = useState<number | null>(null);
   const [isSavingRoute, setIsSavingRoute] = useState(false);
+  const [routeRefreshKey, setRouteRefreshKey] = useState(0);
 
   // Execution state
   interface ExecutionData { id: string; status: string; startedAt: string | null; endedAt: string | null; checkpoints: { type: string; title: string; recordedAt: string; note: string | null }[]; observations: { recordedAt: string; observedWindKt: number | null; observedWaveM: number | null; comfort: string | null; note: string | null }[]; }
@@ -201,6 +260,13 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const leg = legs[legIndex] || null;
   const dest = leg?.to.port || null;
   const fromPort = leg?.from.port || null;
+  const activeRoutePoints = resolvedRoutePoints && resolvedRoutePoints.length >= 2 ? resolvedRoutePoints : null;
+  const resolvedLegDistanceNm = leg ? (resolvedRouteDistanceNm ?? leg.nm) : 0;
+  const resolvedLegHours = passage && leg ? resolvedLegDistanceNm / passage.speed : 0;
+  const resolvedDepartTime = leg?.departTime ?? null;
+  const resolvedArriveTime = resolvedDepartTime
+    ? new Date(resolvedDepartTime.getTime() + resolvedLegHours * 3600000)
+    : null;
 
   // Fetch leg guide
   useEffect(() => {
@@ -227,12 +293,12 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
   // Fetch tides (with abort on unmount)
   useEffect(() => {
-    if (!leg || !fromPort || !dest) return;
+    if (!resolvedDepartTime || !resolvedArriveTime || !fromPort || !dest) return;
     const c = new AbortController();
-    fetch(`/api/tides?port=${fromPort.slug}&date=${leg.departTime.toISOString()}`, { signal: c.signal }).then(r => r.json()).then(d => { if (!d.error) setDepTide(d); }).catch(() => {});
-    fetch(`/api/tides?port=${dest.slug}&date=${leg.arriveTime.toISOString()}`, { signal: c.signal }).then(r => r.json()).then(d => { if (!d.error) setArrTide(d); }).catch(() => {});
+    fetch(`/api/tides?port=${fromPort.slug}&date=${resolvedDepartTime.toISOString()}`, { signal: c.signal }).then(r => r.json()).then(d => { if (!d.error) setDepTide(d); }).catch(() => {});
+    fetch(`/api/tides?port=${dest.slug}&date=${resolvedArriveTime.toISOString()}`, { signal: c.signal }).then(r => r.json()).then(d => { if (!d.error) setArrTide(d); }).catch(() => {});
     return () => c.abort();
-  }, [leg, fromPort?.slug, dest?.slug]);
+  }, [resolvedDepartTime?.toISOString(), resolvedArriveTime?.toISOString(), fromPort?.slug, dest?.slug]);
 
 
 
@@ -243,16 +309,16 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${encodeURIComponent(fromPort.name)}&fromLat=${fromPort.lat}&fromLon=${fromPort.lon}&toName=${encodeURIComponent(dest.name)}&toLat=${dest.lat}&toLon=${dest.lon}`, { signal: c.signal })
       .then(r => r.json()).then(d => {
         if (d.mode) setRouteMode(d.mode);
-        if (d.mode === "manual" && d.points?.length >= 2) {
-          setManualRoutePoints(d.points);
-          setManualDistanceNm(d.distanceNm);
+        if (d.points?.length >= 2) {
+          setResolvedRoutePoints(d.points);
+          setResolvedRouteDistanceNm(d.distanceNm);
         } else {
-          setManualRoutePoints(null);
-          setManualDistanceNm(null);
+          setResolvedRoutePoints(null);
+          setResolvedRouteDistanceNm(null);
         }
       }).catch(() => {});
     return () => c.abort();
-  }, [passage, leg, fromPort, dest, id, legIndex]);
+  }, [passage, leg, fromPort, dest, id, legIndex, routeRefreshKey]);
 
   // Fetch execution (with abort)
   useEffect(() => {
@@ -264,36 +330,81 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   }, [passage, id, legIndex]);
 
   // Route editing handlers
+  function startRouteEditing() {
+    if (!fromPort || !dest) return;
+    const existingPoints = activeRoutePoints && activeRoutePoints.length >= 2
+      ? activeRoutePoints
+      : [{ lat: fromPort.lat, lon: fromPort.lon }, { lat: dest.lat, lon: dest.lon }];
+    setRouteDraft(existingPoints.map((p, index) => ({
+      lat: p.lat,
+      lon: p.lon,
+      label: index === 0 ? fromPort.name : index === existingPoints.length - 1 ? dest.name : undefined,
+    })));
+    setIsEditingRoute(true);
+  }
+
+  function addDraftPoint(lat: number, lon: number) {
+    setRouteDraft((prev) => {
+      if (prev.length < 2) {
+        const seeded = fromPort && dest
+          ? [{ lat: fromPort.lat, lon: fromPort.lon, label: fromPort.name }, { lat: dest.lat, lon: dest.lon, label: dest.name }]
+          : [];
+        return [...seeded.slice(0, -1), { lat, lon }, ...seeded.slice(-1)];
+      }
+      return [...prev.slice(0, -1), { lat, lon }, prev[prev.length - 1]];
+    });
+  }
+
+  function removeDraftPoint(index: number) {
+    setRouteDraft((prev) => {
+      if (index <= 0 || index >= prev.length - 1) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  }
+
+  function undoDraftPoint() {
+    setRouteDraft((prev) => {
+      if (prev.length <= 2) return prev;
+      return [...prev.slice(0, -2), prev[prev.length - 1]];
+    });
+  }
+
   async function handleSaveRoute() {
     if (routeDraft.length < 2) return;
     setIsSavingRoute(true);
-    await fetch("/api/leg-route", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ passageId: id, legIndex, points: routeDraft }),
-    });
-    // Immediately show the saved manual route
-    setManualRoutePoints(routeDraft.map(p => ({ lat: p.lat, lon: p.lon })));
-    // Compute distance from draft
-    let dist = 0;
-    for (let i = 1; i < routeDraft.length; i++) {
-      const dLat = (routeDraft[i].lat - routeDraft[i-1].lat) * Math.PI / 180;
-      const dLon = (routeDraft[i].lon - routeDraft[i-1].lon) * Math.PI / 180;
-      const a = Math.sin(dLat/2)**2 + Math.cos(routeDraft[i-1].lat*Math.PI/180) * Math.cos(routeDraft[i].lat*Math.PI/180) * Math.sin(dLon/2)**2;
-      dist += 3440.065 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    try {
+      const response = await fetch("/api/leg-route", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ passageId: id, legIndex, points: routeDraft }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to save route");
+      }
+
+      const points = routeDraft.map(p => ({ lat: p.lat, lon: p.lon }));
+      setResolvedRoutePoints(points);
+      setResolvedRouteDistanceNm(polylineDistanceNm(points));
+      setRouteMode("manual");
+      setTimelineData(null);
+      setIsEditingRoute(false);
+      setRouteRefreshKey((prev) => prev + 1);
+    } finally {
+      setIsSavingRoute(false);
     }
-    setManualDistanceNm(Math.round(dist * 10) / 10);
-    setRouteMode("manual");
-    setIsEditingRoute(false);
-    setIsSavingRoute(false);
   }
 
   async function handleResetRoute() {
-    await fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}`, { method: "DELETE" });
+    const response = await fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}`, { method: "DELETE" });
+    if (!response.ok) {
+      throw new Error("Failed to reset route");
+    }
     setRouteMode("auto");
-    setManualRoutePoints(null);
-    setManualDistanceNm(null);
+    setResolvedRoutePoints(null);
+    setResolvedRouteDistanceNm(null);
     setRouteDraft([]);
+    setTimelineData(null);
     setIsEditingRoute(false);
+    setRouteRefreshKey((prev) => prev + 1);
   }
 
   // Execution handlers
@@ -358,7 +469,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
       .then((r) => r.json())
       .then((data) => { if (!data.error) setTimelineData(data); })
       .catch(() => {});
-  }, [passage?.id, legIndex, leg?.from.port.slug, leg?.to.port.slug]);
+  }, [passage?.id, legIndex, leg?.from.port.slug, leg?.to.port.slug, routeMode, resolvedRouteDistanceNm, routeRefreshKey]);
 
   if (!passage) return <div className="h-screen flex items-center justify-center" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>Loading...</div>;
   if (!leg || !dest || !fromPort) return <div className="p-8" style={{ color: "var(--text-red)" }}>Leg not found</div>;
@@ -370,8 +481,11 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
   // Decision
   function getETA(wp: Waypoint): Date {
-    const frac = (wp.port.coastlineNm - leg.from.port.coastlineNm) / (leg.to.port.coastlineNm - leg.from.port.coastlineNm || 1);
-    return new Date(leg.departTime.getTime() + frac * (leg.arriveTime.getTime() - leg.departTime.getTime()));
+    const manualFraction = activeRoutePoints
+      ? projectWaypointFraction(activeRoutePoints, wp.port.lat, wp.port.lon)
+      : null;
+    const frac = manualFraction ?? ((wp.port.coastlineNm - leg.from.port.coastlineNm) / (leg.to.port.coastlineNm - leg.from.port.coastlineNm || 1));
+    return new Date(leg.departTime.getTime() + frac * resolvedLegHours * 3600000);
   }
   function closestForecast(wpF: ForecastEntry[], eta: Date): ForecastEntry | null {
     let best: ForecastEntry | null = null, bestD = Infinity;
@@ -406,8 +520,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   if (maxWave > 3) { legScore -= 25; penalties.push(`Waves ${maxWave.toFixed(1)}m (-25)`); }
   else if (maxWave > 2) { legScore -= 10; penalties.push(`Waves ${maxWave.toFixed(1)}m (-10)`); }
   if (capeWps.length > 0) { legScore -= capeWps.length * 10; penalties.push(`${capeWps.length} cape(s) (-${capeWps.length * 10})`); }
-  if (leg.hours > 10) { legScore -= 10; penalties.push(`Long leg ${leg.hours.toFixed(0)}h (-10)`); }
-  if (leg.hours > 14) { legScore -= 10; penalties.push(`Night sailing (-10)`); }
+  if (resolvedLegHours > 10) { legScore -= 10; penalties.push(`Long leg ${resolvedLegHours.toFixed(0)}h (-10)`); }
+  if (resolvedLegHours > 14) { legScore -= 10; penalties.push(`Night sailing (-10)`); }
   if (guide?.difficulty === "challenging") { legScore -= 15; penalties.push("Challenging difficulty (-15)"); }
   else if (guide?.difficulty === "dangerous") { legScore -= 30; penalties.push("Dangerous difficulty (-30)"); }
   legScore = Math.max(0, Math.min(100, legScore));
@@ -439,11 +553,11 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   }
 
   // Duration fatigue
-  if (leg.hours > 10) { comfortScore -= 12; comfortReasons.push(`Long leg (${leg.hours.toFixed(0)}h) — crew fatigue`); }
-  else if (leg.hours > 7) { comfortScore -= 5; comfortReasons.push(`${leg.hours.toFixed(0)}h passage`); }
+  if (resolvedLegHours > 10) { comfortScore -= 12; comfortReasons.push(`Long leg (${resolvedLegHours.toFixed(0)}h) — crew fatigue`); }
+  else if (resolvedLegHours > 7) { comfortScore -= 5; comfortReasons.push(`${resolvedLegHours.toFixed(0)}h passage`); }
 
   // Night sailing discomfort
-  const arrHour = leg.arriveTime.getUTCHours();
+  const arrHour = resolvedArriveTime?.getUTCHours() ?? leg.arriveTime.getUTCHours();
   if (arrHour >= 21 || arrHour <= 6) { comfortScore -= 15; comfortReasons.push("Night arrival — reduced visibility, cold"); }
   else if (arrHour >= 20) { comfortScore -= 5; comfortReasons.push("Dusk arrival"); }
 
@@ -497,7 +611,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         <div className="flex items-center gap-3">
           <span className="font-bold" style={{ color: "var(--text-heading)" }}>{fromPort?.name} → {dest?.name}</span>
           <span className="font-black px-2 py-0.5 rounded" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
-          <span style={{ color: "var(--text-muted)" }}>{leg?.nm}NM · {Math.round(maxWind)}kt · {maxWave.toFixed(1)}m</span>
+          <span style={{ color: "var(--text-muted)" }}>{resolvedLegDistanceNm.toFixed(1)}NM · {Math.round(maxWind)}kt · {maxWave.toFixed(1)}m</span>
           <div className="flex rounded overflow-hidden text-[10px] no-print" style={{ border: `1px solid var(--border)` }}>
             <button onClick={() => setViewMode("quick")} className="px-2 py-0.5" style={{ background: viewMode === "quick" ? "var(--accent-go)" : "transparent", color: viewMode === "quick" ? "var(--text-green)" : "var(--text-muted)" }}>Quick</button>
             <button onClick={() => setViewMode("full")} className="px-2 py-0.5" style={{ background: viewMode === "full" ? "var(--accent-go)" : "transparent", color: viewMode === "full" ? "var(--text-green)" : "var(--text-muted)" }}>Full</button>
@@ -526,8 +640,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           <div className="flex items-center gap-3">
             <span className="text-2xl font-black px-3 py-1 rounded-lg" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
             <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
-              <div>{leg.nm} NM · ~{leg.hours.toFixed(1)}h · {passage.speed}kt</div>
-              <div>{fmtLocal(leg.departTime, fromTz)} → {fmtLocal(leg.arriveTime, toTz)}</div>
+              <div>{resolvedLegDistanceNm.toFixed(1)} NM · ~{resolvedLegHours.toFixed(1)}h · {passage.speed}kt</div>
+              <div>{fmtLocal(leg.departTime, fromTz)} → {resolvedArriveTime ? fmtLocal(resolvedArriveTime, toTz) : "—"}</div>
             </div>
           </div>
           <div className="flex gap-4 text-xs" style={{ color: "var(--text-secondary)" }}>
@@ -557,10 +671,10 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           {/* Sailing expectation */}
           <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)" }}>
             <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Sailing</div>
-            <div>🚢 Motor exit ~{Math.min(0.5, leg.hours * 0.1).toFixed(1)}h</div>
-            <div>⛵ Sailing ~{Math.max(0, leg.hours - 1).toFixed(1)}h</div>
-            <div>🚢 Motor entry ~{Math.min(0.5, leg.hours * 0.1).toFixed(1)}h</div>
-            {leg.hours > 8 && <div style={{ color: "var(--text-yellow)" }}>🌙 Long day — {leg.hours > 12 ? "night sailing likely" : "arrive before dark"}</div>}
+            <div>🚢 Motor exit ~{Math.min(0.5, resolvedLegHours * 0.1).toFixed(1)}h</div>
+            <div>⛵ Sailing ~{Math.max(0, resolvedLegHours - 1).toFixed(1)}h</div>
+            <div>🚢 Motor entry ~{Math.min(0.5, resolvedLegHours * 0.1).toFixed(1)}h</div>
+            {resolvedLegHours > 8 && <div style={{ color: "var(--text-yellow)" }}>🌙 Long day — {resolvedLegHours > 12 ? "night sailing likely" : "arrive before dark"}</div>}
           </div>
 
           {/* Fallback */}
@@ -602,10 +716,10 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         )}
 
         {/* Last safe departure */}
-        {leg.hours > 5 && (
+        {resolvedLegHours > 5 && (
           <div className="mt-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>
             ⏰ <strong>Last safe departure:</strong>{" "}
-            {fmtLocal(new Date(new Date(leg.departTime).setUTCHours(20, 0, 0, 0) - leg.hours * 3600000), fromTz)} (arrive before sunset)
+            {fmtLocal(new Date(new Date(leg.departTime).setUTCHours(20, 0, 0, 0) - resolvedLegHours * 3600000), fromTz)} (arrive before sunset)
           </div>
         )}
 
@@ -651,13 +765,15 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         <div className="flex items-center justify-between px-3 py-1.5 rounded-t-xl text-xs" style={{ background: "var(--bg-card)", borderBottom: `1px solid var(--border-light)` }}>
           <div className="flex items-center gap-2">
             <span style={{ color: routeMode === "manual" ? "var(--text-yellow)" : "var(--text-muted)" }}>
-              {routeMode === "manual" ? `🖊 Manual route${manualDistanceNm ? ` (${manualDistanceNm} NM)` : ""}` : "🤖 Auto route"}
+              {routeMode === "manual"
+                ? `🖊 Manual route${resolvedRouteDistanceNm ? ` (${resolvedRouteDistanceNm.toFixed(1)} NM)` : ""}`
+                : `🤖 Auto route${resolvedRouteDistanceNm ? ` (${resolvedRouteDistanceNm.toFixed(1)} NM)` : ""}`}
             </span>
           </div>
           <div className="flex items-center gap-1 no-print">
             {!isEditingRoute ? (
               <>
-                <button onClick={() => { setIsEditingRoute(true); setRouteDraft([]); }} className="px-2 py-1 rounded" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }}>
+                <button onClick={startRouteEditing} className="px-2 py-1 rounded" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }}>
                   Modify Route
                 </button>
                 {routeMode === "manual" && (
@@ -669,8 +785,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             ) : (
               <>
                 <span style={{ color: "var(--text-muted)" }}>{routeDraft.length} pts</span>
-                <button onClick={() => setRouteDraft(prev => prev.slice(0, -1))} disabled={routeDraft.length <= 1} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Undo</button>
-                <button onClick={() => setIsEditingRoute(false)} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Cancel</button>
+                <button onClick={undoDraftPoint} disabled={routeDraft.length <= 2} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Undo</button>
+                <button onClick={() => { setIsEditingRoute(false); setRouteDraft([]); }} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Cancel</button>
                 <button onClick={handleSaveRoute} disabled={isSavingRoute || routeDraft.length < 2} className="px-2 py-1 rounded font-semibold" style={{ color: routeDraft.length < 2 ? "var(--text-muted)" : "var(--text-green)", background: routeDraft.length < 2 ? "transparent" : "var(--accent-go)", border: `1px solid ${routeDraft.length < 2 ? "var(--border)" : "var(--text-green)30"}` }}>
                   {isSavingRoute ? "Saving..." : `Save (${routeDraft.length} pts)`}
                 </button>
@@ -680,7 +796,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </div>
         {isEditingRoute && (
           <div className="px-3 py-1.5 text-[11px]" style={{ background: "var(--accent-caution)", color: "var(--text-yellow)" }}>
-            Click on the map to place waypoints in order. Start in open water near {fromPort.name}, end near {dest.name}. Click existing points to remove. Min 2 points.
+            Departure and arrival are anchored. Click on the map to add intermediate waypoints before arrival. Click intermediate points to remove them.
           </div>
         )}
         <div className="rounded-b-xl overflow-hidden" style={{ border: `1px solid var(--border-light)`, borderTop: "none", height: 400 }}>
@@ -689,9 +805,9 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             hazards={hazards} milestones={milestones}
             isEditing={isEditingRoute}
             routeDraft={routeDraft}
-            onMapClick={isEditingRoute ? (lat: number, lon: number) => setRouteDraft(prev => [...prev, { lat, lon }]) : undefined}
-            onRemovePoint={isEditingRoute ? (idx: number) => setRouteDraft(prev => prev.filter((_, i) => i !== idx)) : undefined}
-            manualRoutePoints={!isEditingRoute ? manualRoutePoints : null}
+            onMapClick={isEditingRoute ? addDraftPoint : undefined}
+            onRemovePoint={isEditingRoute ? removeDraftPoint : undefined}
+            manualRoutePoints={!isEditingRoute && routeMode === "manual" ? resolvedRoutePoints : null}
           />
         </div>
       </div>
@@ -924,7 +1040,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                   <div>Range: {arrTide.range}m ({arrTide.isSpring ? "Springs" : "Neaps"})</div>
                   {arrTide.extremes.filter(e => {
                     const t = new Date(e.time);
-                    return Math.abs(t.getTime() - leg.arriveTime.getTime()) < 12 * 3600000;
+                    return Math.abs(t.getTime() - (resolvedArriveTime?.getTime() ?? leg.arriveTime.getTime())) < 12 * 3600000;
                   }).slice(0, 4).map((e, i) => (
                     <div key={i}>
                       <span style={{ color: e.type === "HW" ? "var(--text-green)" : "var(--text-blue-light)" }}>{e.type}</span>
@@ -1293,13 +1409,13 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                   <div className="text-center" style={{ color: "var(--text-blue-light)" }}>{new Date(execution.startedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: fromTz })}</div>
 
                   <div style={{ color: "var(--text-muted)" }}>Arrival</div>
-                  <div className="text-center">{fmtLocal(leg.arriveTime, toTz)}</div>
+                  <div className="text-center">{resolvedArriveTime ? fmtLocal(resolvedArriveTime, toTz) : "—"}</div>
                   <div className="text-center" style={{ color: execution.endedAt ? "var(--text-blue-light)" : "var(--text-muted)" }}>
                     {execution.endedAt ? new Date(execution.endedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: toTz }) : "—"}
                   </div>
 
                   <div style={{ color: "var(--text-muted)" }}>Duration</div>
-                  <div className="text-center">{leg.hours.toFixed(1)}h</div>
+                  <div className="text-center">{resolvedLegHours.toFixed(1)}h</div>
                   <div className="text-center" style={{ color: "var(--text-blue-light)" }}>
                     {execution.endedAt ? ((new Date(execution.endedAt).getTime() - new Date(execution.startedAt).getTime()) / 3600000).toFixed(1) + "h" : "ongoing"}
                   </div>
@@ -1332,7 +1448,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 {/* Delta highlights */}
                 {execution.endedAt && (() => {
                   const actualH = (new Date(execution.endedAt).getTime() - new Date(execution.startedAt).getTime()) / 3600000;
-                  const delta = actualH - leg.hours;
+                  const delta = actualH - resolvedLegHours;
                   return Math.abs(delta) > 0.5 ? (
                     <div className="mt-2 text-[11px]" style={{ color: delta > 0 ? "var(--text-yellow)" : "var(--text-green)" }}>
                       {delta > 0 ? `⏰ +${delta.toFixed(1)}h slower than planned` : `⚡ ${Math.abs(delta).toFixed(1)}h faster than planned`}
