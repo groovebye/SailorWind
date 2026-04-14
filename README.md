@@ -5,18 +5,24 @@
 **Лодка:** Bossanova (Hallberg-Rassy Monsun 31, осадка 1.5м)
 **Маршрут:** Gijon (Испания) -> Греция, multi-year voyage
 
-### Current Status
+### Current Status (v1.2)
 
-| Component | Coverage | Quality |
+| Component | Coverage | Details |
 |-----------|----------|---------|
-| Ports database | 19 ports + 3 capes (Gijón→La Coruña) | All have phone, VHF, restaurants, grocery, orca risk |
-| Weather forecasts | Open-Meteo (ECMWF/GFS/ICON/AROME) + Windy (GFS+gfsWave) | Live, cached in DB per source/model |
-| Tidal predictions | 18 ports with HW/LW/spring/neap | Harmonic model ~15-30min accuracy |
-| Leg guides | 5 legs with pilotage, milestones, hazards, fallbacks | Curated pilotage text + structured data |
-| Route geometry | Hand-authored graph (64 nodes, 61 edges, Dijkstra) | Good offshore corridors, some coast-crossing at fine zoom |
-| Orca zones | 2 advisory zones (Galicia, Finisterre) | GTOA source, seasonal notes |
-| Leg scoring | 0-100 rule-based (wind/wave/cape/night penalties) | Functional |
-| Marina data | 16 non-cape ports with facilities, approach, shore services | Major ports fully enriched, minor ports basic |
+| **Route waypoints** | 19 ports + 3 capes | Gijón→La Coruña, 160 NM |
+| **Port areas** | 8 PortAreas | Multi-marina content layer |
+| **Marinas** | 10 MarinaOptions | La Coruña has 2 (Marina Coruña + RCN) |
+| **Marina pricing** | 27 prices | LOA 9.5m, daily/monthly, low/high season |
+| **Marina maps** | 25 GeoJSON features | Point/LineString/Polygon support |
+| **Nearby places** | 23 NearbyPlaces | Restaurants, chandlery, grocery, pharmacy, ATM |
+| **Weather** | Open-Meteo + Windy | ECMWF/GFS/ICON/AROME + gfsWave, cached in DB |
+| **Tides** | 18 ports | Semi-diurnal harmonic model, ~15-30 min accuracy |
+| **Leg guides** | 5 legs | Pilotage, milestones, hazards, fallbacks, tidal gates |
+| **Route geometry** | Graph (64 nodes, 61 edges) + manual overrides | Dijkstra + per-leg manual route editing |
+| **Orca zones** | 2 zones | Galicia coast (medium), Finisterre (high) |
+| **Comfort scoring** | Per-leg + per-segment | Waves/swell/gusts/capes/duration/night penalties |
+| **Execution** | Start/stop/checkpoints/observations | Live passage tracking + logbook |
+| **Vessel profile** | Bossanova (HR Monsun 31) | Performance model for timeline computation |
 
 ---
 
@@ -35,10 +41,13 @@
 | Deploy | Docker multi-stage build, nginx reverse proxy |
 | Server | Hetzner CX23 (x86, Nuremberg, Ubuntu) |
 | Weather API | Open-Meteo (free) + Windy Point Forecast (GFS + gfsWave) |
+| Tides | Semi-diurnal harmonic model (HW Dover + port offsets) |
 | Bathymetry | EMODnet (free GeoTIFF via WCS) |
 | Chart overlay | OpenSeaMap tiles + local GeoJSON contours (5-200m) |
 | Webcams | Windy Webcams API v3 |
-| Routing | Hand-authored coastal graph (62 nodes, 59 edges, Dijkstra) |
+| Routing | Coastal graph (64 nodes, 61 edges, Dijkstra) + manual overrides |
+| Vessel model | VesselProfile with performance heuristics |
+| Execution | Live passage tracking with checkpoints + observations |
 
 ---
 
@@ -465,6 +474,178 @@ python3 scripts/gen-route-data.py
 git add public/data/ && git commit -m "update routes" && git push
 # then deploy on server
 ```
+
+---
+
+---
+
+## Data Architecture
+
+### Two-Layer Model
+
+**Route Layer** (`Port` model) — operational waypoints for passage engine:
+- 19 ports + 3 capes along the coast
+- `coastlineNm` for ordering and distance computation
+- Weather forecast points
+- **Do not use for content display** — use PortArea instead
+
+**Content Layer** (`PortArea` → `MarinaOption` → `NearbyPlace`) — rich marina/shore data:
+- `PortArea` = geographic stopover (city/harbor area)
+- `MarinaOption` = specific marina within area (facilities, pricing, approach)
+- `MarinaPrice` = per-LOA/season/period pricing with source verification
+- `MarinaMapFeature` = GeoJSON features for marina mini-maps
+- `NearbyPlace` = restaurants, chandlery, grocery, pharmacy, ATM with distances/ratings
+
+### Prisma Models Summary
+
+| Model | Purpose | Count |
+|-------|---------|-------|
+| `Port` | Route waypoints | 22 |
+| `Passage` | Planned passages | dynamic |
+| `PassageWaypoint` | Stops/capes in passage | dynamic |
+| `LegGuide` | Curated pilotage knowledge per leg | 5 |
+| `VesselProfile` | Boat performance model | 1 (Bossanova) |
+| `LegComputation` | Cached timeline computation | dynamic |
+| `PortArea` | Stopover area (content) | 8 |
+| `MarinaOption` | Specific marina | 10 |
+| `MarinaPrice` | Pricing per LOA/season | 27 |
+| `MarinaMapFeature` | Mini-map GeoJSON | 25 |
+| `NearbyPlace` | Shore services with distances | 23 |
+| `PassageLegRoute` | Manual route overrides | dynamic |
+| `PassageLegRoutePoint` | Manual route waypoints | dynamic |
+| `PassageExecution` | Live passage tracking | dynamic |
+| `PassageExecutionTrackPoint` | GPS track | dynamic |
+| `PassageExecutionCheckpoint` | Events (departure/cape/reef/arrival) | dynamic |
+| `PassageExecutionObservation` | Observed conditions + comfort | dynamic |
+
+---
+
+## Leg Page Architecture
+
+The leg detail page (`/p/[id]/leg/[legIndex]`) is the primary operational interface.
+
+### Sections (top to bottom)
+
+1. **Sticky Bar** — route name, verdict badge, wind/waves, Quick/Full toggle, print button
+2. **Header** — leg name, difficulty badge, description
+3. **Decision Summary** — GO/CAUTION/NO-GO, 4-column grid (Monitor/Sailing/Fallback/Comfort), score breakdown, last safe departure, plan invalidation triggers
+4. **Best Window + Orca Alert**
+5. **Map** — Leaflet with route (auto or manual), contours, OpenSeaMap, hazard markers, milestone markers, orca zones. Edit mode for manual routing.
+6. **Passage Timeline** — hourly breakdown from `passage-computation.ts`
+7. **Pilotage Notes** — markdown sections (Full mode only)
+8. **Passage Plan** — milestones with ETA, bearing, visual references
+9. **Hazards** — severity-colored cards
+10. **Tides & Currents** — live HW/LW predictions + streams + tidal gates
+11. **Fallback Plan** — bail-out ports
+12. **Arrival** — marina details + entrance/waiting/tide/swell intelligence
+13. **Marina Options** — comparison table + cards with pricing
+14. **Shore Services** — NearbyPlace cards by category (restaurants, chandlery, grocery, etc.)
+15. **Webcams** — Windy API (Full mode only)
+16. **Execution & Logbook** — start/stop passage, checkpoints, observations, planned vs actual
+17. **Emergency Contacts**
+
+### View Modes
+
+- **Quick** — Decision, Map, Hazards, Tides, Fallback, Arrival, Execution, Emergency
+- **Full** — all sections including Pilotage, Shore Services, Webcams
+
+### Route Editing
+
+- **Modify Route** → edit mode: click map to add points, click points to remove
+- **Save** → stores in DB (`PassageLegRoute`), invalidates timeline cache
+- **Reset to Auto** → removes manual override, reverts to routing graph
+- Manual route shows as "🖊 Manual route (43.6 NM)" badge
+
+### Comfort Scoring
+
+Separate from safety verdict (GO ≠ Comfortable):
+- **Score 0-100** → Comfortable / Moderate / Bumpy / Demanding / Uncomfortable
+- **Factors**: waves, swell, gustiness, cape acceleration, duration, night arrival, harbor entry
+- **Segment comfort**: departure, each cape rounding, arrival
+- **Expandable reasons list**
+
+### Execution & Logbook
+
+- **Start Passage** → active tracking
+- **Quick checkpoints**: Departure, Cape, Reef In, Arrival
+- **Observations**: comfort rating + condition notes (Calm/Choppy/Rough/Motor/Sailing/Reefed)
+- **End Passage** → completed log
+- **Planned vs Actual**: departure/arrival times, duration delta, comfort, wind/waves comparison
+
+---
+
+## API Reference
+
+### Weather
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/forecast/batch` | POST | Multi-waypoint forecast (Open-Meteo) |
+| `/api/forecast/windy` | POST | Windy GFS + gfsWave forecast |
+| `/api/forecast/cache` | GET/POST | DB-cached forecast per source/model |
+
+### Tides
+| `/api/tides` | GET | HW/LW predictions + tide state at time |
+
+### Leg Intelligence
+| `/api/leg` | GET | Curated leg guide (pilotage, milestones, hazards) |
+| `/api/leg-timeline` | GET | Computed hourly passage timeline |
+| `/api/leg-route` | GET/POST/DELETE | Manual route override CRUD |
+
+### Execution
+| `/api/execution` | GET | Active/latest execution for leg |
+| `/api/execution` | POST | Actions: start, stop, track-point, checkpoint, observation |
+
+### Content
+| `/api/port-areas` | GET | Port areas + marinas + prices + nearby places |
+| `/api/ports` | GET | Route waypoints |
+| `/api/webcams` | GET | Windy webcams nearby |
+| `/api/passage` | GET/POST/PATCH/DELETE | Passage CRUD |
+
+---
+
+## Key Business Logic
+
+### Passage Computation (`src/lib/passage-computation.ts`)
+
+807-line module computing hourly passage timeline:
+- **VesselPerformanceModel** for Bossanova (reef thresholds, motor thresholds, close-hauled angle)
+- **Route geometry**: uses manual route if saved, otherwise auto from routing graph
+- **Weather interpolation**: per-waypoint forecast matched to hourly positions
+- **Mode determination**: motor/sail/motorsail based on wind angle + speed
+- **Current/tide effects** from tidal stream data
+- **Sea state assessment**: wave height + period + direction
+- **Cache**: results stored in `LegComputation` table, invalidated on route/forecast/vessel changes
+- **Route signature**: hash includes manual geometry → automatic cache invalidation
+
+### Route Resolution (`src/lib/leg-route.ts`)
+
+- `getLegRoute()` — returns manual override if exists, else auto-route from `buildSeaRoute()`
+- `saveManualRoute()` — upsert route + replace points + invalidate timeline cache
+- `resetToAutoRoute()` — delete manual override + invalidate cache
+- Distance computed via haversine along polyline
+
+### Tidal Predictions (`src/lib/tides.ts`)
+
+- Semi-diurnal model based on lunar cycle + HW Dover reference
+- 18 port-specific offsets (from Admiralty data)
+- Spring/neap factor from lunar phase angle
+- Tidal streams for 4 critical areas (Peñas 1kt, Estaca/Ortegal 2kt, Ribadeo ría 2kt)
+- ~15-30 min accuracy (sufficient for passage planning)
+
+### Coastal Routing (`src/lib/coastline.ts`)
+
+- Hand-authored graph: 64 navigation points + 61 bidirectional edges
+- Sparse offshore corridor with branch nodes for ports and rías
+- Dijkstra shortest-path with Euclidean distance cost
+- Manual route overrides per-leg (stored in DB, not graph)
+- Fallback: straight line for unknown endpoints
+
+### Weather Sources (`src/lib/weather.ts`, `src/lib/windy.ts`)
+
+- **Open-Meteo**: ECMWF/GFS/ICON/AROME (10-14 day wind/precip) + Marine (9-day waves/swell)
+- **Windy**: GFS (wind) + gfsWave (waves/swell, full 10-day)
+- **Offshore shift**: marine API coords +0.05° N for rías (ports on land in grid)
+- **Cache**: 3h in-memory TTL + DB `forecastCache` per source/model
 
 ---
 
