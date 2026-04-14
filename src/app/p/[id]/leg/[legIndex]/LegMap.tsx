@@ -169,9 +169,12 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
         />
       )}
 
-      {/* Seamarks — buoys, lights, beacons, landmarks */}
-      {/* OpenSeaMap — buoys, lights, marks (reliable tile layer) */}
-      <TileLayer url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png" opacity={0.85} />
+      {/* OpenSeaMap seamark tiles — may be unavailable (external service) */}
+      <TileLayer
+        url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
+        opacity={0.85}
+        eventHandlers={{ tileerror: () => { if (!document.getElementById("seamark-warn")) { const d = document.createElement("div"); d.id = "seamark-warn"; d.style.cssText = "position:absolute;top:8px;right:8px;z-index:1000;background:rgba(0,0,0,0.8);color:#f97316;padding:4px 8px;border-radius:4px;font-size:10px;pointer-events:none;"; d.textContent = "⚠ Seamarks tiles unavailable"; document.querySelector(".leaflet-container")?.appendChild(d); } } }}
+      />
 
       {/* Orca danger zones */}
       {relevantOrcaZones.map((z, i) => (
