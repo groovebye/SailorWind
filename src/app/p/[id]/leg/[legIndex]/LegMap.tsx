@@ -97,35 +97,30 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
     [waypoints]
   );
 
-  // Build route geometry — use manual route if provided, otherwise auto
-  const routePositions = useMemo(() => {
-    if (manualRoutePoints && manualRoutePoints.length >= 2) {
-      return manualRoutePoints.map(p => [p.lat, p.lon] as [number, number]);
-    }
-
+  // Build route geometry — use manual/resolved route if provided, otherwise auto
+  let routePositions: [number, number][];
+  if (manualRoutePoints && manualRoutePoints.length >= 2) {
+    routePositions = manualRoutePoints.map(p => [p.lat, p.lon] as [number, number]);
+  } else {
     // Auto-route from routing graph
     const routeAnchors = [
       { port: fromPort, isCape: false },
       ...waypoints.filter((w) => w.isCape).map((w) => ({ port: w.port, isCape: true })),
       { port: toPort, isCape: false },
     ];
-
     const merged: [number, number][] = [];
     for (let i = 0; i < routeAnchors.length - 1; i++) {
       const from = routeAnchors[i];
       const to = routeAnchors[i + 1];
-      const fromName = from.isCape ? `${from.port.name} Rounding` : from.port.name;
-      const toName = to.isCape ? `${to.port.name} Rounding` : to.port.name;
       const seg = buildSeaRoute(
-        { name: fromName, lat: from.port.lat, lon: from.port.lon },
-        { name: toName, lat: to.port.lat, lon: to.port.lon }
+        { name: from.isCape ? `${from.port.name} Rounding` : from.port.name, lat: from.port.lat, lon: from.port.lon },
+        { name: to.isCape ? `${to.port.name} Rounding` : to.port.name, lat: to.port.lat, lon: to.port.lon }
       );
-
       if (merged.length > 0 && seg.length > 0) merged.push(...seg.slice(1));
       else merged.push(...seg);
     }
-    return merged;
-  }, [fromPort, toPort, waypoints, manualRoutePoints]);
+    routePositions = merged;
+  }
 
   const tileUrl = theme === "light" ? LIGHT_TILES : DARK_TILES;
   const legBounds = positions.length > 1
