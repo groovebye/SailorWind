@@ -147,13 +147,15 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
       {/* Depth contours (5/10/20/50/100/200m) from static GeoJSON — stable, no flicker */}
       {contours && (
         <GeoJSONLayer
+          key="depth-contours"
           data={contours}
+          interactive={!isEditing}
           style={(feature) => {
             const depth = feature?.properties?.depth || 50;
             const style = CONTOUR_STYLES[depth] || CONTOUR_STYLES[50];
-            return { color: style.color, weight: style.weight, opacity: 0.7, dashArray: style.dash };
+            return { color: style.color, weight: style.weight, opacity: isEditing ? 0.4 : 0.7, dashArray: style.dash, interactive: !isEditing };
           }}
-          onEachFeature={(feature, layer) => {
+          onEachFeature={isEditing ? undefined : (feature, layer) => {
             const depth = feature.properties?.depth;
             if (depth) layer.bindTooltip(`${depth}m`, { permanent: false, direction: "center" });
           }}
