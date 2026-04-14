@@ -223,29 +223,33 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
       .then(r => r.json()).then(data => { if (!data.error) setForecasts(data); }).catch(() => {});
   }, [passage, leg, dest, fromPort]);
 
-  // Fetch tides for departure and arrival ports
+  // Fetch tides (with abort on unmount)
   useEffect(() => {
     if (!leg || !fromPort || !dest) return;
-    const depTime = leg.departTime.toISOString();
-    const arrTime = leg.arriveTime.toISOString();
-    fetch(`/api/tides?port=${fromPort.slug}&date=${depTime}`).then(r => r.json()).then(d => { if (!d.error) setDepTide(d); }).catch(() => {});
-    fetch(`/api/tides?port=${dest.slug}&date=${arrTime}`).then(r => r.json()).then(d => { if (!d.error) setArrTide(d); }).catch(() => {});
+    const c = new AbortController();
+    fetch(`/api/tides?port=${fromPort.slug}&date=${leg.departTime.toISOString()}`, { signal: c.signal }).then(r => r.json()).then(d => { if (!d.error) setDepTide(d); }).catch(() => {});
+    fetch(`/api/tides?port=${dest.slug}&date=${leg.arriveTime.toISOString()}`, { signal: c.signal }).then(r => r.json()).then(d => { if (!d.error) setArrTide(d); }).catch(() => {});
+    return () => c.abort();
   }, [leg, fromPort?.slug, dest?.slug]);
 
 
 
-  // Fetch route mode
+  // Fetch route mode (with abort)
   useEffect(() => {
     if (!passage || !leg || !fromPort || !dest) return;
-    fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${fromPort.name}&fromLat=${fromPort.lat}&fromLon=${fromPort.lon}&toName=${dest.name}&toLat=${dest.lat}&toLon=${dest.lon}`)
+    const c = new AbortController();
+    fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${fromPort.name}&fromLat=${fromPort.lat}&fromLon=${fromPort.lon}&toName=${dest.name}&toLat=${dest.lat}&toLon=${dest.lon}`, { signal: c.signal })
       .then(r => r.json()).then(d => { if (d.mode) setRouteMode(d.mode); }).catch(() => {});
+    return () => c.abort();
   }, [passage, leg, fromPort, dest, id, legIndex]);
 
-  // Fetch execution
+  // Fetch execution (with abort)
   useEffect(() => {
     if (!passage) return;
-    fetch(`/api/execution?passageId=${id}&legIndex=${legIndex}`)
+    const c = new AbortController();
+    fetch(`/api/execution?passageId=${id}&legIndex=${legIndex}`, { signal: c.signal })
       .then(r => r.json()).then(d => { if (d.execution) setExecution(d.execution); }).catch(() => {});
+    return () => c.abort();
   }, [passage, id, legIndex]);
 
   // Route editing handlers
@@ -311,8 +315,17 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     if (d.execution) setExecution(d.execution);
   }
 
-  // Fetch webcams
-  useEffect(() => { if (dest) { fetch(`/api/webcams?lat=${dest.lat}&lon=${dest.lon}&radius=25`).then(r => r.json()).then(data => { if (Array.isArray(data)) setWebcams(data); }).catch(() => {}); } }, [dest]);
+  // Fetch webcams (with timeout + abort on unmount)
+  useEffect(() => {
+    if (!dest) return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000); // 5s max
+    fetch(`/api/webcams?lat=${dest.lat}&lon=${dest.lon}&radius=25`, { signal: controller.signal })
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { if (Array.isArray(data)) setWebcams(data); })
+      .catch(() => {});
+    return () => { clearTimeout(timeout); controller.abort(); };
+  }, [dest?.lat, dest?.lon]);
 
   // Fetch computed passage timeline
   useEffect(() => {
