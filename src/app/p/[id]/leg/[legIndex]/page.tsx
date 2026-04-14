@@ -292,24 +292,31 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
       .then(r => r.json()).then(data => { if (!data.error) setForecasts(data); }).catch(() => {});
   }, [passage, leg, dest, fromPort]);
 
-  // Fetch tides (with abort on unmount)
+  // Fetch tides — primitive deps only
+  // Primitive deps for useEffects (prevent infinite re-runs from object refs)
+  const fromSlug = fromPort?.slug || fromPort?.name || "";
+  const destSlug = dest?.slug || dest?.name || "";
+  const depTimeIso = leg?.departTime?.toISOString() || "";
+  const arrTimeIso = leg?.arriveTime?.toISOString() || "";
+  const passageDbId = passage?.id || "";
   useEffect(() => {
-    if (!resolvedDepartTime || !resolvedArriveTime || !fromPort || !dest) return;
+    if (!fromSlug || !destSlug || !depTimeIso || !arrTimeIso) return;
     const c = new AbortController();
-    fetch(`/api/tides?port=${fromPort.slug}&date=${resolvedDepartTime.toISOString()}`, { signal: c.signal }).then(r => r.json()).then(d => { if (!d.error) setDepTide(d); }).catch(() => {});
-    fetch(`/api/tides?port=${dest.slug}&date=${resolvedArriveTime.toISOString()}`, { signal: c.signal }).then(r => r.json()).then(d => { if (!d.error) setArrTide(d); }).catch(() => {});
+    fetch(`/api/tides?port=${fromSlug}&date=${depTimeIso}`, { signal: c.signal }).then(r => r.json()).then(d => { if (!d.error) setDepTide(d); }).catch(() => {});
+    fetch(`/api/tides?port=${destSlug}&date=${arrTimeIso}`, { signal: c.signal }).then(r => r.json()).then(d => { if (!d.error) setArrTide(d); }).catch(() => {});
     return () => c.abort();
-  }, [resolvedDepartTime?.toISOString(), resolvedArriveTime?.toISOString(), fromPort?.slug, dest?.slug]);
+  }, [fromSlug, destSlug, depTimeIso, arrTimeIso]);
 
 
 
-  // Fetch route mode (with abort)
+  // Fetch route mode
   useEffect(() => {
-    if (!passage || !leg || !fromPort || !dest) return;
+    if (!fromSlug || !destSlug || !passage) return;
+    const fp = fromPort!;
+    const dp = dest!;
     const c = new AbortController();
-    fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${encodeURIComponent(fromPort.name)}&fromLat=${fromPort.lat}&fromLon=${fromPort.lon}&toName=${encodeURIComponent(dest.name)}&toLat=${dest.lat}&toLon=${dest.lon}`, { signal: c.signal })
+    fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${encodeURIComponent(fp.name)}&fromLat=${fp.lat}&fromLon=${fp.lon}&toName=${encodeURIComponent(dp.name)}&toLat=${dp.lat}&toLon=${dp.lon}`, { signal: c.signal })
       .then(r => r.json()).then(d => {
-        console.log("[SailorWind] leg-route response:", d.mode, d.points?.length, "pts");
         if (d.mode) setRouteMode(d.mode);
         if (d.points?.length >= 2) {
           setResolvedRoutePoints(d.points);
@@ -319,18 +326,18 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           setResolvedRouteDistanceNm(null);
         }
         setRouteLoaded(true);
-      }).catch((err) => { console.log("[SailorWind] leg-route error:", err); setRouteLoaded(true); });
+      }).catch(() => { setRouteLoaded(true); });
     return () => c.abort();
-  }, [passage, leg, fromPort, dest, id, legIndex, routeRefreshKey]);
+  }, [id, legIndex, fromSlug, destSlug]);
 
-  // Fetch execution (with abort)
+  // Fetch execution
   useEffect(() => {
-    if (!passage) return;
+    if (!passageDbId) return;
     const c = new AbortController();
     fetch(`/api/execution?passageId=${id}&legIndex=${legIndex}`, { signal: c.signal })
       .then(r => r.json()).then(d => { if (d.execution) setExecution(d.execution); }).catch(() => {});
     return () => c.abort();
-  }, [passage, id, legIndex]);
+  }, [passageDbId, id, legIndex]);
 
   // Route editing handlers
   function startRouteEditing() {
