@@ -152,6 +152,16 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [guide, setGuide] = useState<LegGuide | null>(null);
   const [webcams, setWebcams] = useState<Webcam[]>([]);
   const [viewMode, setViewMode] = useState<"quick" | "full">("full");
+
+  // Route editing state
+  const [isEditingRoute, setIsEditingRoute] = useState(false);
+  const [routeDraft, setRouteDraft] = useState<{ lat: number; lon: number; label?: string }[]>([]);
+  const [routeMode, setRouteMode] = useState<"auto" | "manual">("auto");
+  const [isSavingRoute, setIsSavingRoute] = useState(false);
+
+  // Execution state
+  interface ExecutionData { id: string; status: string; startedAt: string | null; endedAt: string | null; checkpoints: { type: string; title: string; recordedAt: string; note: string | null }[]; observations: { recordedAt: string; observedWindKt: number | null; observedWaveM: number | null; comfort: string | null; note: string | null }[]; }
+  const [execution, setExecution] = useState<ExecutionData | null>(null);
   interface TideData { port: string; isSpring: boolean; range: number; stateAtDate: { rising: boolean; hoursToHW: number; hoursToLW: number; approxHeight: number; description: string }; extremes: { time: string; type: string; height: number }[]; stream: { area: string; floodDir: string; ebbDir: string; springRate: number; notes: string } | null; }
   const [depTide, setDepTide] = useState<TideData | null>(null);
   const [arrTide, setArrTide] = useState<TideData | null>(null);
@@ -223,6 +233,83 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   }, [leg, fromPort?.slug, dest?.slug]);
 
 
+
+  // Fetch route mode
+  useEffect(() => {
+    if (!passage || !leg || !fromPort || !dest) return;
+    fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${fromPort.name}&fromLat=${fromPort.lat}&fromLon=${fromPort.lon}&toName=${dest.name}&toLat=${dest.lat}&toLon=${dest.lon}`)
+      .then(r => r.json()).then(d => { if (d.mode) setRouteMode(d.mode); }).catch(() => {});
+  }, [passage, leg, fromPort, dest, id, legIndex]);
+
+  // Fetch execution
+  useEffect(() => {
+    if (!passage) return;
+    fetch(`/api/execution?passageId=${id}&legIndex=${legIndex}`)
+      .then(r => r.json()).then(d => { if (d.execution) setExecution(d.execution); }).catch(() => {});
+  }, [passage, id, legIndex]);
+
+  // Route editing handlers
+  async function handleSaveRoute() {
+    if (routeDraft.length < 2) return;
+    setIsSavingRoute(true);
+    await fetch("/api/leg-route", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ passageId: id, legIndex, points: routeDraft }),
+    });
+    setRouteMode("manual");
+    setIsEditingRoute(false);
+    setIsSavingRoute(false);
+  }
+
+  async function handleResetRoute() {
+    await fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}`, { method: "DELETE" });
+    setRouteMode("auto");
+    setRouteDraft([]);
+    setIsEditingRoute(false);
+  }
+
+  // Execution handlers
+  async function handleStartExecution() {
+    const res = await fetch("/api/execution", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "start", passageId: id, legIndex }),
+    });
+    const d = await res.json();
+    if (d.execution) setExecution(d.execution);
+  }
+
+  async function handleStopExecution(status: string) {
+    if (!execution) return;
+    const res = await fetch("/api/execution", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "stop", executionId: execution.id, status }),
+    });
+    const d = await res.json();
+    if (d.execution) setExecution({ ...execution, ...d.execution });
+  }
+
+  async function handleAddCheckpoint(type: string, title: string) {
+    if (!execution) return;
+    await fetch("/api/execution", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "checkpoint", executionId: execution.id, type, title }),
+    });
+    // Refresh execution
+    const res = await fetch(`/api/execution?passageId=${id}&legIndex=${legIndex}`);
+    const d = await res.json();
+    if (d.execution) setExecution(d.execution);
+  }
+
+  async function handleAddObservation(data: Record<string, unknown>) {
+    if (!execution) return;
+    await fetch("/api/execution", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "observation", executionId: execution.id, ...data }),
+    });
+    const res = await fetch(`/api/execution?passageId=${id}&legIndex=${legIndex}`);
+    const d = await res.json();
+    if (d.execution) setExecution(d.execution);
+  }
 
   // Fetch webcams
   useEffect(() => { if (dest) { fetch(`/api/webcams?lat=${dest.lat}&lon=${dest.lon}&radius=25`).then(r => r.json()).then(data => { if (Array.isArray(data)) setWebcams(data); }).catch(() => {}); } }, [dest]);
@@ -521,9 +608,53 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </div>
       )}
 
-      {/* ══════ MAP ══════ */}
-      <div className="rounded-xl overflow-hidden mb-3" style={{ border: `1px solid var(--border-light)`, height: 400 }}>
-        <LegMap waypoints={legWps} fromPort={fromPort} toPort={dest} theme={theme} hazards={hazards} milestones={milestones} />
+      {/* ══════ MAP + ROUTE EDITING ══════ */}
+      <div className="mb-3">
+        {/* Route controls */}
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-t-xl text-xs" style={{ background: "var(--bg-card)", borderBottom: `1px solid var(--border-light)` }}>
+          <div className="flex items-center gap-2">
+            <span style={{ color: routeMode === "manual" ? "var(--text-yellow)" : "var(--text-muted)" }}>
+              {routeMode === "manual" ? "🖊 Manual route" : "🤖 Auto route"}
+            </span>
+          </div>
+          <div className="flex items-center gap-1 no-print">
+            {!isEditingRoute ? (
+              <>
+                <button onClick={() => { setIsEditingRoute(true); setRouteDraft([{ lat: fromPort.lat, lon: fromPort.lon, label: fromPort.name }]); }} className="px-2 py-1 rounded" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }}>
+                  Modify Route
+                </button>
+                {routeMode === "manual" && (
+                  <button onClick={handleResetRoute} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>
+                    Reset to Auto
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                <span style={{ color: "var(--text-muted)" }}>{routeDraft.length} pts</span>
+                <button onClick={() => setRouteDraft(prev => prev.slice(0, -1))} disabled={routeDraft.length <= 1} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Undo</button>
+                <button onClick={() => setIsEditingRoute(false)} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Cancel</button>
+                <button onClick={() => { setRouteDraft(prev => [...prev, { lat: dest.lat, lon: dest.lon, label: dest.name }]); handleSaveRoute(); }} disabled={isSavingRoute || routeDraft.length < 1} className="px-2 py-1 rounded font-semibold" style={{ color: "var(--text-green)", background: "var(--accent-go)", border: `1px solid var(--text-green)30` }}>
+                  {isSavingRoute ? "Saving..." : "Save Route"}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+        {isEditingRoute && (
+          <div className="px-3 py-1.5 text-[11px]" style={{ background: "var(--accent-caution)", color: "var(--text-yellow)" }}>
+            Click on the map to add waypoints. First point = departure, last = arrival. Points will be connected in order.
+          </div>
+        )}
+        <div className="rounded-b-xl overflow-hidden" style={{ border: `1px solid var(--border-light)`, borderTop: "none", height: 400 }}>
+          <LegMap
+            waypoints={legWps} fromPort={fromPort} toPort={dest} theme={theme}
+            hazards={hazards} milestones={milestones}
+            isEditing={isEditingRoute}
+            routeDraft={routeDraft}
+            onMapClick={isEditingRoute ? (lat: number, lon: number) => setRouteDraft(prev => [...prev, { lat, lon }]) : undefined}
+          />
+        </div>
       </div>
 
       {/* ══════ PASSAGE TIMELINE ══════ */}
@@ -1003,6 +1134,98 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           </div>
         </Section>
       )}
+
+      {/* ══════ EXECUTION & LOGBOOK ══════ */}
+      <Section title="Live Passage" icon="🚢">
+        {!execution || execution.status === "planned" ? (
+          <div className="text-center py-4">
+            <button onClick={handleStartExecution} className="px-4 py-2 rounded-lg font-semibold text-sm" style={{ background: "var(--accent-go)", color: "var(--text-green)", border: `1px solid var(--text-green)30` }}>
+              ▶ Start Passage
+            </button>
+            <div className="text-[11px] mt-2" style={{ color: "var(--text-muted)" }}>Begin live tracking for this leg</div>
+          </div>
+        ) : execution.status === "active" ? (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>ACTIVE</span>
+                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Started: {execution.startedAt ? new Date(execution.startedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "?"}</span>
+              </div>
+              <button onClick={() => handleStopExecution("completed")} className="px-3 py-1 rounded text-xs font-semibold" style={{ color: "var(--text-red)", border: `1px solid var(--text-red)30` }}>
+                ⏹ End Passage
+              </button>
+            </div>
+
+            {/* Quick actions */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+              <button onClick={() => handleAddCheckpoint("departure", "Departed")} className="px-2 py-1.5 rounded text-[11px]" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🚀 Departure</button>
+              <button onClick={() => handleAddCheckpoint("cape", "Cape rounded")} className="px-2 py-1.5 rounded text-[11px]" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>⚡ Cape</button>
+              <button onClick={() => handleAddCheckpoint("reef_in", "Reefed")} className="px-2 py-1.5 rounded text-[11px]" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🪢 Reef In</button>
+              <button onClick={() => handleAddCheckpoint("arrival", "Arrived")} className="px-2 py-1.5 rounded text-[11px]" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>🏁 Arrival</button>
+            </div>
+
+            {/* Add observation form */}
+            <details className="mb-3">
+              <summary className="text-xs cursor-pointer" style={{ color: "var(--text-blue-light)" }}>+ Add Observation</summary>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                {["comfortable", "moderate", "bumpy", "demanding", "hard_work"].map(c => (
+                  <button key={c} onClick={() => handleAddObservation({ comfort: c })} className="px-2 py-1 rounded capitalize" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-secondary)" }}>
+                    {c.replace("_", " ")}
+                  </button>
+                ))}
+              </div>
+            </details>
+
+            {/* Recent events */}
+            {execution.checkpoints.length > 0 && (
+              <div className="text-xs space-y-1 mb-2" style={{ color: "var(--text-secondary)" }}>
+                <div className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Checkpoints</div>
+                {execution.checkpoints.slice(-5).map((cp, i) => (
+                  <div key={i}>{new Date(cp.recordedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} — {cp.title}</div>
+                ))}
+              </div>
+            )}
+            {execution.observations.length > 0 && (
+              <div className="text-xs space-y-1" style={{ color: "var(--text-secondary)" }}>
+                <div className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Observations</div>
+                {execution.observations.slice(-3).map((ob, i) => (
+                  <div key={i}>{new Date(ob.recordedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} — {ob.comfort ? `Comfort: ${ob.comfort}` : ""}{ob.observedWindKt ? ` Wind: ${ob.observedWindKt}kt` : ""}{ob.note ? ` — ${ob.note}` : ""}</div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Completed/aborted */
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: execution.status === "completed" ? "var(--accent-go)" : "var(--accent-nogo)", color: execution.status === "completed" ? "var(--text-green)" : "var(--text-red)" }}>{execution.status.toUpperCase()}</span>
+              {execution.startedAt && execution.endedAt && (
+                <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                  {new Date(execution.startedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} → {new Date(execution.endedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              )}
+            </div>
+            {/* Log summary */}
+            {execution.checkpoints.length > 0 && (
+              <div className="text-xs space-y-1 mb-2" style={{ color: "var(--text-secondary)" }}>
+                <div className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Passage Log</div>
+                {execution.checkpoints.map((cp, i) => (
+                  <div key={i}>{new Date(cp.recordedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} — <strong>{cp.title}</strong>{cp.note ? ` — ${cp.note}` : ""}</div>
+                ))}
+              </div>
+            )}
+            {execution.observations.length > 0 && (
+              <div className="text-xs space-y-1" style={{ color: "var(--text-secondary)" }}>
+                <div className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Observations</div>
+                {execution.observations.map((ob, i) => (
+                  <div key={i}>{new Date(ob.recordedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })} — {ob.comfort ? `${ob.comfort}` : ""}{ob.observedWindKt ? ` · ${ob.observedWindKt}kt` : ""}{ob.observedWaveM ? ` · ${ob.observedWaveM}m` : ""}{ob.note ? ` — ${ob.note}` : ""}</div>
+                ))}
+              </div>
+            )}
+            <button onClick={handleStartExecution} className="mt-2 px-3 py-1 rounded text-xs" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }}>▶ Start New Passage</button>
+          </div>
+        )}
+      </Section>
 
       {/* ══════ EMERGENCY ══════ */}
       <Section title="Emergency Contacts" icon="🚨">

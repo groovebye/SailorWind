@@ -117,14 +117,132 @@ model Passage {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  ports       PassagePort[]
-  waypoints   PassageWaypoint[]
+  ports        PassagePort[]
+  waypoints    PassageWaypoint[]
   computations LegComputation[]
+  legRoutes    PassageLegRoute[]
+  executions   PassageExecution[]
 }
 
 enum PassageMode {
   daily
   nonstop
+}
+
+// ── Manual Route Overrides ──────────────────────────────────────
+
+model PassageLegRoute {
+  id          String   @id @default(cuid())
+  passage     Passage  @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  passageId   String
+  legIndex    Int
+  mode        String   @default("auto") // "auto" | "manual"
+  name        String?
+  notes       String?
+  distanceNm  Float?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  points      PassageLegRoutePoint[]
+
+  @@unique([passageId, legIndex])
+  @@index([passageId])
+}
+
+model PassageLegRoutePoint {
+  id          String   @id @default(cuid())
+  route       PassageLegRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  routeId     String
+  sortOrder   Int
+  lat         Float
+  lon         Float
+  label       String?
+  kind        String?  // "departure" | "manual" | "cape_rounding" | "arrival"
+
+  @@index([routeId, sortOrder])
+}
+
+// ── Live Passage Execution ──────────────────────────────────────
+
+model PassageExecution {
+  id          String   @id @default(cuid())
+  passage     Passage  @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  passageId   String
+  legIndex    Int
+  status      String   @default("planned") // "planned" | "active" | "completed" | "aborted"
+  startedAt   DateTime?
+  endedAt     DateTime?
+  name        String?
+  notes       String?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  trackPoints   PassageExecutionTrackPoint[]
+  checkpoints   PassageExecutionCheckpoint[]
+  observations  PassageExecutionObservation[]
+
+  @@index([passageId, legIndex])
+}
+
+model PassageExecutionTrackPoint {
+  id            String   @id @default(cuid())
+  execution     PassageExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  executionId   String
+  recordedAt    DateTime
+  lat           Float
+  lon           Float
+  sogKt         Float?
+  cogDeg        Float?
+  headingDeg    Float?
+  mode          String?  // "sail" | "motor" | "motorsail"
+  engineOn      Boolean?
+  reefLevel     Int?
+  note          String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([executionId, recordedAt])
+}
+
+model PassageExecutionCheckpoint {
+  id            String   @id @default(cuid())
+  execution     PassageExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  executionId   String
+  recordedAt    DateTime
+  lat           Float?
+  lon           Float?
+  type          String   // "departure" | "cape" | "reef_in" | "reef_out" | "bailout_decision" | "harbor_approach" | "arrival" | "custom"
+  title         String
+  note          String?
+
+  createdAt     DateTime @default(now())
+
+  @@index([executionId, recordedAt])
+}
+
+model PassageExecutionObservation {
+  id                String   @id @default(cuid())
+  execution         PassageExecution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  executionId       String
+  recordedAt        DateTime
+  lat               Float?
+  lon               Float?
+  observedWindKt    Float?
+  observedWindDirDeg Float?
+  observedWaveM     Float?
+  observedSwellM    Float?
+  seaStateText      String?
+  visibilityNm      Float?
+  barometerHpa      Float?
+  sailConfig        String?
+  comfort           String?  // "comfortable" | "moderate" | "bumpy" | "demanding" | "hard_work"
+  note              String?
+
+  createdAt         DateTime @default(now())
+
+  @@index([executionId, recordedAt])
 }
 
 // ── Leg Guides (curated pilotage knowledge) ─────────────────────

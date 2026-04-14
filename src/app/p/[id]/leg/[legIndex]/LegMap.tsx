@@ -1,6 +1,6 @@
 "use client";
 
-import { MapContainer, TileLayer, CircleMarker, Tooltip, Popup, Polyline, Rectangle, useMap, GeoJSON as GeoJSONLayer, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Popup, Polyline, Rectangle, useMap, useMapEvents, GeoJSON as GeoJSONLayer, Marker } from "react-leaflet";
 import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -73,13 +73,16 @@ const HAZARD_COLORS: Record<string, string> = {
   critical: "#ef4444", high: "#f97316", medium: "#eab308", low: "#94a3b8",
 };
 
-export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [], milestones = [] }: {
+export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [], milestones = [], isEditing = false, routeDraft = [], onMapClick }: {
   waypoints: Waypoint[];
   fromPort: Port;
   toPort: Port;
   theme: string;
   hazards?: Hazard[];
   milestones?: Milestone[];
+  isEditing?: boolean;
+  routeDraft?: { lat: number; lon: number; label?: string }[];
+  onMapClick?: (lat: number, lon: number) => void;
 }) {
   const [contours, setContours] = useState<FeatureCollection | null>(null);
 
@@ -232,6 +235,29 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
           </Tooltip>
         </CircleMarker>
       ))}
+
+      {/* Edit mode: click handler + draft route */}
+      {isEditing && onMapClick && <MapClickHandler onClick={onMapClick} />}
+      {isEditing && routeDraft.length > 0 && (
+        <>
+          <Polyline positions={routeDraft.map(p => [p.lat, p.lon] as [number, number])} pathOptions={{ color: "#f97316", weight: 3, dashArray: "8 4" }} />
+          {routeDraft.map((p, i) => (
+            <CircleMarker key={`draft-${i}`} center={[p.lat, p.lon]} radius={6}
+              pathOptions={{ fillColor: i === 0 ? "#4ade80" : "#f97316", color: "#fff", weight: 2, fillOpacity: 0.9 }}>
+              <Tooltip permanent direction="top" offset={[0, -8]}>
+                <span style={{ fontSize: 10, fontWeight: 700 }}>{i + 1}{p.label ? ` ${p.label}` : ""}</span>
+              </Tooltip>
+            </CircleMarker>
+          ))}
+        </>
+      )}
     </MapContainer>
   );
+}
+
+function MapClickHandler({ onClick }: { onClick: (lat: number, lon: number) => void }) {
+  useMapEvents({
+    click: (e) => { onClick(e.latlng.lat, e.latlng.lng); },
+  });
+  return null;
 }
