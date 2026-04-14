@@ -86,6 +86,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
   manualRoutePoints?: { lat: number; lon: number }[] | null;
 }) {
   const [contours, setContours] = useState<FeatureCollection | null>(null);
+  const markerClickedRef = useRef(false);
 
   useEffect(() => {
     fetch("/data/contours.json").then(r => r.json()).then(setContours).catch(() => {});
@@ -259,15 +260,15 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
       ))}
 
       {/* Edit mode: click handler + draft route */}
-      {isEditing && onMapClick && <MapClickHandler onClick={onMapClick} />}
+      {isEditing && onMapClick && <MapClickHandler onClick={onMapClick} suppressRef={markerClickedRef} />}
       {isEditing && routeDraft.length > 0 && (
         <>
           <Polyline positions={routeDraft.map(p => [p.lat, p.lon] as [number, number])} pathOptions={{ color: "#f97316", weight: 3, dashArray: "8 4" }} />
           {routeDraft.map((p, i) => (
-            <CircleMarker key={`draft-${i}`} center={[p.lat, p.lon]} radius={7}
+            <CircleMarker key={`draft-${i}`} center={[p.lat, p.lon]} radius={9}
               pathOptions={{ fillColor: i === 0 ? "#4ade80" : "#f97316", color: "#fff", weight: 2, fillOpacity: 0.9 }}
-              eventHandlers={onRemovePoint ? { click: (e) => { e.originalEvent.stopPropagation(); onRemovePoint(i); } } : {}}>
-              <Tooltip permanent direction="top" offset={[0, -10]}>
+              eventHandlers={onRemovePoint ? { click: () => { markerClickedRef.current = true; onRemovePoint(i); } } : {}}>
+              <Tooltip permanent direction="top" offset={[0, -12]}>
                 <span style={{ fontSize: 10, fontWeight: 700 }}>{i + 1}{p.label ? ` ${p.label}` : ""}</span>
               </Tooltip>
             </CircleMarker>
@@ -278,9 +279,13 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
   );
 }
 
-function MapClickHandler({ onClick }: { onClick: (lat: number, lon: number) => void }) {
+function MapClickHandler({ onClick, suppressRef }: { onClick: (lat: number, lon: number) => void; suppressRef: React.RefObject<boolean> }) {
   useMapEvents({
-    click: (e) => { onClick(e.latlng.lat, e.latlng.lng); },
+    click: (e) => {
+      // Skip if a marker was just clicked (removal)
+      if (suppressRef.current) { suppressRef.current = false; return; }
+      onClick(e.latlng.lat, e.latlng.lng);
+    },
   });
   return null;
 }

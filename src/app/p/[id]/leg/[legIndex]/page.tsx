@@ -331,41 +331,22 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
   // Route editing handlers
   function startRouteEditing() {
-    if (!fromPort || !dest) return;
-    const existingPoints = activeRoutePoints && activeRoutePoints.length >= 2
-      ? activeRoutePoints
-      : [{ lat: fromPort.lat, lon: fromPort.lon }, { lat: dest.lat, lon: dest.lon }];
-    setRouteDraft(existingPoints.map((p, index) => ({
-      lat: p.lat,
-      lon: p.lon,
-      label: index === 0 ? fromPort.name : index === existingPoints.length - 1 ? dest.name : undefined,
-    })));
+    setRouteDraft([]);
     setIsEditingRoute(true);
   }
 
   function addDraftPoint(lat: number, lon: number) {
-    setRouteDraft((prev) => {
-      if (prev.length < 2) {
-        const seeded = fromPort && dest
-          ? [{ lat: fromPort.lat, lon: fromPort.lon, label: fromPort.name }, { lat: dest.lat, lon: dest.lon, label: dest.name }]
-          : [];
-        return [...seeded.slice(0, -1), { lat, lon }, ...seeded.slice(-1)];
-      }
-      return [...prev.slice(0, -1), { lat, lon }, prev[prev.length - 1]];
-    });
+    setRouteDraft((prev) => [...prev, { lat, lon }]);
   }
 
   function removeDraftPoint(index: number) {
-    setRouteDraft((prev) => {
-      if (index <= 0 || index >= prev.length - 1) return prev;
-      return prev.filter((_, i) => i !== index);
-    });
+    setRouteDraft((prev) => prev.filter((_, i) => i !== index));
   }
 
   function undoDraftPoint() {
     setRouteDraft((prev) => {
-      if (prev.length <= 2) return prev;
-      return [...prev.slice(0, -2), prev[prev.length - 1]];
+      if (prev.length === 0) return prev;
+      return prev.slice(0, -1);
     });
   }
 
@@ -785,7 +766,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             ) : (
               <>
                 <span style={{ color: "var(--text-muted)" }}>{routeDraft.length} pts</span>
-                <button onClick={undoDraftPoint} disabled={routeDraft.length <= 2} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Undo</button>
+                <button onClick={undoDraftPoint} disabled={routeDraft.length === 0} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Undo</button>
+                <button onClick={() => setRouteDraft([])} disabled={routeDraft.length === 0} className="px-2 py-1 rounded" style={{ color: "var(--text-red)", border: `1px solid var(--border)` }}>Erase</button>
                 <button onClick={() => { setIsEditingRoute(false); setRouteDraft([]); }} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>Cancel</button>
                 <button onClick={handleSaveRoute} disabled={isSavingRoute || routeDraft.length < 2} className="px-2 py-1 rounded font-semibold" style={{ color: routeDraft.length < 2 ? "var(--text-muted)" : "var(--text-green)", background: routeDraft.length < 2 ? "transparent" : "var(--accent-go)", border: `1px solid ${routeDraft.length < 2 ? "var(--border)" : "var(--text-green)30"}` }}>
                   {isSavingRoute ? "Saving..." : `Save (${routeDraft.length} pts)`}
@@ -796,7 +778,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </div>
         {isEditingRoute && (
           <div className="px-3 py-1.5 text-[11px]" style={{ background: "var(--accent-caution)", color: "var(--text-yellow)" }}>
-            Departure and arrival are anchored. Click on the map to add intermediate waypoints before arrival. Click intermediate points to remove them.
+            Click on the map to add route points in order. Click any existing point to remove it.
           </div>
         )}
         <div className="rounded-b-xl overflow-hidden" style={{ border: `1px solid var(--border-light)`, borderTop: "none", height: 400 }}>
