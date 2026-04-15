@@ -33,6 +33,7 @@ interface TimelineEntry {
   waveM: number | null; wavePeriodS: number | null; swellM: number | null; swellPeriodS: number | null; currentDir: string | null; currentDirDeg: number | null; currentKt: number; twa: number;
   pointOfSail: string; mode: "sail" | "motor" | "motorsail"; tack: "port" | "starboard" | "none"; sailConfig: string; reefLevel: 0 | 1 | 2;
   expectedBoatSpeedKt: number; expectedSogKt: number; comfortScore: number; comfort: string; warnings: string[]; notes: string;
+  engineOn: boolean; fuelUsedThisHourL: number; cumulativeFuelUsedL: number;
 }
 interface TimelineSummaryData {
   routeDistanceNm: number; computedDurationHours: number; estimatedArrival: string; dominantMode: string;
@@ -41,6 +42,7 @@ interface TimelineSummaryData {
   overallComfortScore: number; overallComfort: string; worstSegment: string; hardestHour: string | null;
   comfortBySegment: { segment: string; comfort: string; reason: string }[];
   forecastSource: string; forecastModel: string;
+  fuelUsedL: number; fuelReserveAfterLegL: number | null; fuelMarginStatus: string; engineHoursTotal: number;
 }
 interface TimelineResponse {
   source: string; computedAt: string; validUntil: string | null;
@@ -750,6 +752,107 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           )}
         </div>
       )}
+
+      {/* ══════ DECISION INTELLIGENCE ══════ */}
+      {timelineData && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+          {/* Fuel Summary */}
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
+            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>⛽ Fuel & Engine</div>
+            <div className="text-xs space-y-0.5" style={{ color: "var(--text-secondary)" }}>
+              <div>Engine: <strong>{timelineData.summary.engineHoursTotal}h</strong> ({timelineData.summary.motorHours}h motor + {timelineData.summary.motorsailHours}h motorsail)</div>
+              <div>Fuel used: <strong>{timelineData.summary.fuelUsedL}L</strong></div>
+              {timelineData.summary.fuelReserveAfterLegL != null && (
+                <div style={{ color: timelineData.summary.fuelMarginStatus === "ok" ? "var(--text-green)" : timelineData.summary.fuelMarginStatus === "low" ? "var(--text-yellow)" : "var(--text-red)" }}>
+                  Reserve: {timelineData.summary.fuelReserveAfterLegL}L ({timelineData.summary.fuelMarginStatus.toUpperCase()})
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Crew Load */}
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
+            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>👥 Crew Load</div>
+            <div className="text-xs space-y-0.5" style={{ color: "var(--text-secondary)" }}>
+              <div>Duration: <strong>{leg.hours.toFixed(1)}h</strong> {leg.hours > 8 ? "(long day)" : ""}</div>
+              <div>Hardest: <strong>{timelineData.summary.worstSegment || "—"}</strong></div>
+              {capeWps.length > 0 && <div style={{ color: "var(--text-yellow)" }}>⚡ {capeWps.length} cape(s) — high attention required</div>}
+              {leg.hours > 10 && <div style={{ color: "var(--text-yellow)" }}>🌙 Fatigue risk — consider watches</div>}
+              <div>Reef changes: {timelineData.timeline.filter((e, i, arr) => i > 0 && e.reefLevel !== arr[i-1].reefLevel).length}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* What Changes the Plan */}
+      <Section title="What Changes the Plan" icon="🔄" defaultOpen={false}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+            <div className="font-semibold" style={{ color: "var(--text-yellow)" }}>Wind +5kt</div>
+            <div style={{ color: "var(--text-secondary)" }}>
+              {maxWind > 15 ? "Already strong — adds reefing, spray, slower VMG" : maxWind > 10 ? "Would push to reef point, moderate discomfort" : "Still manageable, minor impact"}
+            </div>
+          </div>
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+            <div className="font-semibold" style={{ color: "var(--text-yellow)" }}>Waves +0.5m</div>
+            <div style={{ color: "var(--text-secondary)" }}>
+              {maxWave > 2 ? "Already rough — would become uncomfortable, slamming risk" : maxWave > 1.5 ? "Would cross comfort threshold, wet ride" : "Moderate increase, still acceptable"}
+            </div>
+          </div>
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+            <div className="font-semibold" style={{ color: "var(--text-yellow)" }}>Departure +2h late</div>
+            <div style={{ color: "var(--text-secondary)" }}>
+              Arrival shifts to {fmtLocal(new Date(leg.arriveTime.getTime() + 2 * 3600000), toTz)}.
+              {new Date(leg.arriveTime.getTime() + 2 * 3600000).getUTCHours() >= 20 ? " ⚠ Night arrival risk!" : " Still daylight."}
+            </div>
+          </div>
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+            <div className="font-semibold" style={{ color: "var(--text-yellow)" }}>SOG drops to 4kt</div>
+            <div style={{ color: "var(--text-secondary)" }}>
+              Duration extends to ~{(leg.nm / 4).toFixed(1)}h. More motor needed.
+              {(leg.nm / 4) > 10 ? " ⚠ Very long day, fatigue concern." : ""}
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      {/* Plans & Scenarios */}
+      {fallbacks.length > 0 && (
+        <Section title="Plans & Scenarios" icon="📋" defaultOpen={false}>
+          <div className="space-y-2 text-xs">
+            <div className="rounded-lg px-3 py-2" style={{ background: "var(--accent-go)", border: `1px solid var(--text-green)20` }}>
+              <div className="font-bold" style={{ color: "var(--text-green)" }}>Plan A: Full passage to {dest.name}</div>
+              <div style={{ color: "var(--text-secondary)" }}>{leg.nm} NM, ~{leg.hours.toFixed(1)}h at {passage.speed}kt. Standard route.</div>
+            </div>
+            {fallbacks[0] && (
+              <div className="rounded-lg px-3 py-2" style={{ background: "var(--accent-caution)", border: `1px solid var(--text-yellow)20` }}>
+                <div className="font-bold" style={{ color: "var(--text-yellow)" }}>Plan B: Shortened day → {fallbacks[0].name}</div>
+                <div style={{ color: "var(--text-secondary)" }}>{fallbacks[0].distance_nm} NM, ~{fallbacks[0].time_hours}h. {fallbacks[0].conditions}</div>
+                <div style={{ color: "var(--text-muted)" }}>Trigger: conditions worsen after departure, or late start.</div>
+              </div>
+            )}
+            <div className="rounded-lg px-3 py-2" style={{ background: "var(--accent-nogo)", border: `1px solid var(--text-red)20` }}>
+              <div className="font-bold" style={{ color: "var(--text-red)" }}>Plan C: Weather bailout</div>
+              <div style={{ color: "var(--text-secondary)" }}>Return to {leg.from.port.name} or nearest shelter. Do not continue past {capeWps[0]?.port.name || "midpoint"} if conditions deteriorate significantly.</div>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* Arrival Checklist */}
+      <Section title="Arrival Checklist" icon="✅" defaultOpen={false}>
+        <div className="grid grid-cols-2 gap-1 text-xs" style={{ color: "var(--text-secondary)" }}>
+          <div>☐ Fenders rigged</div>
+          <div>☐ Dock lines ready</div>
+          <div>☐ VHF Ch {dest.vhfCh || "09"} monitored</div>
+          <div>☐ Marina phone: {dest.phone || "check guide"}</div>
+          <div>☐ Engine warmed up for approach</div>
+          <div>☐ Entrance marks identified</div>
+          <div>☐ {dest.bestTideEntry || "Tide check for entry"}</div>
+          <div>☐ Backup plan if berth unavailable</div>
+          {dest.waitingArea && <div className="col-span-2" style={{ color: "var(--text-muted)" }}>Waiting area: {dest.waitingArea}</div>}
+        </div>
+      </Section>
 
       {/* ══════ MAP + ROUTE EDITING ══════ */}
       <div className="mb-3">

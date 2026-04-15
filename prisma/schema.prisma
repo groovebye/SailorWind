@@ -481,6 +481,14 @@ model VesselProfile {
   draftMeters     Float
   engineCruiseKt  Float
   engineMaxKt     Float?
+
+  // Fuel system
+  fuelBurnLph       Float?    // liters per hour at cruise RPM
+  fuelTankLiters    Float?    // total tank capacity
+  usableFuelLiters  Float?    // usable fuel (minus reserve)
+  reserveFuelLiters Float?    // minimum reserve to keep
+  motorsailBurnLph  Float?    // fuel burn when motorsailing
+
   notes           String?
   performanceModel Json
   createdAt       DateTime @default(now())

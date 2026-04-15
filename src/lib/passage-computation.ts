@@ -33,6 +33,11 @@ type VesselLike = {
   name: string;
   engineCruiseKt: number;
   engineMaxKt?: number | null;
+  fuelBurnLph?: number | null;
+  fuelTankLiters?: number | null;
+  usableFuelLiters?: number | null;
+  reserveFuelLiters?: number | null;
+  motorsailBurnLph?: number | null;
   performanceModel: VesselPerformanceModel;
 };
 
@@ -72,6 +77,10 @@ export interface TimelineEntry {
   comfort: ComfortLabel;
   warnings: string[];
   notes: string;
+  // Fuel
+  engineOn: boolean;
+  fuelUsedThisHourL: number;
+  cumulativeFuelUsedL: number;
 }
 
 export interface TimelineSummary {
@@ -94,6 +103,11 @@ export interface TimelineSummary {
   comfortBySegment: Array<{ segment: string; comfort: ComfortLabel; reason: string }>;
   forecastSource: string;
   forecastModel: string;
+  // Fuel
+  fuelUsedL: number;
+  fuelReserveAfterLegL: number | null;
+  fuelMarginStatus: "ok" | "low" | "critical" | "unknown";
+  engineHoursTotal: number;
 }
 
 export interface LegTimelineComputation {
@@ -471,7 +485,15 @@ function buildSummary(
   routeDistanceNm: number,
   estimatedArrival: Date,
   forecastModel: string,
+  vessel: VesselLike,
 ) : TimelineSummary {
+  // Compute cumulative fuel
+  let cumulativeFuel = 0;
+  for (const entry of timeline) {
+    cumulativeFuel += entry.fuelUsedThisHourL;
+    entry.cumulativeFuelUsedL = Math.round(cumulativeFuel * 10) / 10;
+  }
+
   const sailHours = timeline.filter((entry) => entry.mode === "sail").length;
   const motorHours = timeline.filter((entry) => entry.mode === "motor").length;
   const motorsailHours = timeline.filter((entry) => entry.mode === "motorsail").length;
@@ -525,6 +547,13 @@ function buildSummary(
     comfortBySegment,
     forecastSource: "Open-Meteo + static tide model",
     forecastModel,
+    // Fuel
+    fuelUsedL: Math.round(cumulativeFuel * 10) / 10,
+    fuelReserveAfterLegL: vessel.usableFuelLiters != null ? Math.round((vessel.usableFuelLiters - cumulativeFuel) * 10) / 10 : null,
+    fuelMarginStatus: vessel.usableFuelLiters == null ? "unknown" :
+      (vessel.usableFuelLiters - cumulativeFuel) > (vessel.reserveFuelLiters ?? 10) ? "ok" :
+      (vessel.usableFuelLiters - cumulativeFuel) > 0 ? "low" : "critical",
+    engineHoursTotal: motorHours + motorsailHours,
   };
 }
 
@@ -798,6 +827,10 @@ export function computeLegTimelineFromContext(
       comfort: comfort.label,
       warnings,
       notes: buildTimelineNote(mode, pointOfSail, comfort.label, warnings),
+      // Fuel
+      engineOn: actualMode === "motor" || actualMode === "motorsail",
+      fuelUsedThisHourL: actualMode === "motor" ? (vessel.fuelBurnLph ?? 3.0) : actualMode === "motorsail" ? (vessel.motorsailBurnLph ?? vessel.fuelBurnLph ?? 2.0) * 0.7 : 0,
+      cumulativeFuelUsedL: 0, // computed below
     });
 
     distanceFromStartNm += expectedSogKt;
@@ -806,7 +839,7 @@ export function computeLegTimelineFromContext(
   }
 
   const estimatedArrival = new Date(leg.departTime.getTime() + timeline.length * 3600000);
-  const summary = buildSummary(timeline, routeDistanceNm, estimatedArrival, passage.model);
+  const summary = buildSummary(timeline, routeDistanceNm, estimatedArrival, passage.model, vessel);
   const warnings = uniqueWarnings(timeline);
 
   return {
