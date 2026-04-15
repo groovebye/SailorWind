@@ -6,7 +6,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { buildSeaRoute } from "@/lib/coastline";
 import type { FeatureCollection } from "geojson";
-// OpenSeaMap tiles used instead of custom SeamarkOverlay for reliability
+import { getStaticSeamarks, type StaticSeamark } from "@/lib/seamarks-static";
 
 interface Port {
   name: string; lat: number; lon: number; type: string;
@@ -87,6 +87,8 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
   hideRoute?: boolean;
 }) {
   const [contours, setContours] = useState<FeatureCollection | null>(null);
+  const [seamarksFailed, setSeamarksFailed] = useState(false);
+  const [staticSeamarks, setStaticSeamarks] = useState<StaticSeamark[]>([]);
   const markerClickedRef = useRef(false);
 
   useEffect(() => {
@@ -170,8 +172,43 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
       <TileLayer
         url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
         opacity={0.85}
-        eventHandlers={{ tileerror: () => { if (!document.getElementById("seamark-warn")) { const d = document.createElement("div"); d.id = "seamark-warn"; d.style.cssText = "position:absolute;top:8px;right:8px;z-index:1000;background:rgba(0,0,0,0.8);color:#f97316;padding:4px 8px;border-radius:4px;font-size:10px;pointer-events:none;"; d.textContent = "⚠ Seamarks tiles unavailable"; document.querySelector(".leaflet-container")?.appendChild(d); } } }}
+        eventHandlers={{ tileerror: () => {
+          if (!seamarksFailed) {
+            setSeamarksFailed(true);
+            // Load static seamarks as fallback
+            const allPts = [...positions, ...routePositions];
+            if (allPts.length > 0) {
+              const lats = allPts.map(p => p[0]);
+              const lons = allPts.map(p => p[1]);
+              setStaticSeamarks(getStaticSeamarks(
+                Math.min(...lats) - 0.1, Math.min(...lons) - 0.1,
+                Math.max(...lats) + 0.1, Math.max(...lons) + 0.1
+              ));
+            }
+          }
+        } }}
       />
+
+      {/* Static seamarks fallback when tiles unavailable */}
+      {seamarksFailed && staticSeamarks.map((sm, i) => (
+        <CircleMarker key={`sm-${i}`} center={[sm.lat, sm.lon]}
+          radius={sm.type === "lighthouse" ? 6 : 4}
+          pathOptions={{
+            fillColor: sm.type === "lighthouse" ? "#facc15" : sm.type === "buoy_lateral" ? (sm.color === "green" ? "#4ade80" : "#ef4444") : sm.type === "buoy_cardinal" ? "#f97316" : sm.type === "landmark" ? "#a78bfa" : "#94a3b8",
+            color: "#fff", weight: 1.5, fillOpacity: 0.9,
+          }}>
+          <Tooltip direction="top" offset={[0, -6]}>
+            <span style={{ fontWeight: 600 }}>{sm.type === "lighthouse" ? "🔦 " : sm.type === "landmark" ? "🏛️ " : "🔶 "}{sm.name}</span>
+            {sm.characteristic && <><br /><span style={{ fontSize: 10, color: "#94a3b8" }}>{sm.characteristic}</span></>}
+            {sm.notes && <><br /><span style={{ fontSize: 10, color: "#94a3b8" }}>{sm.notes}</span></>}
+          </Tooltip>
+        </CircleMarker>
+      ))}
+      {seamarksFailed && (
+        <div style={{ position: "absolute", top: 8, right: 8, zIndex: 1000, background: "rgba(0,0,0,0.8)", color: "#f97316", padding: "4px 8px", borderRadius: 4, fontSize: 10, pointerEvents: "none" }}>
+          ⚠ OpenSeaMap down — showing {staticSeamarks.length} curated marks
+        </div>
+      )}
 
       {/* Orca danger zones */}
       {relevantOrcaZones.map((z, i) => (

@@ -956,15 +956,37 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 </div>
 
                 <div className="mt-2 text-[11px]" style={{ color: "var(--text-secondary)" }}>{entry.notes}</div>
-                {entry.warnings.length > 0 && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {entry.warnings.map((warning, index) => (
-                      <span key={index} className="px-1.5 py-0.5 rounded text-[10px]" style={{ background: "rgba(234,179,8,0.10)", color: "var(--text-yellow)", border: `1px solid rgba(234,179,8,0.18)` }}>
-                        {warning}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                {(() => {
+                  const tags = [...entry.warnings];
+                  // Add computed complication tags
+                  if (entry.waveM != null && entry.wavePeriodS != null) {
+                    const wp = 0.5 * entry.waveM * entry.waveM * entry.wavePeriodS;
+                    if (wp >= 30) tags.push("severe seas");
+                    else if (wp >= 15 && !tags.includes("rougher sea")) tags.push("rough ride");
+                  }
+                  if (entry.waveM != null && entry.waveM > 1.5 && entry.windKt > 15) {
+                    const windWaveAngle = Math.abs(entry.windDirDeg - (entry.courseTrue || 0));
+                    if (windWaveAngle > 120 && windWaveAngle < 240) tags.push("wind against seas");
+                  }
+                  if (entry.waveM != null && entry.waveM > 1.2 && entry.mode === "sail" && (entry.pointOfSail === "Close-hauled" || entry.pointOfSail === "Close reach")) tags.push("wet ride likely");
+                  if (entry.gustKt > 18 && entry.windKt < 12) tags.push("gusty — unpredictable");
+                  return tags.length > 0 ? (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {tags.map((tag, index) => {
+                        const isSevere = tag.includes("severe") || tag.includes("DANGEROUS") || tag.includes("against");
+                        return (
+                          <span key={index} className="px-1.5 py-0.5 rounded text-[10px]" style={{
+                            background: isSevere ? "rgba(248,113,113,0.12)" : "rgba(234,179,8,0.10)",
+                            color: isSevere ? "var(--text-red)" : "var(--text-yellow)",
+                            border: `1px solid ${isSevere ? "rgba(248,113,113,0.2)" : "rgba(234,179,8,0.18)"}`,
+                          }}>
+                            {tag}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  ) : null;
+                })()}
               </div>
             ))}
           </div>
@@ -1329,8 +1351,12 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           <div>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>ACTIVE</span>
-                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>Started: {execution.startedAt ? new Date(execution.startedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "?"}</span>
+                <span className="px-2 py-0.5 rounded text-xs font-bold animate-pulse" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>● ACTIVE</span>
+                <span className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                  Started: {execution.startedAt ? new Date(execution.startedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }) : "?"}
+                  {execution.startedAt && ` · ${((Date.now() - new Date(execution.startedAt).getTime()) / 3600000).toFixed(1)}h elapsed`}
+                  {execution.startedAt && ` · ETA ${fmtLocal(new Date(new Date(execution.startedAt).getTime() + leg.hours * 3600000), toTz)}`}
+                </span>
               </div>
               <button onClick={() => handleStopExecution("completed")} className="px-3 py-1 rounded text-xs font-semibold" style={{ color: "var(--text-red)", border: `1px solid var(--text-red)30` }}>
                 ⏹ End Passage
@@ -1487,6 +1513,33 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             <button onClick={handleStartExecution} className="mt-2 px-3 py-1 rounded text-xs" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }}>▶ Start New Passage</button>
           </div>
         )}
+      </Section>
+
+      {/* ══════ OFFICIAL FORECAST & OBSERVATIONS ══════ */}
+      <Section title="Official Sources" icon="📡" defaultOpen={false}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>AEMET Coastal Forecast</div>
+            <div style={{ color: "var(--text-secondary)" }}>
+              Zone: {fromPort.lon >= -7 ? "Costa Asturiana" : fromPort.lon >= -8 ? "Costa de Lugo" : "Costa de A Coruña"}
+            </div>
+            <a href="https://www.aemet.es/es/eltiempo/prediccion/maritima" target="_blank" rel="noopener" className="text-[11px] mt-1 inline-block" style={{ color: "var(--text-blue-light)" }}>
+              View official forecast →
+            </a>
+          </div>
+          <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Puertos del Estado Buoys</div>
+            <div style={{ color: "var(--text-secondary)" }}>
+              Nearest stations: {fromPort.lon >= -6.5 ? "Gijón Offshore, Cabo Peñas" : fromPort.lon >= -8 ? "Estaca de Bares" : "Villano-Sisargas, La Coruña"}
+            </div>
+            <a href="https://portus.puertos.es/" target="_blank" rel="noopener" className="text-[11px] mt-1 inline-block" style={{ color: "var(--text-blue-light)" }}>
+              View live buoy data →
+            </a>
+          </div>
+        </div>
+        <div className="text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>
+          Cross-check weather forecast with official sources before departure. AEMET API integration planned.
+        </div>
       </Section>
 
       {/* ══════ EMERGENCY ══════ */}
