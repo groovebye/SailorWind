@@ -69,7 +69,9 @@ export async function GET(req: NextRequest) {
           draftMeters: 1.45,
           engineCruiseKt: 6.2,
           engineMaxKt: 6.8,
-          notes: "Hallberg-Rassy Monsun 31 heuristics",
+          fuelBurnLph: 2.5,
+          motorsailBurnLph: 1.75,
+          notes: "Hallberg-Rassy Monsun 31 profile with fuel burn calibrated to 2.5 L/h at 2500 rpm and 6.2 kt cruise",
           performanceModel: {
             lightAirMotorThresholdKt: 7,
             motorsailUpwindThresholdKt: 12,
@@ -113,6 +115,11 @@ export async function GET(req: NextRequest) {
         name: vessel.name,
         engineCruiseKt: vessel.engineCruiseKt,
         engineMaxKt: vessel.engineMaxKt,
+        fuelBurnLph: vessel.fuelBurnLph ?? 2.5,
+        fuelTankLiters: vessel.fuelTankLiters,
+        usableFuelLiters: vessel.usableFuelLiters,
+        reserveFuelLiters: vessel.reserveFuelLiters,
+        motorsailBurnLph: vessel.motorsailBurnLph ?? 1.75,
         performanceModel: parsePerformanceModel(vessel.performanceModel),
       }
     );
@@ -165,6 +172,11 @@ export async function GET(req: NextRequest) {
       name: vessel.name,
       engineCruiseKt: vessel.engineCruiseKt,
       engineMaxKt: vessel.engineMaxKt,
+      fuelBurnLph: vessel.fuelBurnLph ?? 2.5,
+      fuelTankLiters: vessel.fuelTankLiters,
+      usableFuelLiters: vessel.usableFuelLiters,
+      reserveFuelLiters: vessel.reserveFuelLiters,
+      motorsailBurnLph: vessel.motorsailBurnLph ?? 1.75,
       performanceModel: parsePerformanceModel(vessel.performanceModel),
     });
 

@@ -697,7 +697,9 @@ async function main() {
       draftMeters: 1.45,
       engineCruiseKt: 6.2,
       engineMaxKt: 6.8,
-      notes: "Hallberg-Rassy Monsun 31 heuristic profile for passage timeline calculations.",
+      fuelBurnLph: 2.5,
+      motorsailBurnLph: 1.75,
+      notes: "Hallberg-Rassy Monsun 31 profile for passage timeline calculations. Engine fuel burn calibrated to 2.5 L/h at 2500 rpm and 6.2 kt cruise.",
       performanceModel: {
         lightAirMotorThresholdKt: 7,
         motorsailUpwindThresholdKt: 12,
@@ -717,7 +719,9 @@ async function main() {
       draftMeters: 1.45,
       engineCruiseKt: 6.2,
       engineMaxKt: 6.8,
-      notes: "Hallberg-Rassy Monsun 31 heuristic profile for passage timeline calculations.",
+      fuelBurnLph: 2.5,
+      motorsailBurnLph: 1.75,
+      notes: "Hallberg-Rassy Monsun 31 profile for passage timeline calculations. Engine fuel burn calibrated to 2.5 L/h at 2500 rpm and 6.2 kt cruise.",
       performanceModel: {
         lightAirMotorThresholdKt: 7,
         motorsailUpwindThresholdKt: 12,

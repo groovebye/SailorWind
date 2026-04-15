@@ -5,7 +5,7 @@
 **Лодка:** Bossanova (Hallberg-Rassy Monsun 31, осадка 1.5м)
 **Маршрут:** Gijon (Испания) -> Греция, multi-year voyage
 
-### Current Status (v1.2)
+### Current Status (v1.4)
 
 | Component | Coverage | Details |
 |-----------|----------|---------|
@@ -21,8 +21,16 @@
 | **Route geometry** | Graph (64 nodes, 61 edges) + manual overrides | Dijkstra + per-leg manual route editing |
 | **Orca zones** | 2 zones | Galicia coast (medium), Finisterre (high) |
 | **Comfort scoring** | Per-leg + per-segment | Waves/swell/gusts/capes/duration/night penalties |
-| **Execution** | Start/stop/checkpoints/observations | Live passage tracking + logbook |
-| **Vessel profile** | Bossanova (HR Monsun 31) | Performance model for timeline computation |
+| **Execution** | Start/stop/checkpoints/observations | Live tracking + debrief + planned vs actual |
+| **Vessel profile** | Bossanova (HR Monsun 31) | Volvo D1-30: 3.2L/h cruise, 1.9L/h motorsail |
+| **Fuel tracking** | Per-hour + cumulative | Engine hours, fuel used, reserve status |
+| **Decision intelligence** | Sensitivity + Plans A/B/C | What changes the plan, arrival checklist |
+| **Marina recommendations** | 6 use cases per port | Transient, budget, monthly, repairs, provisioning |
+| **Learning layer** | LegMemory + PortMemory | Debrief auto-insights, lessons learned |
+| **Maintenance** | MaintenanceItem model | Pre-departure readiness check |
+| **Offline cache** | localStorage briefing | Recently viewed legs available offline |
+| **Wave power** | kW/m per waypoint + hour | Color-coded calm/moderate/rough/severe |
+| **GPX export** | Per leg + full passage | For Navionics/OpenCPN import |
 
 ---
 
@@ -56,8 +64,8 @@
 ```
 sailplanner-next/
 ├── prisma/
-│   ├── schema.prisma          # DB schema (Port, Passage, PassageWaypoint, LegGuide)
-│   ├── seed.ts                # Curated ports + arrival / shore-service enrichment
+│   ├── schema.prisma          # DB schema (20+ models)
+│   ├── seed.ts                # Curated ports, marinas, guides, orca zones, shore services
 │   ├── leg-guides.ts          # Curated passage plans / hazards / fallback content
 │   └── migrations/
 ├── src/
@@ -67,25 +75,54 @@ sailplanner-next/
 │   │   ├── page.tsx           # Home — list recent passages
 │   │   ├── new/page.tsx       # Passage wizard (2-step: route -> waypoints)
 │   │   ├── p/[id]/
-│   │   │   ├── page.tsx       # Passage dashboard (forecasts, verdicts, filters, day/leg tiles)
+│   │   │   ├── page.tsx       # Passage dashboard (forecasts, verdicts, day/leg tiles)
 │   │   │   ├── leg/[legIndex]/
-│   │   │   │   ├── page.tsx   # Detailed leg brief page
-│   │   │   │   └── LegMap.tsx # Leg map with route geometry + contours + OpenSeaMap
+│   │   │   │   ├── page.tsx   # Leg briefing page (17+ sections, 1600+ lines)
+│   │   │   │   └── LegMap.tsx # Leg map: route, contours, OpenSeaMap, orca zones, seamarks
 │   │   │   └── map/
-│   │   │       ├── page.tsx   # Map page (fetches passage + forecasts, computes ETAs)
+│   │   │       ├── page.tsx   # Full passage map page
 │   │   │       └── PassageMap.tsx  # Leaflet map component
+│   │   ├── port/[slug]/
+│   │   │   └── page.tsx       # Port detail: marina comparison, recommendations, services
 │   │   └── api/
-│   │       ├── ports/route.ts          # GET /api/ports
-│   │       ├── forecast/route.ts       # GET /api/forecast
-│   │       ├── forecast/batch/route.ts # POST /api/forecast/batch
-│   │       ├── leg/route.ts            # GET /api/leg (curated leg guide)
-│   │       └── passage/route.ts        # CRUD: GET/POST/PATCH/DELETE
+│   │       ├── aemet/route.ts          # AEMET weather station links
+│   │       ├── buoys/route.ts          # Puertos del Estado buoy data links
+│   │       ├── execution/route.ts      # Passage execution lifecycle
+│   │       ├── export/route.ts         # GPX export (per-leg + full passage)
+│   │       ├── forecast/route.ts       # GET /api/forecast (single waypoint)
+│   │       ├── forecast/batch/route.ts # POST /api/forecast/batch (multi-waypoint)
+│   │       ├── forecast/cache/route.ts # GET/POST forecast DB cache
+│   │       ├── forecast/windy/route.ts # POST Windy GFS + gfsWave
+│   │       ├── leg/route.ts            # GET curated leg guide
+│   │       ├── leg-brief/route.ts      # GET aggregated leg briefing data
+│   │       ├── leg-route/route.ts      # GET/POST/DELETE manual route overrides
+│   │       ├── leg-timeline/route.ts   # GET computed passage timeline
+│   │       ├── passage/route.ts        # CRUD: GET/POST/PATCH/DELETE
+│   │       ├── port-areas/route.ts     # GET port areas + marinas + services
+│   │       ├── ports/route.ts          # GET route waypoints
+│   │       ├── readiness/route.ts      # GET/POST pre-departure readiness check
+│   │       ├── seamarks/route.ts       # GET curated seamarks (fallback)
+│   │       ├── tides/route.ts          # GET tidal predictions + state
+│   │       └── webcams/route.ts        # GET Windy webcams nearby
+│   ├── components/
+│   │   ├── MarinaMiniMap.tsx   # Marina maps with GeoJSON (Point/Line/Polygon)
+│   │   └── SeamarkOverlay.tsx  # Static seamarks fallback for OpenSeaMap outages
 │   ├── lib/
+│   │   ├── api-logger.ts      # Structured API request logging
+│   │   ├── coastline.ts       # Routing graph (64 nodes, 61 edges, Dijkstra)
 │   │   ├── db.ts              # Prisma client (singleton with pg adapter)
-│   │   ├── weather.ts         # Open-Meteo client, cache, GO/NO-GO logic
+│   │   ├── execution-debrief.ts # Debrief engine (planned vs actual comparison)
+│   │   ├── leg-route.ts       # Route resolution + manual override CRUD
+│   │   ├── marina-recommendations.ts # 6-use-case recommendation engine
+│   │   ├── nanoid.ts          # Short ID generator (8 chars)
+│   │   ├── offline-cache.ts   # localStorage briefing cache with freshness tracking
+│   │   ├── passage-computation.ts # 807+ line passage timeline engine
+│   │   ├── passage-schedule.ts # Schedule engine (daily departure times)
+│   │   ├── seamarks-static.ts  # 24 curated seamarks (lighthouses, buoys, landmarks)
 │   │   ├── theme.tsx          # ThemeProvider context (dark/light, localStorage)
-│   │   ├── coastline.ts       # Simplified offshore corridor + port/ría approaches
-│   │   └── nanoid.ts          # Short ID generator (8 chars)
+│   │   ├── tides.ts           # Semi-diurnal tidal model (18 ports)
+│   │   ├── weather.ts         # Open-Meteo client (ECMWF/GFS/ICON/AROME + marine)
+│   │   └── windy.ts           # Windy API client (GFS + gfsWave)
 │   └── generated/prisma/      # Generated Prisma client (gitignored)
 ├── public/data/
 │   ├── routes.json            # Legacy pre-computed pair routes (kept for reference)
@@ -517,6 +554,9 @@ git add public/data/ && git commit -m "update routes" && git push
 | `PassageExecutionTrackPoint` | GPS track | dynamic |
 | `PassageExecutionCheckpoint` | Events (departure/cape/reef/arrival) | dynamic |
 | `PassageExecutionObservation` | Observed conditions + comfort | dynamic |
+| `LegMemory` | Per-leg learning notes | dynamic |
+| `PortMemory` | Per-port learning notes | dynamic |
+| `MaintenanceItem` | Vessel maintenance tracking | dynamic |
 
 ---
 
@@ -576,30 +616,42 @@ Separate from safety verdict (GO ≠ Comfortable):
 
 ## API Reference
 
-### Weather
+### Weather & Forecasts
 | Endpoint | Method | Description |
 |----------|--------|-------------|
+| `/api/forecast` | GET | Single waypoint forecast (Open-Meteo) |
 | `/api/forecast/batch` | POST | Multi-waypoint forecast (Open-Meteo) |
 | `/api/forecast/windy` | POST | Windy GFS + gfsWave forecast |
 | `/api/forecast/cache` | GET/POST | DB-cached forecast per source/model |
-
-### Tides
+| `/api/aemet` | GET | AEMET weather station links |
+| `/api/buoys` | GET | Puertos del Estado buoy data links |
 | `/api/tides` | GET | HW/LW predictions + tide state at time |
 
 ### Leg Intelligence
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/api/leg` | GET | Curated leg guide (pilotage, milestones, hazards) |
+| `/api/leg-brief` | GET | Aggregated briefing: guide + timeline + forecast + tides + webcams |
 | `/api/leg-timeline` | GET | Computed hourly passage timeline |
 | `/api/leg-route` | GET/POST/DELETE | Manual route override CRUD |
 
-### Execution
+### Execution & Readiness
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/api/execution` | GET | Active/latest execution for leg |
 | `/api/execution` | POST | Actions: start, stop, track-point, checkpoint, observation |
+| `/api/readiness` | GET | Pre-departure readiness check (maintenance + safety reminders) |
+| `/api/readiness` | POST | Add/update maintenance item |
 
-### Content
-| `/api/port-areas` | GET | Port areas + marinas + prices + nearby places |
-| `/api/ports` | GET | Route waypoints |
-| `/api/webcams` | GET | Windy webcams nearby |
+### Content & Data
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/api/passage` | GET/POST/PATCH/DELETE | Passage CRUD |
+| `/api/ports` | GET | Route waypoints |
+| `/api/port-areas` | GET | Port areas + marinas + prices + nearby places |
+| `/api/seamarks` | GET | Curated seamarks (fallback for OpenSeaMap outages) |
+| `/api/webcams` | GET | Windy webcams nearby |
+| `/api/export` | GET | GPX export (per-leg or full passage) |
 
 ---
 
@@ -646,6 +698,38 @@ Separate from safety verdict (GO ≠ Comfortable):
 - **Windy**: GFS (wind) + gfsWave (waves/swell, full 10-day)
 - **Offshore shift**: marine API coords +0.05° N for rías (ports on land in grid)
 - **Cache**: 3h in-memory TTL + DB `forecastCache` per source/model
+
+### Passage Schedule (`src/lib/passage-schedule.ts`)
+
+- `buildClientSchedule()` — single source of truth for daily departure/arrival times
+- Daily mode: each leg starts at departure hour, next day after arrival
+- Nonstop mode: next leg starts immediately after arrival
+- Used by both passage dashboard and leg briefing page
+
+### Marina Recommendations (`src/lib/marina-recommendations.ts`)
+
+- 6 use-case recommendation engine: transient, budget, monthly, repairs, provisioning, comfortable
+- Shore practicality scoring: walking distance, services, prices
+- Generates ranked marina picks per use case with reasoning
+
+### Execution Debrief (`src/lib/execution-debrief.ts`)
+
+- Compares planned vs actual: departure/arrival times, duration, route
+- Wind and wave condition matching (planned forecast vs observed)
+- Comfort rating analysis
+- Auto-generates learning insights for `LegMemory`
+
+### Offline Cache (`src/lib/offline-cache.ts`)
+
+- localStorage-based briefing cache for recently viewed legs
+- 6h fresh window, 24h max stale, auto-eviction
+- Cache status indicator: "Cached Nmin ago" (green) / "Stale (Nh ago)" (yellow)
+
+### Seamarks Fallback (`src/lib/seamarks-static.ts`)
+
+- 24 curated seamarks: lighthouses, buoys, cardinal marks, landmarks
+- Activates when OpenSeaMap tile server is down
+- Shows warning indicator with mark count
 
 ---
 

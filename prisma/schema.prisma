@@ -158,6 +158,25 @@ model PortMemory {
   @@index([portSlug])
 }
 
+// ── Maintenance / Readiness ─────────────────────────────────────
+
+model MaintenanceItem {
+  id          String   @id @default(cuid())
+  vesselSlug  String   @default("bossanova")
+  title       String
+  category    String   // "engine", "rigging", "safety", "hull", "electronics", "general"
+  status      String   @default("ok") // "ok" | "due" | "overdue" | "done"
+  dueDate     DateTime?
+  engineHoursDue Int?
+  lastDoneAt  DateTime?
+  note        String?
+  priority    String?  // "low" | "medium" | "high" | "critical"
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([vesselSlug, status])
+}
+
 // ── Manual Route Overrides ──────────────────────────────────────
 
 model PassageLegRoute {
