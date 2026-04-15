@@ -271,6 +271,14 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
           ))}
         </>
       )}
+      {/* Depth contour legend */}
+      <div style={{ position: "absolute", bottom: 8, left: 8, zIndex: 1000, background: "rgba(0,0,0,0.8)", borderRadius: 6, padding: "6px 8px", fontSize: 10, lineHeight: 1.6, pointerEvents: "none" }}>
+        <div style={{ color: "#94a3b8", fontWeight: 700, marginBottom: 2 }}>Depth</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 16, height: 2, background: "#ef4444", display: "inline-block" }} /> <span style={{ color: "#ef4444" }}>5m</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 16, height: 2, background: "#f97316", display: "inline-block" }} /> <span style={{ color: "#f97316" }}>10m</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 16, height: 2, background: "#eab308", display: "inline-block", borderTop: "1px dashed #eab308" }} /> <span style={{ color: "#eab308" }}>20m</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 16, height: 1, background: "#94a3b8", display: "inline-block", borderTop: "1px dashed #94a3b8" }} /> <span style={{ color: "#64748b" }}>50m+</span></div>
+      </div>
     </MapContainer>
   );
 }

@@ -607,6 +607,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             <button onClick={() => setViewMode("quick")} className="px-2 py-0.5" style={{ background: viewMode === "quick" ? "var(--accent-go)" : "transparent", color: viewMode === "quick" ? "var(--text-green)" : "var(--text-muted)" }}>Quick</button>
             <button onClick={() => setViewMode("full")} className="px-2 py-0.5" style={{ background: viewMode === "full" ? "var(--accent-go)" : "transparent", color: viewMode === "full" ? "var(--text-green)" : "var(--text-muted)" }}>Full</button>
           </div>
+          <a href={`/api/export?passageId=${id}&legIndex=${legIndex}`} download className="px-2 py-0.5 rounded text-[10px] no-print" style={{ color: "var(--text-muted)", border: `1px solid var(--border)`, textDecoration: "none" }}>GPX</a>
           <button onClick={() => window.print()} className="px-2 py-0.5 rounded text-[10px] no-print" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>🖨️</button>
         </div>
       </div>
@@ -883,7 +884,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 key={entry.hourIndex}
                 className="rounded-lg px-3 py-2"
                 style={{
-                  background: segmentAccent(entry.segmentName).bg,
+                  background: (() => { const h = new Date(entry.time).getUTCHours(); return (h >= 21 || h < 6) ? "rgba(15,23,42,0.6)" : segmentAccent(entry.segmentName).bg; })(),
                   border: `1px solid var(--border-light)`,
                   boxShadow: `inset 3px 0 0 ${segmentAccent(entry.segmentName).border}`,
                 }}
@@ -891,6 +892,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
                     <div className="font-semibold text-xs" style={{ color: "var(--text-heading)" }}>
+                      {(() => { const h = new Date(entry.time).getUTCHours(); return (h >= 21 || h < 6) ? "🌙 " : ""; })()}
                       {fmtLocal(new Date(entry.time), toTz)} · {entry.segmentName}
                     </div>
                     <div className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
