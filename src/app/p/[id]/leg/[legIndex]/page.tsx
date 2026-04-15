@@ -806,27 +806,23 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      {/* ══════ WINDY FORECAST MAP ══════ */}
-      <Section title="Live Wind & Waves" icon="💨" defaultOpen={false}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          <div>
-            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Wind</div>
-            <iframe
-              src={`https://embed.windy.com/embed.html?type=map&location=coordinates&metricWind=kt&zoom=8&overlay=wind&product=gfs&level=surface&lat=${((fromPort.lat + dest.lat) / 2).toFixed(2)}&lon=${((fromPort.lon + dest.lon) / 2).toFixed(2)}&message=true`}
-              className="w-full rounded-lg" style={{ height: 280, border: "none" }}
-              loading="lazy"
-            />
-          </div>
-          <div>
-            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Waves</div>
-            <iframe
-              src={`https://embed.windy.com/embed.html?type=map&location=coordinates&metricWind=kt&zoom=8&overlay=waves&product=gfs&level=surface&lat=${((fromPort.lat + dest.lat) / 2).toFixed(2)}&lon=${((fromPort.lon + dest.lon) / 2).toFixed(2)}&message=true`}
-              className="w-full rounded-lg" style={{ height: 280, border: "none" }}
-              loading="lazy"
-            />
-          </div>
+      {/* ══════ LIVE FORECAST LINKS ══════ */}
+      <Section title="Live Forecast Maps" icon="💨" defaultOpen={false}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <a href={`https://www.windy.com/wind?${((fromPort.lat + dest.lat) / 2).toFixed(2)},${((fromPort.lon + dest.lon) / 2).toFixed(2)},8`} target="_blank" rel="noopener" className="rounded-lg px-3 py-2.5 text-center hover:opacity-80" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-blue-light)", textDecoration: "none" }}>
+            <div className="text-lg mb-0.5">🌬️</div><div className="text-[11px]">Wind</div>
+          </a>
+          <a href={`https://www.windy.com/waves?${((fromPort.lat + dest.lat) / 2).toFixed(2)},${((fromPort.lon + dest.lon) / 2).toFixed(2)},8`} target="_blank" rel="noopener" className="rounded-lg px-3 py-2.5 text-center hover:opacity-80" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-blue-light)", textDecoration: "none" }}>
+            <div className="text-lg mb-0.5">🌊</div><div className="text-[11px]">Waves</div>
+          </a>
+          <a href={`https://www.windy.com/swell1?${((fromPort.lat + dest.lat) / 2).toFixed(2)},${((fromPort.lon + dest.lon) / 2).toFixed(2)},8`} target="_blank" rel="noopener" className="rounded-lg px-3 py-2.5 text-center hover:opacity-80" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-blue-light)", textDecoration: "none" }}>
+            <div className="text-lg mb-0.5">〰️</div><div className="text-[11px]">Swell</div>
+          </a>
+          <a href={`https://www.windy.com/rain?${((fromPort.lat + dest.lat) / 2).toFixed(2)},${((fromPort.lon + dest.lon) / 2).toFixed(2)},8`} target="_blank" rel="noopener" className="rounded-lg px-3 py-2.5 text-center hover:opacity-80" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-blue-light)", textDecoration: "none" }}>
+            <div className="text-lg mb-0.5">🌧️</div><div className="text-[11px]">Rain</div>
+          </a>
         </div>
-        <div className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Powered by Windy.com — interactive forecast. Scroll/zoom to explore.</div>
+        <div className="text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>Opens Windy.com with animated forecast for this leg area.</div>
       </Section>
 
       {/* ══════ PASSAGE TIMELINE ══════ */}
