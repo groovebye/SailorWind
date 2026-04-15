@@ -805,6 +805,29 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
+      {/* ══════ WINDY FORECAST MAP ══════ */}
+      <Section title="Live Wind & Waves" icon="💨" defaultOpen={false}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Wind</div>
+            <iframe
+              src={`https://embed.windy.com/embed.html?type=map&location=coordinates&metricWind=kt&zoom=8&overlay=wind&product=gfs&level=surface&lat=${((fromPort.lat + dest.lat) / 2).toFixed(2)}&lon=${((fromPort.lon + dest.lon) / 2).toFixed(2)}&message=true`}
+              className="w-full rounded-lg" style={{ height: 280, border: "none" }}
+              loading="lazy"
+            />
+          </div>
+          <div>
+            <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>Waves</div>
+            <iframe
+              src={`https://embed.windy.com/embed.html?type=map&location=coordinates&metricWind=kt&zoom=8&overlay=waves&product=gfs&level=surface&lat=${((fromPort.lat + dest.lat) / 2).toFixed(2)}&lon=${((fromPort.lon + dest.lon) / 2).toFixed(2)}&message=true`}
+              className="w-full rounded-lg" style={{ height: 280, border: "none" }}
+              loading="lazy"
+            />
+          </div>
+        </div>
+        <div className="text-[10px] mt-1" style={{ color: "var(--text-muted)" }}>Powered by Windy.com — interactive forecast. Scroll/zoom to explore.</div>
+      </Section>
+
       {/* ══════ PASSAGE TIMELINE ══════ */}
       {timelineData?.summary && timelineData.timeline?.length > 0 && (
         <Section title={`Passage Timeline (${timelineData.timeline.length}h)`} icon="⏱️">
@@ -896,6 +919,14 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                     <div style={{ color: "var(--text-secondary)" }}>
                       Swell {entry.swellM?.toFixed(1) ?? "—"}m / {entry.swellPeriodS?.toFixed(1) ?? "—"}s
                     </div>
+                    {(() => {
+                      const wp = entry.waveM != null && entry.wavePeriodS != null ? Math.round(0.5 * entry.waveM * entry.waveM * entry.wavePeriodS * 10) / 10 : null;
+                      return wp != null ? (
+                        <div style={{ color: wp >= 30 ? "var(--text-red)" : wp >= 15 ? "var(--text-yellow)" : wp >= 5 ? "var(--text-blue-light)" : "var(--text-green)", fontWeight: wp >= 15 ? 700 : 400 }}>
+                          ⚡ {wp} kW/m {wp >= 30 ? "SEVERE" : wp >= 15 ? "ROUGH" : wp >= 5 ? "moderate" : "calm"}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                   <div>
                     <div style={{ color: "var(--text-muted)" }}>Boat mode</div>
@@ -1275,7 +1306,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             {webcams.map(wc => (
               <a key={wc.id} href={wc.playerUrl} target="_blank" rel="noopener" className="block rounded-lg overflow-hidden hover:opacity-80" style={{ border: `1px solid var(--border-light)` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {wc.preview && <img src={wc.preview} alt={wc.title} className="w-full h-24 object-cover" />}
+                {wc.preview && <img src={wc.preview} alt={wc.title} className="w-full object-cover" style={{ height: 180 }} />}
                 <div className="px-2 py-1.5 text-[11px]" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>{wc.title}</div>
               </a>
             ))}
