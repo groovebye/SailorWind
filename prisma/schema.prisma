@@ -129,6 +129,35 @@ enum PassageMode {
   nonstop
 }
 
+// ── Learning / Memory ───────────────────────────────────────────
+
+model LegMemory {
+  id          String   @id @default(cuid())
+  fromSlug    String
+  toSlug      String
+  note        String
+  category    String   // "weather", "timing", "comfort", "hazard", "approach", "general"
+  severity    String?  // "info" | "warning" | "critical"
+  source      String?  // "debrief" | "manual" | "observation"
+  recordedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([fromSlug, toSlug])
+}
+
+model PortMemory {
+  id          String   @id @default(cuid())
+  portSlug    String
+  note        String
+  category    String   // "approach", "berth", "shore", "hazard", "general"
+  severity    String?
+  source      String?
+  recordedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([portSlug])
+}
+
 // ── Manual Route Overrides ──────────────────────────────────────
 
 model PassageLegRoute {

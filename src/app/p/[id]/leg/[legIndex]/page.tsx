@@ -1091,7 +1091,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           </div>
 
           <div className="mt-3 text-[10px]" style={{ color: "var(--text-muted)" }}>
-            Computed using Bossanova heuristics: engine cruise 6.2kt, rule-based sail plan, cached until {timelineData.validUntil ? fmtLocal(new Date(timelineData.validUntil), toTz) : "forecast refresh"}.
+            Computed using Bossanova performance assumptions: engine cruise 6.2kt, fuel burn 2.5 L/h at 2500 rpm, rule-based sail plan, cached until {timelineData.validUntil ? fmtLocal(new Date(timelineData.validUntil), toTz) : "forecast refresh"}.
           </div>
         </Section>
       )}
@@ -1608,6 +1608,29 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 })()}
               </div>
             )}
+
+            {/* Debrief */}
+            {execution.startedAt && execution.endedAt && (() => {
+              const actualH = (new Date(execution.endedAt).getTime() - new Date(execution.startedAt).getTime()) / 3600000;
+              const deltaH = actualH - leg.hours;
+              const windObs = execution.observations.filter(o => o.observedWindKt).map(o => o.observedWindKt!);
+              const maxObsWind = windObs.length > 0 ? Math.max(...windObs) : null;
+              const insights = [];
+              if (Math.abs(deltaH) < 0.5) insights.push("✅ Duration matched plan");
+              else if (deltaH < 0) insights.push(`⚡ ${Math.abs(deltaH).toFixed(1)}h faster`);
+              else insights.push(`⏰ ${deltaH.toFixed(1)}h slower`);
+              if (maxObsWind != null && maxObsWind > maxWind + 5) insights.push(`💨 Wind stronger than forecast`);
+              if (execution.checkpoints.some(c => c.type === "reef_in")) insights.push("🪢 Reefing needed");
+              if (deltaH > 2) insights.push("💡 Consider earlier departure");
+              return (
+                <div className="mt-3 rounded-lg p-3" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+                  <div className="text-[10px] uppercase mb-1" style={{ color: "var(--text-muted)" }}>📝 Debrief</div>
+                  <div className="text-xs space-y-0.5" style={{ color: "var(--text-secondary)" }}>
+                    {insights.map((ins, i) => <div key={i}>{ins}</div>)}
+                  </div>
+                </div>
+              );
+            })()}
 
             <button onClick={handleStartExecution} className="mt-2 px-3 py-1 rounded text-xs" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }}>▶ Start New Passage</button>
           </div>

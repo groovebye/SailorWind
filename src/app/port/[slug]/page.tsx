@@ -4,6 +4,7 @@ import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useTheme } from "@/lib/theme";
+import { generateRecommendations, assessShorePracticality } from "@/lib/marina-recommendations";
 
 const MarinaMiniMap = dynamic(() => import("@/components/MarinaMiniMap"), { ssr: false });
 
@@ -138,6 +139,47 @@ export default function PortAreaPage({ params }: { params: Promise<{ slug: strin
           {area.repairSummary && <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}><div className="text-[10px] uppercase mb-0.5" style={{ color: "var(--text-muted)" }}>Repairs</div>{area.repairSummary}</div>}
         </div>
       )}
+
+      {/* Recommendations */}
+      {area.marinas.length > 0 && (() => {
+        const recs = generateRecommendations(area.marinas as any);
+        const shore = assessShorePracticality(area.nearbyPlaces as any || [], area.marinas as any);
+        return (
+          <>
+            {recs.length > 0 && (
+              <div className="mb-4">
+                <h2 className="text-base font-semibold mb-2" style={{ color: "var(--text-heading)" }}>💡 Recommendations</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {recs.map((r, i) => (
+                    <div key={i} className="rounded-lg px-3 py-2" style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
+                      <div className="text-xs font-semibold" style={{ color: "var(--text-heading)" }}>{r.icon} {r.useCase}</div>
+                      <div className="text-[11px] mt-0.5" style={{ color: "var(--text-green)" }}>{r.marinaName}</div>
+                      <div className="text-[11px]" style={{ color: "var(--text-secondary)" }}>{r.reason}</div>
+                      <div className="text-[10px]" style={{ color: "var(--text-muted)" }}>{r.tradeoff}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {shore.length > 0 && (
+              <div className="mb-4">
+                <h2 className="text-sm font-semibold mb-1.5" style={{ color: "var(--text-heading)" }}>📋 Stay Practicality</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {shore.map((s, i) => (
+                    <div key={i} className="rounded-lg px-3 py-2" style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
+                      <div className="text-xs font-semibold" style={{ color: "var(--text-heading)" }}>{s.icon} {s.scenario}</div>
+                      <div className="text-[11px] font-bold" style={{ color: s.score === "excellent" ? "var(--text-green)" : s.score === "good" ? "var(--text-blue-light)" : s.score === "adequate" ? "var(--text-yellow)" : "var(--text-red)" }}>
+                        {s.score.toUpperCase()}
+                      </div>
+                      {s.highlights.map((h, j) => <div key={j} className="text-[10px]" style={{ color: "var(--text-muted)" }}>{h}</div>)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        );
+      })()}
 
       {/* Marina Options */}
       <h2 className="text-base font-semibold mb-2" style={{ color: "var(--text-heading)" }}>Marina Options ({area.marinas.length})</h2>
