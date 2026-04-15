@@ -505,7 +505,9 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
           <h2 className="text-base font-semibold mb-2 mt-6" style={{ color: "var(--text-heading)" }}>Detailed Forecast by Waypoint</h2>
           {passage.waypoints.map((wp) => {
             const allF = activeForecasts[wp.port.name] || [];
-            const eta = getWaypointETA(wp);
+            // Find the first leg where this waypoint is departure (not arrival from previous)
+            const wpLeg = legs.find(l => l.from.port.name === wp.port.name) || legs.find(l => wp.port.coastlineNm >= l.from.port.coastlineNm - 0.1 && wp.port.coastlineNm <= l.to.port.coastlineNm + 0.1);
+            const eta = getWaypointETA(wp, wpLeg);
             const tz = tzForPort(wp.port.lon);
             const etaDay = eta.toISOString().slice(0, 10);
 
