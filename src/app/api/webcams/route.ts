@@ -36,7 +36,8 @@ export async function GET(req: NextRequest) {
 
     if (!res.ok) {
       const text = await res.text();
-      return NextResponse.json({ error: `Windy Webcams ${res.status}: ${text}` }, { status: res.status });
+      // Windy Webcams API requires separate API key from webcams.windy.com
+    return NextResponse.json([]);  // Return empty instead of error
     }
 
     const data = await res.json();

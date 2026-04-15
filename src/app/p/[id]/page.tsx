@@ -57,6 +57,19 @@ function verdictLabel(v: string) {
 
 function bftNum(b: string) { return b.replace("F", ""); }
 
+/** Wave power in kW/m: P ≈ 0.5 × H² × T */
+function wavePower(waveM: number | null, periodS: number | null): number | null {
+  if (waveM == null || periodS == null || waveM === 0 || periodS === 0) return null;
+  return Math.round(0.5 * waveM * waveM * periodS * 10) / 10;
+}
+function wavePowerLabel(kw: number | null): string {
+  if (kw == null) return "";
+  if (kw < 5) return "calm";
+  if (kw < 15) return "moderate";
+  if (kw < 30) return "rough";
+  return "severe";
+}
+
 export default function PassagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
@@ -436,6 +449,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                 <th className="text-center px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Gusts</th>
                 <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Waves</th>
                 <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Swell</th>
+                <th className="text-center px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Power</th>
                 <th className="text-right px-2 py-1.5" style={{ background: "var(--bg-card)" }}>Verdict</th>
               </tr>
             </thead>
@@ -450,7 +464,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
 
                 return [
                   <tr key={`leg-${li}`}>
-                    <td colSpan={8} className="text-xs font-semibold px-2 py-1.5" style={{ background: "var(--bg-card)", color: "var(--text-heading)", borderBottom: `1px solid var(--border-light)`, borderTop: li > 0 ? `1px solid var(--border-light)` : undefined }}>
+                    <td colSpan={9} className="text-xs font-semibold px-2 py-1.5" style={{ background: "var(--bg-card)", color: "var(--text-heading)", borderBottom: `1px solid var(--border-light)`, borderTop: li > 0 ? `1px solid var(--border-light)` : undefined }}>
                       {mode === "daily" ? `D${li + 1}: ` : `L${li + 1}: `}{leg.from.port.name} &rarr; {leg.to.port.name} ({leg.nm} NM, ~{leg.hours.toFixed(1)}h) — {fmtLocal(leg.departTime, fromTz)} &rarr; {fmtLocal(leg.arriveTime, toTz)}
                     </td>
                   </tr>,
@@ -484,6 +498,9 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                               <span className="inline-block" style={{ transform: `rotate(${f.swellDirDeg}deg)` }}>&darr;</span>
                               {" "}{f.swellM != null ? `${f.swellM}m / ${f.swellPeriodS}s` : "—"}
                             </td>
+                            <td className="px-2 py-1.5 text-center text-[10px]" style={{ color: (() => { const wp = wavePower(f.waveM, f.wavePeriodS); return wp == null ? "var(--text-muted)" : wp >= 30 ? "var(--text-red)" : wp >= 15 ? "var(--text-yellow)" : "var(--text-secondary)"; })() }}>
+                              {(() => { const wp = wavePower(f.waveM, f.wavePeriodS); return wp != null ? `${wp}` : "—"; })()}
+                            </td>
                             <td className="px-2 py-1.5 text-right">
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={vc(f.verdict)}>
                                 {verdictLabel(f.verdict)}
@@ -491,7 +508,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
                             </td>
                           </>
                         ) : (
-                          <td colSpan={6} className="px-2 py-1.5" style={{ color: "var(--text-muted)" }}>No data</td>
+                          <td colSpan={7} className="px-2 py-1.5" style={{ color: "var(--text-muted)" }}>No data</td>
                         )}
                       </tr>
                     );
