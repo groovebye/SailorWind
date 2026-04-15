@@ -982,16 +982,19 @@ export function computeLegTimelineFromContext(
       currentState && currentDirDeg !== null
         ? currentState.rate * Math.cos(toRad(absoluteAngleDiff(currentDirDeg, courseTrue)))
         : 0;
-    let expectedSogKt = Math.max(1.5, expectedBoatSpeedKt + currentAlongTrack);
+    let actualExpectedBoatSpeedKt = expectedBoatSpeedKt;
+    let expectedSogKt = Math.max(1.5, actualExpectedBoatSpeedKt + currentAlongTrack);
 
     // If SOG drops below 4.5kt under sail, switch to motor — Bossanova rule
     let actualMode = mode;
     if (actualMode === "sail" && expectedSogKt < 4.5) {
       actualMode = "motor";
-      expectedSogKt = vessel.engineCruiseKt;
+      actualExpectedBoatSpeedKt = vessel.engineCruiseKt;
+      expectedSogKt = Math.max(1.5, actualExpectedBoatSpeedKt + currentAlongTrack);
     } else if (actualMode === "motorsail" && expectedSogKt < 4.5) {
       actualMode = "motor";
-      expectedSogKt = vessel.engineCruiseKt;
+      actualExpectedBoatSpeedKt = vessel.engineCruiseKt;
+      expectedSogKt = Math.max(1.5, actualExpectedBoatSpeedKt + currentAlongTrack);
     }
 
     const isNight = sampleTime.getUTCHours() >= 20 || sampleTime.getUTCHours() < 6;
@@ -1046,7 +1049,7 @@ export function computeLegTimelineFromContext(
       tack: actualMode === "motor" ? "none" : signedSide(forecastEntry.windDirDeg, courseTrue),
       sailConfig: determineSailConfig(actualMode, pointOfSail, reefLevel, forecastEntry.windKt),
       reefLevel,
-      expectedBoatSpeedKt: Math.round(expectedBoatSpeedKt * 10) / 10,
+      expectedBoatSpeedKt: Math.round(actualExpectedBoatSpeedKt * 10) / 10,
       expectedSogKt: Math.round(expectedSogKt * 10) / 10,
       comfortScore: comfort.score,
       comfort: comfort.label,
