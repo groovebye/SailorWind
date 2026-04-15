@@ -1096,6 +1096,61 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </Section>
       )}
 
+      {/* ══════ WAYPOINT FORECAST ══════ */}
+      {forecasts && (
+        <Section title="Waypoint Forecast" icon="🌤️" defaultOpen={false}>
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>
+                <th className="text-left px-2 py-1">Waypoint</th>
+                <th className="text-left px-2 py-1">ETA</th>
+                <th className="text-left px-2 py-1">Wind</th>
+                <th className="text-center px-2 py-1">Gusts</th>
+                <th className="text-left px-2 py-1">Waves</th>
+                <th className="text-left px-2 py-1">Swell</th>
+                <th className="text-center px-2 py-1">Power</th>
+                <th className="text-right px-2 py-1">Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              {legWps.map(wp => {
+                const eta = getETA(wp);
+                const tz = tzForPort(wp.port.lon);
+                const wpF = forecasts[wp.port.name] || [];
+                const f = closestForecast(wpF, eta);
+                const wp_power = f?.waveM != null && f?.wavePeriodS != null ? Math.round(0.5 * f.waveM * f.waveM * f.wavePeriodS * 10) / 10 : null;
+                return (
+                  <tr key={wp.port.id || wp.sortOrder} style={{ borderBottom: `1px solid var(--row-border)` }}>
+                    <td className="px-2 py-1 font-semibold whitespace-nowrap" style={{ color: wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--text-secondary)" }}>
+                      {wp.port.name}
+                      {wp.isStop && <span className="text-[9px] ml-1 px-0.5 rounded" style={{ border: `1px solid var(--text-green)`, color: "var(--text-green)" }}>STOP</span>}
+                      {wp.isCape && <span className="text-[9px] ml-1 font-bold" style={{ color: "var(--text-yellow)" }}>CAPE</span>}
+                    </td>
+                    <td className="px-2 py-1 text-[11px]" style={{ color: "var(--text-blue-light)" }}>{fmtLocal(eta, tz)}</td>
+                    {f ? (
+                      <>
+                        <td className="px-2 py-1">{Math.round(f.windKt)}kt {f.beaufort}</td>
+                        <td className="px-2 py-1 text-center">{Math.round(f.gustKt)}</td>
+                        <td className="px-2 py-1">{f.waveM != null ? `${f.waveM}m / ${f.wavePeriodS}s` : "—"}</td>
+                        <td className="px-2 py-1">{f.swellM != null ? `${f.swellM}m / ${f.swellPeriodS}s` : "—"}</td>
+                        <td className="px-2 py-1 text-center" style={{ color: wp_power != null && wp_power >= 15 ? "var(--text-yellow)" : "var(--text-secondary)" }}>{wp_power ?? "—"}</td>
+                        <td className="px-2 py-1 text-right">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ color: f.verdict.startsWith("NO") ? "var(--text-red)" : f.verdict.startsWith("CAUTION") ? "var(--text-yellow)" : "var(--text-green)", background: f.verdict.startsWith("NO") ? "var(--accent-nogo)" : f.verdict.startsWith("CAUTION") ? "var(--accent-caution)" : "var(--accent-go)" }}>
+                            {f.verdict.startsWith("NO") ? "NO-GO" : f.verdict.startsWith("CAUTION") ? "CAUTION" : "GO"}
+                          </span>
+                        </td>
+                      </>
+                    ) : (
+                      <td colSpan={6} className="px-2 py-1" style={{ color: "var(--text-muted)" }}>No data</td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Section>
+      )}
+
       {/* ══════ PILOTAGE ══════ (Full mode only) */}
       {viewMode === "full" && guide?.pilotageText && (
         <Section title="Pilotage Notes" icon="🗺️">

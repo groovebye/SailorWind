@@ -829,7 +829,12 @@ export function computeLegTimelineFromContext(
       notes: buildTimelineNote(mode, pointOfSail, comfort.label, warnings),
       // Fuel
       engineOn: actualMode === "motor" || actualMode === "motorsail",
-      fuelUsedThisHourL: actualMode === "motor" ? (vessel.fuelBurnLph ?? 3.0) : actualMode === "motorsail" ? (vessel.motorsailBurnLph ?? vessel.fuelBurnLph ?? 2.0) * 0.7 : 0,
+      fuelUsedThisHourL:
+        actualMode === "motor"
+          ? (vessel.fuelBurnLph ?? 3.2)  // cruise RPM (2500 for Bossanova)
+          : actualMode === "motorsail"
+            ? (vessel.motorsailBurnLph ?? 1.9)  // lower RPM motorsail (2000)
+            : 0,
       cumulativeFuelUsedL: 0, // computed below
     });
 
