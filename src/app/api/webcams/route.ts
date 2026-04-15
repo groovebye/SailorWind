@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(cached.data);
   }
 
-  const apiKey = process.env.WINDY_API_KEY;
+  const apiKey = process.env.WINDY_WEBCAMS_KEY || process.env.WINDY_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "WINDY_API_KEY not set" }, { status: 500 });
   }
@@ -36,8 +36,7 @@ export async function GET(req: NextRequest) {
 
     if (!res.ok) {
       const text = await res.text();
-      // Windy Webcams API requires separate API key from webcams.windy.com
-    return NextResponse.json([]);  // Return empty instead of error
+      return NextResponse.json({ error: `Windy Webcams ${res.status}` }, { status: res.status });
     }
 
     const data = await res.json();
