@@ -5,6 +5,33 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { ForecastEntry } from "@/lib/weather";
 import { useTheme } from "@/lib/theme";
+// Client-side schedule computation (no DB imports)
+function buildScheduleClient(
+  departure: string | Date, speed: number, mode: string,
+  stops: { name: string; slug: string; lat: number; lon: number; coastlineNm: number }[],
+  resolvedDistances?: Record<number, number>,
+) {
+  const depDate = new Date(departure);
+  const depHour = depDate.getUTCHours();
+  const depMinute = depDate.getUTCMinutes();
+  let currentTime = depDate.getTime();
+  const legs: { from: typeof stops[0]; to: typeof stops[0]; distanceNm: number; hours: number; departTime: Date; arriveTime: Date }[] = [];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const distanceNm = resolvedDistances?.[i] ?? (stops[i + 1].coastlineNm - stops[i].coastlineNm);
+    const hours = distanceNm / speed;
+    const departTime = new Date(currentTime);
+    const arriveTime = new Date(currentTime + hours * 3600000);
+    legs.push({ from: stops[i], to: stops[i + 1], distanceNm: Math.round(distanceNm * 10) / 10, hours: Math.round(hours * 10) / 10, departTime, arriveTime });
+    if (mode === "daily" && i < stops.length - 2) {
+      const nextDay = new Date(arriveTime);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      nextDay.setUTCHours(depHour, depMinute, 0, 0);
+      if (nextDay.getTime() < arriveTime.getTime()) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      currentTime = nextDay.getTime();
+    } else { currentTime = arriveTime.getTime(); }
+  }
+  return legs;
+}
 
 const WEATHER_EMOJI: Record<string, string> = {
   sun: "\u2600\uFE0F", partly: "\u26C5", cloudy: "\u2601\uFE0F",
@@ -231,27 +258,22 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
   if (!passage) return <div className="max-w-4xl mx-auto p-12" style={{ color: "var(--text-secondary)" }}>Loading...</div>;
 
   const stops = passage.waypoints.filter((w) => w.isStop);
-  const legs: { from: Waypoint; to: Waypoint; nm: number; departTime: Date; arriveTime: Date; hours: number }[] = [];
-  const depDate = new Date(departure || passage.departure);
-  let currentTime = depDate.getTime();
-  const depHour = depDate.getUTCHours();
-
-  for (let i = 0; i < stops.length - 1; i++) {
-    const nm = resolvedLegDistances[i] ?? (stops[i + 1].port.coastlineNm - stops[i].port.coastlineNm);
-    const hours = nm / speed;
-    const departTime = new Date(currentTime);
-    const arriveTime = new Date(currentTime + hours * 3600000);
-    legs.push({ from: stops[i], to: stops[i + 1], nm, departTime, arriveTime, hours });
-    if (mode === "daily" && i < stops.length - 2) {
-      const nextDay = new Date(arriveTime);
-      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-      nextDay.setUTCHours(depHour, 0, 0, 0);
-      if (nextDay.getTime() < arriveTime.getTime()) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-      currentTime = nextDay.getTime();
-    } else {
-      currentTime = arriveTime.getTime();
-    }
-  }
+  const stopPorts = stops.map(s => ({
+    name: s.port.name, slug: s.port.slug,
+    lat: s.port.lat, lon: s.port.lon,
+    coastlineNm: s.port.coastlineNm,
+  }));
+  const scheduledLegs = buildScheduleClient(
+    departure || passage.departure, speed, mode, stopPorts,
+    resolvedLegDistances,
+  );
+  // Map schedule legs to passage waypoints for rendering
+  const legs = scheduledLegs.map((sl, i) => ({
+    from: stops[i], to: stops[i + 1],
+    nm: sl.distanceNm, departTime: sl.departTime,
+    arriveTime: sl.arriveTime, hours: sl.hours,
+  }));
+  const totalSailing = legs.reduce((s, l) => s + l.hours, 0);
 
   function getWaypointETA(wp: Waypoint, forLeg?: typeof legs[0]): Date {
     // If a specific leg is provided, use its times
@@ -278,8 +300,6 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
     }
     return best;
   }
-
-  const totalSailing = legs.reduce((s, l) => s + l.hours, 0);
 
   const vc = (v: string) => {
     const t = verdictColor(v);
