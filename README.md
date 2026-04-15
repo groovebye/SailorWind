@@ -5,7 +5,7 @@
 **Лодка:** Bossanova (Hallberg-Rassy Monsun 31, осадка 1.5м)
 **Маршрут:** Gijon (Испания) -> Греция, multi-year voyage
 
-### Current Status (v1.4)
+### Current Status (v1.5)
 
 | Component | Coverage | Details |
 |-----------|----------|---------|
@@ -16,13 +16,15 @@
 | **Marina maps** | 25 GeoJSON features | Point/LineString/Polygon support |
 | **Nearby places** | 23 NearbyPlaces | Restaurants, chandlery, grocery, pharmacy, ATM |
 | **Weather** | Open-Meteo + Windy | ECMWF/GFS/ICON/AROME + gfsWave, cached in DB |
+| **Forecast maps** | 4 inline Windy embeds | Wind, waves, swell, rain on leg page |
 | **Tides** | 18 ports | Semi-diurnal harmonic model, ~15-30 min accuracy |
 | **Leg guides** | 5 legs | Pilotage, milestones, hazards, fallbacks, tidal gates |
 | **Route geometry** | Graph (64 nodes, 61 edges) + manual overrides | Dijkstra + per-leg manual route editing |
 | **Orca zones** | 2 zones | Galicia coast (medium), Finisterre (high) |
+| **Polar model** | 7 TWS × 9 TWA matrix | Bilinear interpolation, wave/reef/gust degradation |
 | **Comfort scoring** | Per-leg + per-segment | Waves/swell/gusts/capes/duration/night penalties |
 | **Execution** | Start/stop/checkpoints/observations | Live tracking + debrief + planned vs actual |
-| **Vessel profile** | Bossanova (HR Monsun 31) | Volvo D1-30: 3.2L/h cruise, 1.9L/h motorsail |
+| **Vessel profile** | Bossanova (HR Monsun 31) | Volvo D1-30: 2.5L/h cruise, 1.75L/h motorsail |
 | **Fuel tracking** | Per-hour + cumulative | Engine hours, fuel used, reserve status |
 | **Decision intelligence** | Sensitivity + Plans A/B/C | What changes the plan, arrival checklist |
 | **Marina recommendations** | 6 use cases per port | Transient, budget, monthly, repairs, provisioning |
@@ -54,7 +56,7 @@
 | Chart overlay | OpenSeaMap tiles + local GeoJSON contours (5-200m) |
 | Webcams | Windy Webcams API v3 |
 | Routing | Coastal graph (64 nodes, 61 edges, Dijkstra) + manual overrides |
-| Vessel model | VesselProfile with performance heuristics |
+| Vessel model | VesselProfile with polar-based performance model |
 | Execution | Live passage tracking with checkpoints + observations |
 
 ---
@@ -278,15 +280,18 @@ The first explicit corridor of this kind is `Cudillero/Avilés -> Cabo Peñas ->
 
 ### Leg Brief Pages
 
-Day/leg tiles on the passage dashboard open a dedicated leg brief page. That page currently provides:
+Day/leg tiles on the passage dashboard open a dedicated leg brief page (~1900 lines, 22 sections). Layout follows skipper workflow: **Decision → Weather → Map → Timeline → Intelligence → Navigation → Arrival → Services → Execution**.
 
-- route header with difficulty and summary
-- operational verdict (`GO / CAUTION / NO-GO`) using sampled forecast along the leg
-- detailed `Passage Plan` points (departure, observation points, capes, approach, berth)
-- hazards and fallback ports
-- a leg map using the same runtime routing graph as the main map
-- arrival block with marina contacts, facilities and verification metadata
-- shore-side enrichment: restaurants, provisioning, yacht shops, practical services
+Key capabilities:
+- **GO/CAUTION/NO-GO verdict** with comfort scoring and 4-column decision grid
+- **Passage Forecast** with summary table (wind arrows, Beaufort, waves/swell direction, kW/m power, verdict) + expandable hourly detail per waypoint
+- **4 inline Windy forecast maps** (wind, waves, swell, rain) embedded as iframes
+- **Leaflet map** with route editing, depth contours, OpenSeaMap, orca zones, seamarks fallback
+- **Hourly passage timeline** with polar efficiency %, target angle, BSP/SOG, fuel tracking
+- **Decision intelligence**: fuel/crew load, sensitivity analysis, Plans A/B/C
+- **Tides & currents**, hazards, fallback ports
+- **Arrival checklist** (pre-berthing), marina details, marina comparison, shore services
+- **Execution & logbook** with checkpoints, observations, debrief
 
 ### Tidal Data
 
@@ -335,9 +340,11 @@ Orca interaction zones are curated from Orca Ibérica / GTOA advisory data:
 
 Important current limitations:
 
-- Tides are curated reference text, not yet live HW/LW for the selected departure date
+- Tides use semi-diurnal harmonic model (~15-30 min accuracy), not official HW/LW almanac data
 - Orca data is advisory; no public live API integration yet
 - Shore-service enrichment is curated for Gijón → La Coruña and should be rechecked in season
+- Polar data is assumed (not official manufacturer polars) — to be refined with real passage logs
+- Windy embed iframes may be unavailable if embed.windy.com is down
 
 **Leg rendering:**
 - The master route is split visually only at route-defining anchors (typically capes)
@@ -570,19 +577,24 @@ The leg detail page (`/p/[id]/leg/[legIndex]`) is the primary operational interf
 2. **Header** — leg name, difficulty badge, description
 3. **Decision Summary** — GO/CAUTION/NO-GO, 4-column grid (Monitor/Sailing/Fallback/Comfort), score breakdown, last safe departure, plan invalidation triggers
 4. **Best Window + Orca Alert**
-5. **Map** — Leaflet with route (auto or manual), contours, OpenSeaMap, hazard markers, milestone markers, orca zones. Edit mode for manual routing.
-6. **Passage Timeline** — hourly breakdown from `passage-computation.ts`
-7. **Pilotage Notes** — markdown sections (Full mode only)
-8. **Passage Plan** — milestones with ETA, bearing, visual references
-9. **Hazards** — severity-colored cards
-10. **Tides & Currents** — live HW/LW predictions + streams + tidal gates
-11. **Fallback Plan** — bail-out ports
-12. **Arrival** — marina details + entrance/waiting/tide/swell intelligence
-13. **Marina Options** — comparison table + cards with pricing
-14. **Shore Services** — NearbyPlace cards by category (restaurants, chandlery, grocery, etc.)
-15. **Webcams** — Windy API (Full mode only)
-16. **Execution & Logbook** — start/stop passage, checkpoints, observations, planned vs actual
-17. **Emergency Contacts**
+5. **Passage Forecast** — waypoint summary table (wind arrows, Beaufort, waves/swell direction, power kW/m, verdict) + expandable hourly detail per waypoint (±6h around ETA)
+6. **Live Forecast Maps** — 4 inline Windy iframe embeds (wind, waves, swell, rain) with "open ↗" links
+7. **Map** — Leaflet with route (auto or manual), contours, OpenSeaMap, hazard markers, milestone markers, orca zones. Edit mode for manual routing.
+8. **Passage Timeline** — hourly breakdown from `passage-computation.ts` with polar efficiency %, target angle
+9. **Decision Intelligence** — Fuel/Engine + Crew Load cards, "What Changes the Plan" sensitivity, Plans A/B/C scenarios
+10. **Hazards** — severity-colored cards
+11. **Tides & Currents** — live HW/LW predictions + streams + tidal gates
+12. **Fallback Plan** — bail-out ports
+13. **Pilotage Notes** — markdown sections (Full mode only)
+14. **Passage Plan** — milestones with ETA, bearing, visual references
+15. **Arrival** — marina details + entrance/waiting/tide/swell intelligence
+16. **Arrival Checklist** — pre-berthing checklist (fenders, lines, VHF, engine, marks)
+17. **Marina Options** — comparison table + cards with pricing
+18. **Shore Services** — NearbyPlace cards by category (restaurants, chandlery, grocery, etc.)
+19. **Webcams** — Windy API (Full mode only)
+20. **Execution & Logbook** — start/stop passage, checkpoints, observations, planned vs actual
+21. **Official Sources** — AEMET stations, Puertos del Estado buoys
+22. **Emergency Contacts**
 
 ### View Modes
 
@@ -659,15 +671,31 @@ Separate from safety verdict (GO ≠ Comfortable):
 
 ### Passage Computation (`src/lib/passage-computation.ts`)
 
-807-line module computing hourly passage timeline:
-- **VesselPerformanceModel** for Bossanova (reef thresholds, motor thresholds, close-hauled angle)
+900+ line module computing hourly passage timeline:
+- **Polar-based performance model** for Bossanova (7 TWS × 9 TWA matrix with bilinear interpolation)
+- **`estimatePolarPerformance()`** — interpolates boat speed from polar table, applies wave/gust/reef degradation, falls back to heuristics if no polar data
+- **`determineMode()`** — polar-aware: uses efficiency % thresholds (<40% motor, <55% motorsail, ≥55% sail) plus harbor/light-air guards
 - **Route geometry**: uses manual route if saved, otherwise auto from routing graph
 - **Weather interpolation**: per-waypoint forecast matched to hourly positions
-- **Mode determination**: motor/sail/motorsail based on wind angle + speed
 - **Current/tide effects** from tidal stream data
 - **Sea state assessment**: wave height + period + direction
-- **Cache**: results stored in `LegComputation` table, invalidated on route/forecast/vessel changes
-- **Route signature**: hash includes manual geometry → automatic cache invalidation
+- **4.5kt SOG floor**: if sail/motorsail too slow, switches to motor with corrected BSP
+- **Fuel tracking**: motor 2.5L/h, motorsail 1.75L/h, per-hour + cumulative + reserve status
+- **Cache**: results stored in `LegComputation` table, invalidated on route/forecast/vessel/polar changes
+- **Timeline entries include**: `polarBoatSpeedKt`, `polarEfficiencyPct`, `polarTargetTwaDeg`, `polarSource`
+
+### Polar Performance Model
+
+Conservative cruising polars for Hallberg-Rassy Monsun 31 (assumed, not official):
+- **Matrix**: 7 TWS (6-25kt) × 9 TWA (40°-165°) = 63 data points
+- **Hull speed cap**: 6.3kt
+- **Best performance**: beam reach (~90°) in 14-18kt TWS → 6.3kt
+- **Degradation factors**: waves >1.5m (-4%/-8%), gusts spread >10kt (-5%), reef 1 (-10%), reef 2 (-22%)
+- **Efficiency %**: ratio of polar speed to best speed at given TWS
+- **Target angles**: upwind 42° TWA, downwind 155° TWA
+- **Fallback**: if no polar data → original heuristic `estimateSailSpeedHeuristic()`
+- **Storage**: JSON inside `VesselProfile.performanceModel.polarData`
+- **Note**: to be refined with real passage logs
 
 ### Route Resolution (`src/lib/leg-route.ts`)
 
