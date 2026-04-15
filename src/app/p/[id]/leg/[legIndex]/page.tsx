@@ -1306,7 +1306,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             {webcams.map(wc => (
               <a key={wc.id} href={wc.playerUrl} target="_blank" rel="noopener" className="block rounded-lg overflow-hidden hover:opacity-80" style={{ border: `1px solid var(--border-light)` }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {wc.preview && <img src={wc.preview} alt={wc.title} className="w-full object-cover" style={{ height: 180 }} />}
+                {wc.preview && <img src={wc.preview} alt={wc.title} className="w-full" style={{ height: "auto", maxHeight: 250 }} />}
                 <div className="px-2 py-1.5 text-[11px]" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>{wc.title}</div>
               </a>
             ))}
