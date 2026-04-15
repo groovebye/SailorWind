@@ -689,6 +689,64 @@ async function main() {
   }
   console.log(`Seeded ${NEARBY_PLACES.length} nearby places.`);
 
+  // ── Bossanova polar assumptions ──────────────────────────────────
+  // Conservative cruising polars for Hallberg-Rassy Monsun 31 (9.5m, long keel).
+  // NOT official manufacturer data — assumed from cruiser performance references
+  // and owner experience. To be refined with real passage logs.
+  //
+  // Hull speed: ~6.3kt (theoretical Fn=0.4 for 8.6m LWL)
+  // Best point of sail: beam reach (~90°) in 14-18kt TWS
+  // Upwind target: ~42° TWA, downwind target: ~155° TWA
+  //
+  // TWS columns: [6, 8, 10, 12, 16, 20, 25] knots
+  // TWA rows: [40, 50, 60, 75, 90, 110, 135, 150, 165] degrees
+  const bossanovaPolarData = {
+    twsKnots:   [6,    8,    10,   12,   16,   20,   25],
+    twaDegrees: [40,   50,   60,   75,   90,   110,  135,  150,  165],
+    boatSpeeds: [
+      // TWA 40° (close-hauled, tight)
+      //  6kt   8kt  10kt  12kt  16kt  20kt  25kt
+      [  2.1,  2.8,  3.4,  3.9,  4.4,  4.6,  4.2  ],
+      // TWA 50° (close-hauled, standard)
+      [  2.6,  3.4,  4.2,  4.7,  5.2,  5.3,  4.8  ],
+      // TWA 60° (close reach)
+      [  3.0,  3.9,  4.7,  5.3,  5.7,  5.8,  5.3  ],
+      // TWA 75° (close reach / beam transition)
+      [  3.3,  4.2,  5.1,  5.6,  6.0,  6.1,  5.6  ],
+      // TWA 90° (beam reach — best performance)
+      [  3.5,  4.5,  5.4,  5.9,  6.3,  6.3,  5.8  ],
+      // TWA 110° (broad reach)
+      [  3.3,  4.3,  5.2,  5.7,  6.1,  6.2,  5.7  ],
+      // TWA 135° (broad reach / quarter)
+      [  3.0,  3.9,  4.8,  5.3,  5.8,  5.9,  5.4  ],
+      // TWA 150° (deep broad reach)
+      [  2.6,  3.5,  4.3,  4.9,  5.4,  5.5,  5.0  ],
+      // TWA 165° (dead run)
+      [  2.2,  3.0,  3.8,  4.4,  4.9,  5.0,  4.5  ],
+    ],
+    hullSpeedKt: 6.3,
+    targetUpwindTwaDeg: 42,
+    targetDownwindTwaDeg: 155,
+  };
+
+  const bossanovaPerformanceModel = {
+    lightAirMotorThresholdKt: 7,
+    motorsailUpwindThresholdKt: 12,
+    closeHauledMinAngleDeg: 38,
+    efficientRunMinWindKt: 10,
+    reef1AtWindKt: 18,
+    reef2AtWindKt: 24,
+    reef1AtGustKt: 22,
+    reef2AtGustKt: 28,
+    harborApproachMotorRadiusNm: 1.2,
+    // Polar data
+    polarData: bossanovaPolarData,
+    // Polar-aware thresholds
+    minimumSailingSpeedKt: 3.5,
+    lowEfficiencyThresholdPct: 40,
+    motorsailEfficiencyThresholdPct: 55,
+  };
+
   await prisma.vesselProfile.upsert({
     where: { slug: "bossanova" },
     update: {
@@ -699,18 +757,8 @@ async function main() {
       engineMaxKt: 6.8,
       fuelBurnLph: 2.5,
       motorsailBurnLph: 1.75,
-      notes: "Hallberg-Rassy Monsun 31 profile for passage timeline calculations. Engine fuel burn calibrated to 2.5 L/h at 2500 rpm and 6.2 kt cruise.",
-      performanceModel: {
-        lightAirMotorThresholdKt: 7,
-        motorsailUpwindThresholdKt: 12,
-        closeHauledMinAngleDeg: 38,
-        efficientRunMinWindKt: 10,
-        reef1AtWindKt: 18,
-        reef2AtWindKt: 24,
-        reef1AtGustKt: 22,
-        reef2AtGustKt: 28,
-        harborApproachMotorRadiusNm: 1.2,
-      },
+      notes: "Hallberg-Rassy Monsun 31 — Bossanova polar assumptions (conservative cruising model). Fuel: Volvo D1-30 at 2500rpm=2.5L/h cruise, 2000rpm=1.75L/h motorsail. Polars are assumed, not official — to be refined with real passage logs.",
+      performanceModel: bossanovaPerformanceModel,
     },
     create: {
       slug: "bossanova",
@@ -721,21 +769,11 @@ async function main() {
       engineMaxKt: 6.8,
       fuelBurnLph: 2.5,
       motorsailBurnLph: 1.75,
-      notes: "Hallberg-Rassy Monsun 31 profile for passage timeline calculations. Engine fuel burn calibrated to 2.5 L/h at 2500 rpm and 6.2 kt cruise.",
-      performanceModel: {
-        lightAirMotorThresholdKt: 7,
-        motorsailUpwindThresholdKt: 12,
-        closeHauledMinAngleDeg: 38,
-        efficientRunMinWindKt: 10,
-        reef1AtWindKt: 18,
-        reef2AtWindKt: 24,
-        reef1AtGustKt: 22,
-        reef2AtGustKt: 28,
-        harborApproachMotorRadiusNm: 1.2,
-      },
+      notes: "Hallberg-Rassy Monsun 31 — Bossanova polar assumptions (conservative cruising model). Fuel: Volvo D1-30 at 2500rpm=2.5L/h cruise, 2000rpm=1.75L/h motorsail. Polars are assumed, not official — to be refined with real passage logs.",
+      performanceModel: bossanovaPerformanceModel,
     },
   });
-  console.log("Seeded vessel profile Bossanova.");
+  console.log("Seeded vessel profile Bossanova (with polar assumptions).");
 }
 
 main()

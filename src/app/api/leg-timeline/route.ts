@@ -4,29 +4,41 @@ import { computeLegTimelineFromContext, resolveLegTimelineContext } from "@/lib/
 import { Prisma } from "@/generated/prisma/client";
 
 function parsePerformanceModel(raw: unknown) {
+  const defaults = {
+    lightAirMotorThresholdKt: 7,
+    motorsailUpwindThresholdKt: 12,
+    closeHauledMinAngleDeg: 38,
+    efficientRunMinWindKt: 10,
+    reef1AtWindKt: 18,
+    reef2AtWindKt: 24,
+    reef1AtGustKt: 22,
+    reef2AtGustKt: 28,
+    harborApproachMotorRadiusNm: 1.2,
+  };
   if (!raw || typeof raw !== "object") {
-    return {
-      lightAirMotorThresholdKt: 7,
-      motorsailUpwindThresholdKt: 12,
-      closeHauledMinAngleDeg: 38,
-      efficientRunMinWindKt: 10,
-      reef1AtWindKt: 18,
-      reef2AtWindKt: 24,
-      reef1AtGustKt: 22,
-      reef2AtGustKt: 28,
-      harborApproachMotorRadiusNm: 1.2,
-    };
+    return defaults;
   }
-  return raw as {
-    lightAirMotorThresholdKt: number;
-    motorsailUpwindThresholdKt: number;
-    closeHauledMinAngleDeg: number;
-    efficientRunMinWindKt: number;
-    reef1AtWindKt: number;
-    reef2AtWindKt: number;
-    reef1AtGustKt: number;
-    reef2AtGustKt: number;
-    harborApproachMotorRadiusNm: number;
+  const obj = raw as Record<string, unknown>;
+  return {
+    lightAirMotorThresholdKt: typeof obj.lightAirMotorThresholdKt === "number" ? obj.lightAirMotorThresholdKt : defaults.lightAirMotorThresholdKt,
+    motorsailUpwindThresholdKt: typeof obj.motorsailUpwindThresholdKt === "number" ? obj.motorsailUpwindThresholdKt : defaults.motorsailUpwindThresholdKt,
+    closeHauledMinAngleDeg: typeof obj.closeHauledMinAngleDeg === "number" ? obj.closeHauledMinAngleDeg : defaults.closeHauledMinAngleDeg,
+    efficientRunMinWindKt: typeof obj.efficientRunMinWindKt === "number" ? obj.efficientRunMinWindKt : defaults.efficientRunMinWindKt,
+    reef1AtWindKt: typeof obj.reef1AtWindKt === "number" ? obj.reef1AtWindKt : defaults.reef1AtWindKt,
+    reef2AtWindKt: typeof obj.reef2AtWindKt === "number" ? obj.reef2AtWindKt : defaults.reef2AtWindKt,
+    reef1AtGustKt: typeof obj.reef1AtGustKt === "number" ? obj.reef1AtGustKt : defaults.reef1AtGustKt,
+    reef2AtGustKt: typeof obj.reef2AtGustKt === "number" ? obj.reef2AtGustKt : defaults.reef2AtGustKt,
+    harborApproachMotorRadiusNm: typeof obj.harborApproachMotorRadiusNm === "number" ? obj.harborApproachMotorRadiusNm : defaults.harborApproachMotorRadiusNm,
+    // Polar data — pass through if valid
+    polarData: obj.polarData && typeof obj.polarData === "object" ? obj.polarData as {
+      twsKnots: number[]; twaDegrees: number[]; boatSpeeds: number[][]; hullSpeedKt?: number;
+      targetUpwindTwaDeg?: number; targetDownwindTwaDeg?: number;
+    } : undefined,
+    // Polar thresholds
+    targetBeamReachEfficiencyPct: typeof obj.targetBeamReachEfficiencyPct === "number" ? obj.targetBeamReachEfficiencyPct : undefined,
+    lowEfficiencyThresholdPct: typeof obj.lowEfficiencyThresholdPct === "number" ? obj.lowEfficiencyThresholdPct : undefined,
+    motorsailEfficiencyThresholdPct: typeof obj.motorsailEfficiencyThresholdPct === "number" ? obj.motorsailEfficiencyThresholdPct : undefined,
+    minimumSailingSpeedKt: typeof obj.minimumSailingSpeedKt === "number" ? obj.minimumSailingSpeedKt : undefined,
   };
 }
 
@@ -71,7 +83,7 @@ export async function GET(req: NextRequest) {
           engineMaxKt: 6.8,
           fuelBurnLph: 2.5,
           motorsailBurnLph: 1.75,
-          notes: "Hallberg-Rassy Monsun 31 profile with fuel burn calibrated to 2.5 L/h at 2500 rpm and 6.2 kt cruise",
+          notes: "Hallberg-Rassy Monsun 31 — Bossanova polar assumptions (conservative cruising model)",
           performanceModel: {
             lightAirMotorThresholdKt: 7,
             motorsailUpwindThresholdKt: 12,

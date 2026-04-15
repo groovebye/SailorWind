@@ -15,6 +15,24 @@ type PassageLike = {
   waypoints: RouteWaypoint[];
 };
 
+// ── Polar data types ────────────────────────────────────────────
+
+export type PolarData = {
+  twsKnots: number[];      // e.g. [6, 8, 10, 12, 16, 20, 25]
+  twaDegrees: number[];    // e.g. [40, 50, 60, 75, 90, 110, 135, 150, 165]
+  boatSpeeds: number[][];  // rows per TWS, cols per TWA
+  hullSpeedKt?: number;    // optional cap, e.g. 6.3
+  targetUpwindTwaDeg?: number;   // e.g. 42
+  targetDownwindTwaDeg?: number; // e.g. 155
+};
+
+export type PolarResult = {
+  polarBoatSpeedKt: number;
+  efficiencyPct: number;       // 0-100, how close to best speed at this TWS
+  targetTwaDeg: number | null;  // optimal angle at this TWS for this side (up/down)
+  polarSource: "table" | "fallback";
+};
+
 type VesselPerformanceModel = {
   lightAirMotorThresholdKt: number;
   motorsailUpwindThresholdKt: number;
@@ -25,6 +43,13 @@ type VesselPerformanceModel = {
   reef1AtGustKt: number;
   reef2AtGustKt: number;
   harborApproachMotorRadiusNm: number;
+  // Polar performance model
+  polarData?: PolarData;
+  // Polar-aware thresholds
+  targetBeamReachEfficiencyPct?: number;  // default 70
+  lowEfficiencyThresholdPct?: number;     // default 40
+  motorsailEfficiencyThresholdPct?: number; // default 55
+  minimumSailingSpeedKt?: number;         // default 3.5
 };
 
 type VesselLike = {
@@ -77,6 +102,11 @@ export interface TimelineEntry {
   comfort: ComfortLabel;
   warnings: string[];
   notes: string;
+  // Polar performance
+  polarBoatSpeedKt: number | null;
+  polarEfficiencyPct: number | null;
+  polarTargetTwaDeg: number | null;
+  polarSource: "table" | "fallback" | null;
   // Fuel
   engineOn: boolean;
   fuelUsedThisHourL: number;
@@ -290,7 +320,143 @@ function computeCurrentRate(prediction: TidePrediction, stream: TidalStream, tim
   };
 }
 
-function estimateSailSpeed(windKt: number, twa: number, waveM: number | null, gustKt: number, reefLevel: number) {
+// ── Polar interpolation engine ──────────────────────────────────
+
+/**
+ * Find bounding indices for linear interpolation in a sorted array.
+ * Returns [lowerIndex, upperIndex, fraction] where fraction is 0..1
+ * between lower and upper values.
+ */
+function findBoundingIndices(arr: number[], value: number): [number, number, number] {
+  if (arr.length === 0) return [0, 0, 0];
+  if (value <= arr[0]) return [0, 0, 0];
+  if (value >= arr[arr.length - 1]) return [arr.length - 1, arr.length - 1, 0];
+  for (let i = 0; i < arr.length - 1; i++) {
+    if (value >= arr[i] && value <= arr[i + 1]) {
+      const range = arr[i + 1] - arr[i];
+      const frac = range > 0 ? (value - arr[i]) / range : 0;
+      return [i, i + 1, frac];
+    }
+  }
+  return [arr.length - 1, arr.length - 1, 0];
+}
+
+/**
+ * Bilinear interpolation across TWS and TWA in the polar table.
+ * Returns interpolated boat speed in knots.
+ */
+function interpolatePolarSpeed(polar: PolarData, tws: number, twa: number): number {
+  const [twsLo, twsHi, twsFrac] = findBoundingIndices(polar.twsKnots, tws);
+  const [twaLo, twaHi, twaFrac] = findBoundingIndices(polar.twaDegrees, twa);
+
+  // Get four corner speeds
+  const s00 = polar.boatSpeeds[twsLo]?.[twaLo] ?? 0;
+  const s01 = polar.boatSpeeds[twsLo]?.[twaHi] ?? 0;
+  const s10 = polar.boatSpeeds[twsHi]?.[twaLo] ?? 0;
+  const s11 = polar.boatSpeeds[twsHi]?.[twaHi] ?? 0;
+
+  // Bilinear interpolation
+  const top = s00 + (s01 - s00) * twaFrac;
+  const bot = s10 + (s11 - s10) * twaFrac;
+  let speed = top + (bot - top) * twsFrac;
+
+  // Cap at hull speed if defined
+  if (polar.hullSpeedKt && speed > polar.hullSpeedKt) {
+    speed = polar.hullSpeedKt;
+  }
+
+  return Math.max(0, speed);
+}
+
+/**
+ * Find the best (fastest) boat speed at a given TWS across all polar TWA entries.
+ */
+function bestPolarSpeedAtTws(polar: PolarData, tws: number): number {
+  let best = 0;
+  for (const twaDeg of polar.twaDegrees) {
+    const speed = interpolatePolarSpeed(polar, tws, twaDeg);
+    if (speed > best) best = speed;
+  }
+  return best;
+}
+
+/**
+ * Find the optimal TWA (target angle) for upwind or downwind VMG at given TWS.
+ */
+function findTargetAngle(polar: PolarData, tws: number, upwind: boolean): number | null {
+  // Use stored targets if available
+  if (upwind && polar.targetUpwindTwaDeg) return polar.targetUpwindTwaDeg;
+  if (!upwind && polar.targetDownwindTwaDeg) return polar.targetDownwindTwaDeg;
+
+  // Otherwise compute from table: best VMG angle
+  let bestVmg = 0;
+  let bestAngle: number | null = null;
+  for (const twaDeg of polar.twaDegrees) {
+    if (upwind && twaDeg > 90) continue;
+    if (!upwind && twaDeg < 90) continue;
+    const speed = interpolatePolarSpeed(polar, tws, twaDeg);
+    const vmg = speed * Math.abs(Math.cos(toRad(twaDeg)));
+    if (vmg > bestVmg) {
+      bestVmg = vmg;
+      bestAngle = twaDeg;
+    }
+  }
+  return bestAngle;
+}
+
+/**
+ * Estimate polar performance for a given wind speed and true wind angle.
+ * Returns boat speed, efficiency percentage, and target angle.
+ * Falls back gracefully if no polar data available.
+ */
+function estimatePolarPerformance(
+  model: VesselPerformanceModel,
+  windKt: number,
+  twa: number,
+  waveM: number | null,
+  gustKt: number,
+  reefLevel: number,
+): PolarResult {
+  const polar = model.polarData;
+  if (!polar || !polar.twsKnots?.length || !polar.twaDegrees?.length || !polar.boatSpeeds?.length) {
+    // No polar data — return fallback
+    const fallbackSpeed = estimateSailSpeedHeuristic(windKt, twa, waveM, gustKt, reefLevel);
+    return {
+      polarBoatSpeedKt: fallbackSpeed,
+      efficiencyPct: 65, // unknown — assume moderate
+      targetTwaDeg: null,
+      polarSource: "fallback",
+    };
+  }
+
+  // Interpolate base speed from polar table
+  let polarSpeed = interpolatePolarSpeed(polar, windKt, twa);
+
+  // Apply degradation for waves and reefing (polars assume flat water, full sail)
+  if ((waveM ?? 0) > 2) polarSpeed *= 0.92;
+  else if ((waveM ?? 0) > 1.5) polarSpeed *= 0.96;
+  if (gustKt - windKt > 10) polarSpeed *= 0.95; // gusty = less efficient
+  if (reefLevel === 1) polarSpeed *= 0.90;
+  if (reefLevel === 2) polarSpeed *= 0.78;
+
+  // Compute efficiency vs best possible speed at this TWS
+  const bestSpeed = bestPolarSpeedAtTws(polar, windKt);
+  const efficiencyPct = bestSpeed > 0 ? Math.round((polarSpeed / bestSpeed) * 100) : 0;
+
+  // Find target angle for this point of sail
+  const isUpwind = twa < 90;
+  const targetTwaDeg = findTargetAngle(polar, windKt, isUpwind);
+
+  return {
+    polarBoatSpeedKt: Math.round(polarSpeed * 10) / 10,
+    efficiencyPct: Math.min(100, Math.max(0, efficiencyPct)),
+    targetTwaDeg,
+    polarSource: "table",
+  };
+}
+
+/** Original heuristic sail speed estimator — used as fallback when no polar data */
+function estimateSailSpeedHeuristic(windKt: number, twa: number, waveM: number | null, gustKt: number, reefLevel: number) {
   const point = classifyPointOfSail(twa);
   let factor = 0.22;
   let cap = 5.6;
@@ -345,10 +511,42 @@ function determineMode(
   pointOfSail: string,
   distanceFromStartNm: number,
   distanceToGoNm: number,
+  polarResult?: PolarResult,
 ) {
   const nearHarbor = distanceFromStartNm < model.harborApproachMotorRadiusNm || distanceToGoNm < model.harborApproachMotorRadiusNm;
   if (nearHarbor) return "motor" as const;
   if (windKt < model.lightAirMotorThresholdKt) return "motor" as const;
+
+  // Polar-aware mode decision when available
+  if (polarResult && polarResult.polarSource === "table") {
+    const minSailSpeed = model.minimumSailingSpeedKt ?? 3.5;
+    const motorsailThreshold = model.motorsailEfficiencyThresholdPct ?? 55;
+    const lowThreshold = model.lowEfficiencyThresholdPct ?? 40;
+
+    // Too slow to be worth sailing — motor
+    if (polarResult.polarBoatSpeedKt < minSailSpeed) return "motor" as const;
+
+    // Very low efficiency — motor
+    if (polarResult.efficiencyPct < lowThreshold) return "motor" as const;
+
+    // Moderate efficiency — motorsail helps
+    if (polarResult.efficiencyPct < motorsailThreshold) return "motorsail" as const;
+
+    // Too tight to wind — motorsail or motor
+    if (twa < model.closeHauledMinAngleDeg) {
+      return windKt >= model.motorsailUpwindThresholdKt ? "motorsail" as const : "motor" as const;
+    }
+
+    // Close-hauled with low polar speed — motorsail
+    if (pointOfSail === "Close-hauled" && polarResult.polarBoatSpeedKt < 4.5) {
+      return "motorsail" as const;
+    }
+
+    // Good efficiency — sail
+    return "sail" as const;
+  }
+
+  // Heuristic fallback (no polar data)
   if (twa < model.closeHauledMinAngleDeg) return windKt >= model.motorsailUpwindThresholdKt ? "motorsail" as const : "motor" as const;
   if (pointOfSail === "Close-hauled" && windKt >= model.motorsailUpwindThresholdKt) return "motorsail" as const;
   if ((pointOfSail === "Broad reach" || pointOfSail === "Run") && windKt < model.efficientRunMinWindKt) return "motorsail" as const;
@@ -465,7 +663,7 @@ function uniqueWarnings(entries: TimelineEntry[]) {
   return [...warnings];
 }
 
-function buildTimelineNote(mode: LegTimelineMode, pointOfSail: string, comfort: ComfortLabel, warnings: string[]) {
+function buildTimelineNote(mode: LegTimelineMode, pointOfSail: string, comfort: ComfortLabel, warnings: string[], polarResult?: PolarResult) {
   const modeText =
     mode === "motor" ? "Motor likely" :
     mode === "motorsail" ? "Motor-sail likely" :
@@ -477,7 +675,22 @@ function buildTimelineNote(mode: LegTimelineMode, pointOfSail: string, comfort: 
     comfort === "Demanding" ? "crew workload rises" :
     "hard work for crew and boat";
   const warningText = warnings.length > 0 ? ` Watch for ${warnings.slice(0, 2).join(", ")}.` : "";
-  return `${modeText} on a ${pointOfSail.toLowerCase()}, ${comfortText}.${warningText}`;
+
+  // Add polar context when available
+  let polarText = "";
+  if (polarResult && polarResult.polarSource === "table") {
+    if (polarResult.efficiencyPct >= 80) {
+      polarText = ` Polar eff. ${polarResult.efficiencyPct}%.`;
+    } else if (polarResult.efficiencyPct >= 55) {
+      polarText = ` Polar eff. ${polarResult.efficiencyPct}%, not ideal angle.`;
+    } else if (polarResult.efficiencyPct >= 40) {
+      polarText = ` Low polar eff. ${polarResult.efficiencyPct}%, engine assist likely.`;
+    } else {
+      polarText = ` Poor sailing angle (eff. ${polarResult.efficiencyPct}%).`;
+    }
+  }
+
+  return `${modeText} on a ${pointOfSail.toLowerCase()}, ${comfortText}.${warningText}${polarText}`;
 }
 
 function buildSummary(
@@ -736,15 +949,27 @@ export function computeLegTimelineFromContext(
     const twa = absoluteAngleDiff(forecastEntry.windDirDeg, courseTrue);
     const pointOfSail = classifyPointOfSail(twa);
     const reefLevel = determineReefLevel(vessel.performanceModel, forecastEntry.windKt, forecastEntry.gustKt);
+
+    // Polar-informed sail speed
+    const polarResult = estimatePolarPerformance(
+      vessel.performanceModel,
+      forecastEntry.windKt,
+      twa,
+      forecastEntry.waveM,
+      forecastEntry.gustKt,
+      reefLevel,
+    );
+
     const mode = determineMode(
       vessel.performanceModel,
       forecastEntry.windKt,
       twa,
       pointOfSail,
       distanceFromStartNm,
-      routeDistanceNm - distanceFromStartNm
+      routeDistanceNm - distanceFromStartNm,
+      polarResult,
     );
-    const baseSailSpeed = estimateSailSpeed(forecastEntry.windKt, twa, forecastEntry.waveM, forecastEntry.gustKt, reefLevel);
+    const baseSailSpeed = polarResult.polarBoatSpeedKt;
     const expectedBoatSpeedKt =
       mode === "motor" ? (distanceFromStartNm < vessel.performanceModel.harborApproachMotorRadiusNm || routeDistanceNm - distanceFromStartNm < vessel.performanceModel.harborApproachMotorRadiusNm ? Math.max(4.8, vessel.engineCruiseKt - 0.5) : vessel.engineCruiseKt) :
       mode === "motorsail" ? Math.min(vessel.engineCruiseKt + 0.2, Math.max(vessel.engineCruiseKt * 0.9, baseSailSpeed + 0.7)) :
@@ -826,7 +1051,12 @@ export function computeLegTimelineFromContext(
       comfortScore: comfort.score,
       comfort: comfort.label,
       warnings,
-      notes: buildTimelineNote(mode, pointOfSail, comfort.label, warnings),
+      notes: buildTimelineNote(mode, pointOfSail, comfort.label, warnings, polarResult),
+      // Polar performance
+      polarBoatSpeedKt: polarResult.polarSource === "table" ? polarResult.polarBoatSpeedKt : null,
+      polarEfficiencyPct: polarResult.polarSource === "table" ? polarResult.efficiencyPct : null,
+      polarTargetTwaDeg: polarResult.targetTwaDeg,
+      polarSource: polarResult.polarSource,
       // Fuel
       engineOn: actualMode === "motor" || actualMode === "motorsail",
       fuelUsedThisHourL:

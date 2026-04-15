@@ -33,6 +33,7 @@ interface TimelineEntry {
   waveM: number | null; wavePeriodS: number | null; swellM: number | null; swellPeriodS: number | null; currentDir: string | null; currentDirDeg: number | null; currentKt: number; twa: number;
   pointOfSail: string; mode: "sail" | "motor" | "motorsail"; tack: "port" | "starboard" | "none"; sailConfig: string; reefLevel: 0 | 1 | 2;
   expectedBoatSpeedKt: number; expectedSogKt: number; comfortScore: number; comfort: string; warnings: string[]; notes: string;
+  polarBoatSpeedKt: number | null; polarEfficiencyPct: number | null; polarTargetTwaDeg: number | null; polarSource: "table" | "fallback" | null;
   engineOn: boolean; fuelUsedThisHourL: number; cumulativeFuelUsedL: number;
 }
 interface TimelineSummaryData {
@@ -1044,6 +1045,16 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                     <div style={{ color: "var(--text-secondary)" }}>
                       BSP {entry.expectedBoatSpeedKt.toFixed(1)}kt · SOG {entry.expectedSogKt.toFixed(1)}kt
                     </div>
+                    {entry.polarSource === "table" && entry.polarEfficiencyPct != null && (
+                      <div style={{
+                        color: entry.polarEfficiencyPct >= 75 ? "var(--text-green)" :
+                               entry.polarEfficiencyPct >= 55 ? "var(--text-blue-light)" :
+                               entry.polarEfficiencyPct >= 40 ? "var(--text-yellow)" : "var(--text-red)",
+                        fontSize: "10px",
+                      }}>
+                        Polar eff. {entry.polarEfficiencyPct}%{entry.polarTargetTwaDeg != null ? ` · target ~${entry.polarTargetTwaDeg}°` : ""}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div style={{ color: "var(--text-muted)" }}>Current & angle</div>
@@ -1091,7 +1102,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           </div>
 
           <div className="mt-3 text-[10px]" style={{ color: "var(--text-muted)" }}>
-            Computed using Bossanova performance assumptions: engine cruise 6.2kt, fuel burn 2.5 L/h at 2500 rpm, rule-based sail plan, cached until {timelineData.validUntil ? fmtLocal(new Date(timelineData.validUntil), toTz) : "forecast refresh"}.
+            Computed using Bossanova polar assumptions: conservative cruising polars, engine cruise 6.2kt / 2.5 L/h at 2500 rpm, motorsail 1.75 L/h at 2000 rpm. Polars are assumed — to be refined with real passage logs. Cached until {timelineData.validUntil ? fmtLocal(new Date(timelineData.validUntil), toTz) : "forecast refresh"}.
           </div>
         </Section>
       )}
