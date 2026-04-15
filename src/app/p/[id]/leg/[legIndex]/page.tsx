@@ -145,6 +145,13 @@ function projectWaypointFraction(points: { lat: number; lon: number }[], lat: nu
   return bestAlongTrack / total;
 }
 
+const WEATHER_EMOJI: Record<string, string> = { sun: "\u2600\uFE0F", partly: "\u26C5", cloudy: "\u2601\uFE0F", fog: "FOG", rain: "\uD83C\uDF27\uFE0F", heavy_rain: "\uD83C\uDF27\uFE0F\uD83C\uDF27\uFE0F", storm: "\u26C8\uFE0F" };
+function bftNum(b: string) { return b.replace("F", ""); }
+function wavePower(waveM: number | null, periodS: number | null): number | null { if (waveM == null || periodS == null || waveM === 0 || periodS === 0) return null; return Math.round(0.5 * waveM * waveM * periodS * 10) / 10; }
+function verdictLabel(v: string) { if (v === "GO") return "GO"; if (v.startsWith("CAUTION")) return "CAUTION"; return "NO-GO"; }
+function vc(v: string) { return { color: v.startsWith("NO") ? "var(--text-red)" : v.startsWith("CAUTION") ? "var(--text-yellow)" : "var(--text-green)", background: v.startsWith("NO") ? "var(--accent-nogo)" : v.startsWith("CAUTION") ? "var(--accent-caution)" : "var(--accent-go)" }; }
+function fmtTimeOnly(d: Date, tz: string) { return d.toLocaleString("en-GB", { timeZone: tz, hour: "2-digit", minute: "2-digit", hour12: false }); }
+
 const DIFF_COLORS: Record<string, string> = { easy: "var(--text-green)", moderate: "var(--text-yellow)", challenging: "var(--text-red)", dangerous: "var(--text-red)" };
 const MILESTONE_ICONS: Record<string, string> = { departure: "🚀", clear_breakwater: "⚓", course_change: "🧭", round_cape: "⚠️", approach: "🔭", berth: "🏁" };
 const HAZARD_ICONS: Record<string, string> = { wind_acceleration: "💨", rock: "🪨", shoal: "⚠️", current: "🌊", traffic: "🚢", military: "🎖️", orca: "🐋" };
@@ -910,24 +917,43 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </div>
       </div>
 
-      {/* ══════ LIVE FORECAST LINKS ══════ */}
-      <Section title="Live Forecast Maps" icon="💨" defaultOpen={false}>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <a href={`https://www.windy.com/wind?${((fromPort.lat + dest.lat) / 2).toFixed(2)},${((fromPort.lon + dest.lon) / 2).toFixed(2)},8`} target="_blank" rel="noopener" className="rounded-lg px-3 py-2.5 text-center hover:opacity-80" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-blue-light)", textDecoration: "none" }}>
-            <div className="text-lg mb-0.5">🌬️</div><div className="text-[11px]">Wind</div>
-          </a>
-          <a href={`https://www.windy.com/waves?${((fromPort.lat + dest.lat) / 2).toFixed(2)},${((fromPort.lon + dest.lon) / 2).toFixed(2)},8`} target="_blank" rel="noopener" className="rounded-lg px-3 py-2.5 text-center hover:opacity-80" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-blue-light)", textDecoration: "none" }}>
-            <div className="text-lg mb-0.5">🌊</div><div className="text-[11px]">Waves</div>
-          </a>
-          <a href={`https://www.windy.com/swell1?${((fromPort.lat + dest.lat) / 2).toFixed(2)},${((fromPort.lon + dest.lon) / 2).toFixed(2)},8`} target="_blank" rel="noopener" className="rounded-lg px-3 py-2.5 text-center hover:opacity-80" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-blue-light)", textDecoration: "none" }}>
-            <div className="text-lg mb-0.5">〰️</div><div className="text-[11px]">Swell</div>
-          </a>
-          <a href={`https://www.windy.com/rain?${((fromPort.lat + dest.lat) / 2).toFixed(2)},${((fromPort.lon + dest.lon) / 2).toFixed(2)},8`} target="_blank" rel="noopener" className="rounded-lg px-3 py-2.5 text-center hover:opacity-80" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)`, color: "var(--text-blue-light)", textDecoration: "none" }}>
-            <div className="text-lg mb-0.5">🌧️</div><div className="text-[11px]">Rain</div>
-          </a>
-        </div>
-        <div className="text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>Opens Windy.com with animated forecast for this leg area.</div>
-      </Section>
+      {/* ══════ LIVE FORECAST MAPS ══════ */}
+      {(() => {
+        const midLat = ((fromPort.lat + dest.lat) / 2).toFixed(3);
+        const midLon = ((fromPort.lon + dest.lon) / 2).toFixed(3);
+        const embedBase = `https://embed.windy.com/embed2.html?lat=${midLat}&lon=${midLon}&detailLat=${midLat}&detailLon=${midLon}&zoom=8&level=surface&product=gfs&menu=&message=true&marker=&calendar=now&pressure=&type=map&location=coordinates&metricWind=kt&metricTemp=%C2%B0C`;
+        const maps = [
+          { overlay: "wind", label: "Wind", icon: "🌬️" },
+          { overlay: "waves", label: "Waves", icon: "🌊" },
+          { overlay: "swell1", label: "Swell", icon: "〰️" },
+          { overlay: "rain", label: "Rain", icon: "🌧️" },
+        ];
+        return (
+          <Section title="Live Forecast Maps" icon="💨" defaultOpen={false}>
+            <div className="grid grid-cols-2 gap-2">
+              {maps.map(m => (
+                <div key={m.overlay} className="rounded-lg overflow-hidden" style={{ border: `1px solid var(--border-light)` }}>
+                  <div className="flex items-center gap-1.5 px-2 py-1" style={{ background: "var(--bg-primary)", borderBottom: `1px solid var(--border-light)` }}>
+                    <span className="text-xs">{m.icon}</span>
+                    <span className="text-[11px] font-semibold" style={{ color: "var(--text-heading)" }}>{m.label}</span>
+                    <a href={`https://www.windy.com/${m.overlay}?${midLat},${midLon},8`} target="_blank" rel="noopener" className="ml-auto text-[10px]" style={{ color: "var(--text-blue-light)" }}>open ↗</a>
+                  </div>
+                  <iframe
+                    src={`${embedBase}&overlay=${m.overlay}`}
+                    width="100%"
+                    height="220"
+                    style={{ border: "none", display: "block" }}
+                    loading="lazy"
+                    title={`Windy ${m.label} forecast`}
+                    allowFullScreen
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="text-[10px] mt-2" style={{ color: "var(--text-muted)" }}>Live animated forecasts via Windy. Click "open ↗" for full interactive view.</div>
+          </Section>
+        );
+      })()}
 
       {/* ══════ PASSAGE TIMELINE ══════ */}
       {timelineData?.summary && timelineData.timeline?.length > 0 && (
@@ -1107,20 +1133,23 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         </Section>
       )}
 
-      {/* ══════ WAYPOINT FORECAST ══════ */}
+      {/* ══════ PASSAGE FORECAST ══════ */}
       {forecasts && (
-        <Section title="Waypoint Forecast" icon="🌤️" defaultOpen={false}>
-          <table className="w-full text-xs border-collapse">
+        <Section title="Passage Forecast" icon="🌤️">
+          {/* Summary table — at ETA for each waypoint */}
+          <div className="text-[10px] uppercase font-semibold mb-1.5" style={{ color: "var(--text-muted)" }}>At ETA</div>
+          <table className="w-full text-xs border-collapse mb-4">
             <thead>
               <tr className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>
-                <th className="text-left px-2 py-1">Waypoint</th>
-                <th className="text-left px-2 py-1">ETA</th>
-                <th className="text-left px-2 py-1">Wind</th>
-                <th className="text-center px-2 py-1">Gusts</th>
-                <th className="text-left px-2 py-1">Waves</th>
-                <th className="text-left px-2 py-1">Swell</th>
-                <th className="text-center px-2 py-1">Power</th>
-                <th className="text-right px-2 py-1">Verdict</th>
+                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-primary)" }}>Waypoint</th>
+                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-primary)" }}>ETA</th>
+                <th className="px-1 py-1.5" style={{ background: "var(--bg-primary)" }}></th>
+                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-primary)" }}>Wind (kt)</th>
+                <th className="text-center px-2 py-1.5" style={{ background: "var(--bg-primary)" }}>Gusts</th>
+                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-primary)" }}>Waves</th>
+                <th className="text-left px-2 py-1.5" style={{ background: "var(--bg-primary)" }}>Swell</th>
+                <th className="text-center px-2 py-1.5" style={{ background: "var(--bg-primary)" }}>Power</th>
+                <th className="text-right px-2 py-1.5" style={{ background: "var(--bg-primary)" }}>Verdict</th>
               </tr>
             </thead>
             <tbody>
@@ -1129,36 +1158,118 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 const tz = tzForPort(wp.port.lon);
                 const wpF = forecasts[wp.port.name] || [];
                 const f = closestForecast(wpF, eta);
-                const wp_power = f?.waveM != null && f?.wavePeriodS != null ? Math.round(0.5 * f.waveM * f.waveM * f.wavePeriodS * 10) / 10 : null;
+                const wp_power = f ? wavePower(f.waveM, f.wavePeriodS) : null;
                 return (
-                  <tr key={wp.port.id || wp.sortOrder} style={{ borderBottom: `1px solid var(--row-border)` }}>
-                    <td className="px-2 py-1 font-semibold whitespace-nowrap" style={{ color: wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--text-secondary)" }}>
+                  <tr key={wp.port.id || wp.sortOrder} style={{ borderBottom: `1px solid var(--row-border)` }} className="hover:opacity-90">
+                    <td className="px-2 py-1.5 font-semibold whitespace-nowrap" style={{ color: wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--text-secondary)" }}>
                       {wp.port.name}
                       {wp.isStop && <span className="text-[9px] ml-1 px-0.5 rounded" style={{ border: `1px solid var(--text-green)`, color: "var(--text-green)" }}>STOP</span>}
                       {wp.isCape && <span className="text-[9px] ml-1 font-bold" style={{ color: "var(--text-yellow)" }}>CAPE</span>}
                     </td>
-                    <td className="px-2 py-1 text-[11px]" style={{ color: "var(--text-blue-light)" }}>{fmtLocal(eta, tz)}</td>
+                    <td className="px-2 py-1.5 text-[11px] whitespace-nowrap" style={{ color: "var(--text-blue-light)" }}>{fmtLocal(eta, tz)}</td>
                     {f ? (
                       <>
-                        <td className="px-2 py-1">{Math.round(f.windKt)}kt {f.beaufort}</td>
-                        <td className="px-2 py-1 text-center">{Math.round(f.gustKt)}</td>
-                        <td className="px-2 py-1">{f.waveM != null ? `${f.waveM}m / ${f.wavePeriodS}s` : "—"}</td>
-                        <td className="px-2 py-1">{f.swellM != null ? `${f.swellM}m / ${f.swellPeriodS}s` : "—"}</td>
-                        <td className="px-2 py-1 text-center" style={{ color: wp_power != null && wp_power >= 15 ? "var(--text-yellow)" : "var(--text-secondary)" }}>{wp_power ?? "—"}</td>
-                        <td className="px-2 py-1 text-right">
-                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ color: f.verdict.startsWith("NO") ? "var(--text-red)" : f.verdict.startsWith("CAUTION") ? "var(--text-yellow)" : "var(--text-green)", background: f.verdict.startsWith("NO") ? "var(--accent-nogo)" : f.verdict.startsWith("CAUTION") ? "var(--accent-caution)" : "var(--accent-go)" }}>
-                            {f.verdict.startsWith("NO") ? "NO-GO" : f.verdict.startsWith("CAUTION") ? "CAUTION" : "GO"}
-                          </span>
+                        <td className="px-1 py-1.5 text-center">{WEATHER_EMOJI[f.weather] || ""}</td>
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          <span className="inline-block" style={{ color: "var(--text-yellow)", transform: `rotate(${f.windDirDeg}deg)` }}>&darr;</span>
+                          {" "}{Math.round(f.windKt)} B{bftNum(f.beaufort)}
+                        </td>
+                        <td className="px-2 py-1.5 text-center">{Math.round(f.gustKt)}</td>
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          <span className="inline-block" style={{ transform: `rotate(${f.waveDirDeg}deg)` }}>&darr;</span>
+                          {" "}{f.waveM != null ? `${f.waveM}m / ${f.wavePeriodS}s` : "—"}
+                        </td>
+                        <td className="px-2 py-1.5 whitespace-nowrap">
+                          <span className="inline-block" style={{ transform: `rotate(${f.swellDirDeg}deg)` }}>&darr;</span>
+                          {" "}{f.swellM != null ? `${f.swellM}m / ${f.swellPeriodS}s` : "—"}
+                        </td>
+                        <td className="px-2 py-1.5 text-center text-[10px]" style={{ color: wp_power != null ? (wp_power >= 30 ? "var(--text-red)" : wp_power >= 15 ? "var(--text-yellow)" : "var(--text-secondary)") : "var(--text-muted)" }}>
+                          {wp_power ?? "—"}
+                        </td>
+                        <td className="px-2 py-1.5 text-right">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={vc(f.verdict)}>{verdictLabel(f.verdict)}</span>
                         </td>
                       </>
                     ) : (
-                      <td colSpan={6} className="px-2 py-1" style={{ color: "var(--text-muted)" }}>No data</td>
+                      <td colSpan={7} className="px-2 py-1.5" style={{ color: "var(--text-muted)" }}>No data</td>
                     )}
                   </tr>
                 );
               })}
             </tbody>
           </table>
+
+          {/* Detailed hourly forecast per waypoint */}
+          <div className="text-[10px] uppercase font-semibold mb-1.5" style={{ color: "var(--text-muted)" }}>Hourly Detail</div>
+          {legWps.map(wp => {
+            const allF = forecasts[wp.port.name] || [];
+            const eta = getETA(wp);
+            const tz = tzForPort(wp.port.lon);
+            const etaMs = eta.getTime();
+            // Show forecasts within ±6 hours of ETA
+            const windowMs = 6 * 3600 * 1000;
+            const filtered = allF.filter(f => {
+              const fMs = new Date(f.time).getTime();
+              return fMs >= etaMs - windowMs && fMs <= etaMs + windowMs;
+            }).slice(0, 12);
+            if (filtered.length === 0) return null;
+            return (
+              <details key={wp.port.id || wp.sortOrder} className="mb-2 rounded-lg overflow-hidden" style={{ border: `1px solid var(--border-light)` }}>
+                <summary className="px-3 py-1.5 cursor-pointer text-xs font-semibold select-none" style={{ background: "var(--bg-primary)", color: wp.isCape ? "var(--text-yellow)" : wp.isStop ? "var(--text-green)" : "var(--text-heading)" }}>
+                  {wp.port.name} — ETA {fmtLocal(eta, tz)}
+                  {wp.isCape && <span className="text-[9px] ml-1 font-bold" style={{ color: "var(--text-yellow)" }}>CAPE</span>}
+                </summary>
+                <div style={{ background: "var(--bg-card)" }}>
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="text-[9px] uppercase" style={{ color: "var(--text-muted)" }}>
+                        <th className="text-left px-2 py-1">Time</th>
+                        <th className="px-1 py-1"></th>
+                        <th className="text-left px-2 py-1">Wind</th>
+                        <th className="text-center px-2 py-1">Gusts</th>
+                        <th className="text-left px-2 py-1">Waves</th>
+                        <th className="text-left px-2 py-1">Swell</th>
+                        <th className="text-center px-1 py-1">kW/m</th>
+                        <th className="text-right px-2 py-1">Verdict</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((f, fi) => {
+                        const fDate = new Date(f.time);
+                        const isNearEta = Math.abs(fDate.getTime() - etaMs) < 2 * 3600 * 1000;
+                        const wp_pwr = wavePower(f.waveM, f.wavePeriodS);
+                        return (
+                          <tr key={fi} style={{ borderBottom: `1px solid var(--row-border)`, background: isNearEta ? "rgba(56,189,248,0.06)" : undefined }}>
+                            <td className="px-2 py-1 whitespace-nowrap" style={{ color: isNearEta ? "var(--text-blue-light)" : "var(--text-secondary)", fontWeight: isNearEta ? 700 : 400 }}>
+                              {fmtTimeOnly(fDate, tz)}{isNearEta ? " ◄" : ""}
+                            </td>
+                            <td className="px-1 py-1 text-center w-6">{WEATHER_EMOJI[f.weather] || ""}</td>
+                            <td className="px-2 py-1 whitespace-nowrap">
+                              <span className="inline-block" style={{ color: "var(--text-yellow)", transform: `rotate(${f.windDirDeg}deg)` }}>&darr;</span>
+                              {" "}{Math.round(f.windKt)} B{bftNum(f.beaufort)}
+                            </td>
+                            <td className="px-2 py-1 text-center">{Math.round(f.gustKt)}</td>
+                            <td className="px-2 py-1 whitespace-nowrap">
+                              {f.waveM != null ? <><span className="inline-block" style={{ transform: `rotate(${f.waveDirDeg}deg)` }}>&darr;</span>{" "}{f.waveM}m / {f.wavePeriodS}s</> : "—"}
+                            </td>
+                            <td className="px-2 py-1 whitespace-nowrap">
+                              {f.swellM != null ? <><span className="inline-block" style={{ transform: `rotate(${f.swellDirDeg}deg)` }}>&darr;</span>{" "}{f.swellM}m / {f.swellPeriodS}s</> : "—"}
+                            </td>
+                            <td className="px-1 py-1 text-center text-[10px]" style={{ color: wp_pwr != null ? (wp_pwr >= 30 ? "var(--text-red)" : wp_pwr >= 15 ? "var(--text-yellow)" : "var(--text-secondary)") : "var(--text-muted)" }}>
+                              {wp_pwr ?? "—"}
+                            </td>
+                            <td className="px-2 py-1 text-right">
+                              <span className="px-1 py-0.5 rounded text-[9px] font-bold" style={vc(f.verdict)}>{verdictLabel(f.verdict)}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+            );
+          })}
         </Section>
       )}
 
