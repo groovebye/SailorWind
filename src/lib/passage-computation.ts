@@ -349,16 +349,17 @@ function interpolatePolarSpeed(polar: PolarData, tws: number, twa: number): numb
   const [twsLo, twsHi, twsFrac] = findBoundingIndices(polar.twsKnots, tws);
   const [twaLo, twaHi, twaFrac] = findBoundingIndices(polar.twaDegrees, twa);
 
-  // Get four corner speeds
-  const s00 = polar.boatSpeeds[twsLo]?.[twaLo] ?? 0;
-  const s01 = polar.boatSpeeds[twsLo]?.[twaHi] ?? 0;
-  const s10 = polar.boatSpeeds[twsHi]?.[twaLo] ?? 0;
-  const s11 = polar.boatSpeeds[twsHi]?.[twaHi] ?? 0;
+  // Matrix layout: boatSpeeds[twaIndex][twsIndex]
+  // Each row is a TWA angle, each column is a TWS speed
+  const s00 = polar.boatSpeeds[twaLo]?.[twsLo] ?? 0;
+  const s01 = polar.boatSpeeds[twaHi]?.[twsLo] ?? 0;
+  const s10 = polar.boatSpeeds[twaLo]?.[twsHi] ?? 0;
+  const s11 = polar.boatSpeeds[twaHi]?.[twsHi] ?? 0;
 
-  // Bilinear interpolation
-  const top = s00 + (s01 - s00) * twaFrac;
-  const bot = s10 + (s11 - s10) * twaFrac;
-  let speed = top + (bot - top) * twsFrac;
+  // Bilinear interpolation: interpolate across TWA first, then TWS
+  const top = s00 + (s01 - s00) * twaFrac;   // TWS low side, interp across TWA
+  const bot = s10 + (s11 - s10) * twaFrac;   // TWS high side, interp across TWA
+  let speed = top + (bot - top) * twsFrac;    // interp across TWS
 
   // Cap at hull speed if defined
   if (polar.hullSpeedKt && speed > polar.hullSpeedKt) {
