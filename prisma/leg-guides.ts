@@ -144,18 +144,20 @@ Exit Ría de Viveiro heading N. **Depart at dawn or before.** Every hour counts 
 - Lighthouse: Fl(2)7.5s, 101m, 25M — unmistakable
 - In moderate conditions, the cape can be rounded 1NM off
 - In strong W/NW, stay 3NM+ off or ABORT back to Viveiro
+- Minor harbour: Ría del Barquero just S of Estaca — delightful ría, exposed only to NE, shallow access 1.5-2.5m
 
 ## Cabo Ortegal (NM 20)
 **DANGER — Second major cape, equally hazardous.**
-- Dramatic cliffs
-- Strong currents
-- Wind acceleration
+- Round at least 2M off due to offlying needle rocks **Los Aguillones** (Reeds)
+- Tidal streams set **SW on the ebb and NE on the flood**. Any current tends to run SW, then S
+- Coast deeply indented, 600m mountains rising only 5M inland
+- Coastal features hard to identify — major lights often obscured by low cloud/mist
 - Lighthouse: Fl(1+3)16s
-- Keep 2NM offshore minimum
-- Cariño (just S of the cape) is an emergency shelter
+- Cariño (2M S of cape) is an emergency shelter — well-sheltered from all W'lies
+- In E'lies, anchor off Espasante FV harbour 2-3M ESE of Cariño
 
 ## Cedeira approach (NM 30)
-After rounding both capes, the coast turns S. The Ría de Cedeira opens to the NW. Enter between the headlands — deep and well-sheltered once inside. Marina is at the head of the ría.`,
+After rounding both capes, the coast turns SSW. About 20M further SW: Cabo Prior, Pta de Castro, Cabo Prioriño Chico → entrance to Ferrol. Ría de Cedeira entered 3M SSW of Pta Candelaria. A small attractively wooded ría offering refuge by day/night to yachts unable to round Cabo Ortegal in strong NE. Marine reserve — anchor anywhere for free. Keep >1M off Pta Candelaria on approach. Piedras de Media Mar — BRB lt tower conspicuous in centre of ría.`,
     milestones: JSON.stringify([
       { name: "Exit Ría de Viveiro", eta_offset_hours: 0.5, lat: 43.705, lon: -7.560, bearing: "350°", visual_ref: "Ría mouth", type: "clear_breakwater" },
       { name: "Commit point before Estaca", eta_offset_hours: 1.2, lat: 43.760, lon: -7.610, bearing: "315°", visual_ref: "Open sea on the bow, Estaca lighthouse still low ahead", type: "course_change", notes: "Turn back to Viveiro here if sea state already steepens." },
@@ -189,17 +191,24 @@ After rounding both capes, the coast turns S. The Ría de Cedeira opens to the N
     pilotageText: `## Departure from Cedeira
 Exit Ría de Cedeira heading NW. Turn S once clear of the headlands.
 
-## Ferrol (NM 10)
-The Ría de Ferrol has a narrow entrance between two castles (San Felipe and La Palma). This is a major naval base — expect military traffic. Contact port control VHF 12 if entering.
+## Cabo Prior → Ferrol (NM 8-10)
+About 20M SW from Cedeira: Cabo Prior, Pta de Castro, Cabo Prioriño Chico — these mark the entrance to Ría de Ferrol. A substantial breakwater extends 145°/0.5M from Cabo Prioriño Chico, halfway across the entrance. Channel is deep and adequately buoyed/lit. In bad weather avoid the outer banks (Tarracidos, Cabaleiro, Leixiñas) to N and W.
+
+If entering Ferrol: WPT 43°26'.59N 08°20'.17W (close to WCM lt buoy). White sector 041.5°-042.5° of Batería de San Cristóbal Dir lt. Major naval base — watch for military traffic. Contact port control VHF 12. Marina Terramar at La Graña (~50 berths). Dársena de Curuxeiras central but in 2m, prone to ferry wash.
 
 If not stopping: pass the ría entrance heading S, keeping 1NM offshore.
 
+## Sada / Ría de Betanzos (NM 15)
+Alternative to La Coruña: Ría de Ares has yacht pontoons, and Sada (Ría de Betanzos) has two well-equipped marinas (Marina Sada 630+ berths, CN Sada 313 berths). Good bus links to La Coruña (30min). Keep clear of Bajo La Miranda (3.7m) in the approach.
+
 ## La Coruña approach (NM 20)
-**Torre de Hércules** — the Roman lighthouse (UNESCO World Heritage) is unmistakable. It marks the NW corner of the city.
+**Torre de Hércules** — the Roman lighthouse (UNESCO World Heritage, Fl(4) 20s 104m 23M) is unmistakable. Marks the NW corner of the city.
 
-Approach from N or NW. Contact Port Control VHF 12 before entering. The outer harbor is large — follow the channel to the inner basin. Marina Coruña is on the S side of the inner harbor.
+**CAUTION: 5M W of Torre de Hércules**, beware large ships using **Punta Langosteira** (huge new commercial port). Direct course across 19M bight W to Islas Sisargas will keep clear of this and other inshore hazards. Passage between Islas Sisargas and mainland not advised. La Coruña is a **port of refuge, accessible in all weathers**.
 
-**WATCH FOR**: Commercial traffic, fishing boats, and the local ferry.`,
+Approach from N or NW. Contact Port Control VHF 12. The outer harbor is large — follow channel to the inner basin. Marina Coruña on S side. Also: RCN on E side (limited visitors).
+
+**WATCH FOR**: Commercial traffic, large ships from Punta Langosteira, fishing boats, and the local ferry.`,
     milestones: JSON.stringify([
       { name: "Clear Cedeira ría", eta_offset_hours: 0.3, lat: 43.730, lon: -8.055, bearing: "340°", visual_ref: "Ría mouth, headlands abeam", type: "clear_breakwater" },
       { name: "Southbound coastal lane", eta_offset_hours: 0.9, lat: 43.685, lon: -8.080, bearing: "205°", visual_ref: "Open coast to port with Ferrol sector ahead", type: "course_change" },
@@ -213,7 +222,8 @@ Approach from N or NW. Contact Port Control VHF 12 before entering. The outer ha
       { name: "La Coruña commercial traffic", lat: 43.370, lon: -8.390, type: "traffic", severity: "medium", description: "Large commercial port. Cargo ships, tankers, and ferries. Stay clear of main shipping channel." },
     ]),
     fallbackPorts: JSON.stringify([
-      { name: "Ferrol", slug: "ferrol", distance_nm: 10, time_hours: 2.0, conditions: "Excellent all-weather shelter. Full services. Naval port — VHF 12." },
+      { name: "Ferrol", slug: "ferrol", distance_nm: 10, time_hours: 2.0, conditions: "Excellent all-weather shelter. Full services. Naval port — VHF 12. Marina Terramar at La Graña ~50 berths." },
+      { name: "Sada (Ría de Betanzos)", slug: "sada", distance_nm: 15, time_hours: 3.0, conditions: "Two marinas (630+ and 313 berths). Sheltered. Bus to La Coruña 30min." },
     ]),
   },
 ];
