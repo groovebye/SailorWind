@@ -99,6 +99,16 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Load per-leg departure overrides
+    const legRoutes = await prisma.passageLegRoute.findMany({
+      where: { passageId: passage.id },
+      select: { legIndex: true, departureOverride: true },
+    });
+    const legDepartureOverrides: Record<number, string> = {};
+    for (const r of legRoutes) {
+      if (r.departureOverride) legDepartureOverrides[r.legIndex] = r.departureOverride;
+    }
+
     const context = await resolveLegTimelineContext(
       {
         id: passage.id,
@@ -106,6 +116,7 @@ export async function GET(req: NextRequest) {
         speed: passage.speed,
         mode: passage.mode,
         model: passage.model,
+        legDepartureOverrides,
         waypoints: passage.waypoints.map((waypoint) => ({
           port: {
             name: waypoint.port.name,
@@ -165,6 +176,7 @@ export async function GET(req: NextRequest) {
       speed: passage.speed,
       mode: passage.mode,
       model: passage.model,
+      legDepartureOverrides,
       waypoints: passage.waypoints.map((waypoint) => ({
         port: {
           name: waypoint.port.name,

@@ -13,6 +13,7 @@ type PassageLike = {
   mode: "daily" | "nonstop";
   model: string;
   waypoints: RouteWaypoint[];
+  legDepartureOverrides?: Record<number, string>; // legIndex → "YYYY-MM-DDTHH:mm" local
 };
 
 // ── Polar data types ────────────────────────────────────────────
@@ -237,6 +238,17 @@ function hashValue(value: unknown) {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
+/**
+ * Parse a local datetime string "YYYY-MM-DDTHH:mm" or ISO with TZ to a Date,
+ * always treating the wall-clock part as the time we care about.
+ * On a UTC server, this means the returned Date.getUTCHours() === the user's intended hour.
+ */
+function parseLocalish(input: string | Date): Date {
+  if (input instanceof Date) return input;
+  const stripped = input.replace("Z", "").replace(/[+-]\d{2}:?\d{2}$/, "").slice(0, 16);
+  return new Date(stripped + "Z"); // append Z so it's parsed as UTC = same wall clock
+}
+
 function buildLegs(passage: PassageLike) {
   const stops = passage.waypoints.filter((w) => w.isStop);
   const legs: Array<{
@@ -248,13 +260,23 @@ function buildLegs(passage: PassageLike) {
     hours: number;
   }> = [];
 
-  const depDate = new Date(passage.departure);
+  const depDate = passage.departure instanceof Date
+    ? new Date(passage.departure)
+    : parseLocalish(passage.departure);
   let currentTime = depDate.getTime();
   const depHour = depDate.getUTCHours();
+  const depMinute = depDate.getUTCMinutes();
 
   for (let i = 0; i < stops.length - 1; i++) {
     const nm = stops[i + 1].port.coastlineNm - stops[i].port.coastlineNm;
     const hours = nm / passage.speed;
+
+    // Apply per-leg departure override if present
+    const override = passage.legDepartureOverrides?.[i];
+    if (override) {
+      currentTime = parseLocalish(override).getTime();
+    }
+
     const departTime = new Date(currentTime);
     const arriveTime = new Date(currentTime + hours * 3600000);
     legs.push({ from: stops[i], to: stops[i + 1], nm, departTime, arriveTime, hours });
@@ -262,7 +284,7 @@ function buildLegs(passage: PassageLike) {
     if (passage.mode === "daily" && i < stops.length - 2) {
       const nextDay = new Date(arriveTime);
       nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-      nextDay.setUTCHours(depHour, 0, 0, 0);
+      nextDay.setUTCHours(depHour, depMinute, 0, 0);
       if (nextDay.getTime() < arriveTime.getTime()) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
       currentTime = nextDay.getTime();
     } else {

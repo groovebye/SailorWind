@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLegRoute, saveManualRoute, resetToAutoRoute } from "@/lib/leg-route";
+import { getLegRoute, saveManualRoute, resetToAutoRoute, saveDepartureOverride } from "@/lib/leg-route";
 import { prisma } from "@/lib/db";
 
 // GET /api/leg-route?passageId=&legIndex=&fromName=&fromLat=&fromLon=&toName=&toLat=&toLon=
@@ -33,17 +33,13 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(result);
 }
 
-// POST /api/leg-route — save manual route
+// POST /api/leg-route — save manual route OR departure override
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { passageId, legIndex, points, notes } = body;
+  const { passageId, legIndex, points, notes, departureOverride } = body;
 
-  if (!passageId || legIndex === undefined || !points?.length) {
-    return NextResponse.json({ error: "passageId, legIndex, points required" }, { status: 400 });
-  }
-
-  if (points.length < 2) {
-    return NextResponse.json({ error: "At least 2 points required" }, { status: 400 });
+  if (!passageId || legIndex === undefined) {
+    return NextResponse.json({ error: "passageId, legIndex required" }, { status: 400 });
   }
 
   const passage = await prisma.passage.findFirst({
@@ -53,7 +49,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Passage not found" }, { status: 404 });
   }
 
+  // Departure override only (no route changes)
+  if (departureOverride !== undefined && !points) {
+    await saveDepartureOverride(passage.id, legIndex, departureOverride);
+    return NextResponse.json({ ok: true });
+  }
+
+  // Manual route save (with optional departure override)
+  if (!points?.length || points.length < 2) {
+    return NextResponse.json({ error: "At least 2 points required" }, { status: 400 });
+  }
+
   await saveManualRoute(passage.id, legIndex, points, notes);
+  if (departureOverride !== undefined) {
+    await saveDepartureOverride(passage.id, legIndex, departureOverride);
+  }
   return NextResponse.json({ ok: true });
 }
 

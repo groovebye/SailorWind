@@ -11,6 +11,7 @@ export interface LegRouteResult {
   points: { lat: number; lon: number; label?: string; kind?: string }[];
   distanceNm: number;
   hasManualOverride: boolean;
+  departureOverride?: string | null;
 }
 
 /**
@@ -56,6 +57,7 @@ export async function getLegRoute(
       points: pts,
       distanceNm: manual.distanceNm || polylineDistanceNm(pts),
       hasManualOverride: true,
+      departureOverride: manual.departureOverride,
     };
   }
 
@@ -122,7 +124,29 @@ export async function getLegRoute(
     points: pts,
     distanceNm: polylineDistanceNm(pts),
     hasManualOverride: !!manual,
+    departureOverride: manual?.departureOverride ?? null,
   };
+}
+
+/**
+ * Save just the departure override for a leg (without changing route geometry).
+ * If passing null, clears the override.
+ */
+export async function saveDepartureOverride(
+  passageId: string,
+  legIndex: number,
+  departureOverride: string | null,
+): Promise<void> {
+  await prisma.passageLegRoute.upsert({
+    where: { passageId_legIndex: { passageId, legIndex } },
+    create: { passageId, legIndex, mode: "auto", departureOverride },
+    update: { departureOverride, updatedAt: new Date() },
+  });
+
+  // Invalidate cached LegComputation
+  await prisma.legComputation.deleteMany({
+    where: { passageId, legIndex },
+  });
 }
 
 /**

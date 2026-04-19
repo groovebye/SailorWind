@@ -5,33 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { ForecastEntry } from "@/lib/weather";
 import { useTheme } from "@/lib/theme";
-// Client-side schedule computation (no DB imports)
-function buildScheduleClient(
-  departure: string | Date, speed: number, mode: string,
-  stops: { name: string; slug: string; lat: number; lon: number; coastlineNm: number }[],
-  resolvedDistances?: Record<number, number>,
-) {
-  const depDate = new Date(departure);
-  const depHour = depDate.getUTCHours();
-  const depMinute = depDate.getUTCMinutes();
-  let currentTime = depDate.getTime();
-  const legs: { from: typeof stops[0]; to: typeof stops[0]; distanceNm: number; hours: number; departTime: Date; arriveTime: Date }[] = [];
-  for (let i = 0; i < stops.length - 1; i++) {
-    const distanceNm = resolvedDistances?.[i] ?? (stops[i + 1].coastlineNm - stops[i].coastlineNm);
-    const hours = distanceNm / speed;
-    const departTime = new Date(currentTime);
-    const arriveTime = new Date(currentTime + hours * 3600000);
-    legs.push({ from: stops[i], to: stops[i + 1], distanceNm: Math.round(distanceNm * 10) / 10, hours: Math.round(hours * 10) / 10, departTime, arriveTime });
-    if (mode === "daily" && i < stops.length - 2) {
-      const nextDay = new Date(arriveTime);
-      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-      nextDay.setUTCHours(depHour, depMinute, 0, 0);
-      if (nextDay.getTime() < arriveTime.getTime()) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-      currentTime = nextDay.getTime();
-    } else { currentTime = arriveTime.getTime(); }
-  }
-  return legs;
-}
+import { buildClientSchedule } from "@/lib/passage-schedule-client";
 
 const WEATHER_EMOJI: Record<string, string> = {
   sun: "\u2600\uFE0F", partly: "\u26C5", cloudy: "\u2601\uFE0F",
@@ -109,6 +83,7 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
   const [error, setError] = useState<string | null>(null);
   const [windyPopup, setWindyPopup] = useState(false);
   const [resolvedLegDistances, setResolvedLegDistances] = useState<Record<number, number>>({});
+  const [legDepartureOverrides, setLegDepartureOverrides] = useState<Record<number, string>>({});
 
   const [departure, setDeparture] = useState("");
   const [speed, setSpeed] = useState(5.0);
@@ -141,10 +116,21 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
         `/api/leg-route?passageId=${id}&legIndex=${index}&fromName=${encodeURIComponent(from.port.name)}&fromLat=${from.port.lat}&fromLon=${from.port.lon}&toName=${encodeURIComponent(to.port.name)}&toLat=${to.port.lat}&toLon=${to.port.lon}`
       );
       const data = await response.json();
-      return [index, typeof data.distanceNm === "number" ? data.distanceNm : to.port.coastlineNm - from.port.coastlineNm] as const;
+      return {
+        index,
+        distance: typeof data.distanceNm === "number" ? data.distanceNm : to.port.coastlineNm - from.port.coastlineNm,
+        departureOverride: data.departureOverride as string | null | undefined,
+      };
     })).then((entries) => {
       if (cancelled) return;
-      setResolvedLegDistances(Object.fromEntries(entries));
+      const distances: Record<number, number> = {};
+      const overrides: Record<number, string> = {};
+      for (const e of entries) {
+        distances[e.index] = e.distance;
+        if (e.departureOverride) overrides[e.index] = e.departureOverride;
+      }
+      setResolvedLegDistances(distances);
+      setLegDepartureOverrides(overrides);
     }).catch(() => {});
 
     return () => { cancelled = true; };
@@ -263,9 +249,10 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
     lat: s.port.lat, lon: s.port.lon,
     coastlineNm: s.port.coastlineNm,
   }));
-  const scheduledLegs = buildScheduleClient(
-    departure || passage.departure, speed, mode, stopPorts,
+  const scheduledLegs = buildClientSchedule(
+    departure || passage.departure, speed, mode as "daily" | "nonstop", stopPorts,
     resolvedLegDistances,
+    legDepartureOverrides,
   );
   // Map schedule legs to passage waypoints for rendering
   const legs = scheduledLegs.map((sl, i) => ({

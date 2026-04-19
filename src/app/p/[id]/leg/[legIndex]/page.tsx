@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useTheme } from "@/lib/theme";
 import type { ForecastEntry } from "@/lib/weather";
+import { buildClientSchedule } from "@/lib/passage-schedule-client";
 
 const LegMap = dynamic(() => import("./LegMap"), { ssr: false });
 const MarinaMiniMap = dynamic(() => import("@/components/MarinaMiniMap"), { ssr: false });
@@ -220,6 +221,9 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [guide, setGuide] = useState<LegGuide | null>(null);
   const [webcams, setWebcams] = useState<Webcam[]>([]);
   const [viewMode, setViewMode] = useState<"quick" | "full">("full");
+  const [legDepartureOverrides, setLegDepartureOverrides] = useState<Record<number, string>>({});
+  const [editingDeparture, setEditingDeparture] = useState(false);
+  const [departureInput, setDepartureInput] = useState("");
 
   // Route editing state
   const [isEditingRoute, setIsEditingRoute] = useState(false);
@@ -247,26 +251,31 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
 
   useEffect(() => { fetch(`/api/passage?id=${id}`).then(r => r.json()).then(setPassage); }, [id]);
 
-  // Compute legs
+  // Compute legs using the shared schedule engine (single source of truth)
   const stops = passage?.waypoints.filter(w => w.isStop) || [];
-  const legs: { from: Waypoint; to: Waypoint; nm: number; departTime: Date; arriveTime: Date; hours: number }[] = [];
-  if (passage) {
-    const depDate = new Date(passage.departure);
-    let currentTime = depDate.getTime();
-    const depHour = depDate.getUTCHours();
-    for (let i = 0; i < stops.length - 1; i++) {
-      const nm = stops[i + 1].port.coastlineNm - stops[i].port.coastlineNm;
-      const hours = nm / passage.speed;
-      const departTime = new Date(currentTime);
-      const arriveTime = new Date(currentTime + hours * 3600000);
-      legs.push({ from: stops[i], to: stops[i + 1], nm, departTime, arriveTime, hours });
-      if (passage.mode === "daily" && i < stops.length - 2) {
-        const nextDay = new Date(arriveTime); nextDay.setUTCDate(nextDay.getUTCDate() + 1); nextDay.setUTCHours(depHour, 0, 0, 0);
-        if (nextDay.getTime() < arriveTime.getTime()) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-        currentTime = nextDay.getTime();
-      } else { currentTime = arriveTime.getTime(); }
-    }
-  }
+  const stopPorts = stops.map(s => ({
+    name: s.port.name, slug: s.port.slug,
+    lat: s.port.lat, lon: s.port.lon,
+    coastlineNm: s.port.coastlineNm,
+  }));
+  const scheduledLegs = passage
+    ? buildClientSchedule(
+        passage.departure,
+        passage.speed,
+        passage.mode as "daily" | "nonstop",
+        stopPorts,
+        undefined,
+        legDepartureOverrides,
+      )
+    : [];
+  const legs = scheduledLegs.map((l, i) => ({
+    from: stops[i],
+    to: stops[i + 1],
+    nm: l.distanceNm,
+    departTime: l.departTime,
+    arriveTime: l.arriveTime,
+    hours: l.hours,
+  }));
 
   const leg = legs[legIndex] || null;
   const dest = leg?.to.port || null;
@@ -335,10 +344,59 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           setResolvedRoutePoints(null);
           setResolvedRouteDistanceNm(null);
         }
+        if (d.departureOverride) {
+          setLegDepartureOverrides(prev => ({ ...prev, [legIndex]: d.departureOverride }));
+        }
         setRouteLoaded(true);
       }).catch(() => { setRouteLoaded(true); });
     return () => c.abort();
   }, [id, legIndex, fromSlug, destSlug]);
+
+  async function saveDepartureOverride(localIso: string) {
+    const fp = fromPort;
+    const dp = dest;
+    if (!fp || !dp) return;
+    const response = await fetch("/api/leg-route", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        passageId: id, legIndex,
+        fromName: fp.name, fromLat: fp.lat, fromLon: fp.lon,
+        toName: dp.name, toLat: dp.lat, toLon: dp.lon,
+        departureOverride: localIso,
+      }),
+    });
+    if (response.ok) {
+      setLegDepartureOverrides(prev => ({ ...prev, [legIndex]: localIso }));
+      setEditingDeparture(false);
+      setTimelineData(null); // invalidate cached timeline
+    }
+  }
+
+  async function clearDepartureOverride() {
+    const fp = fromPort;
+    const dp = dest;
+    if (!fp || !dp) return;
+    const response = await fetch("/api/leg-route", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        passageId: id, legIndex,
+        fromName: fp.name, fromLat: fp.lat, fromLon: fp.lon,
+        toName: dp.name, toLat: dp.lat, toLon: dp.lon,
+        departureOverride: null,
+      }),
+    });
+    if (response.ok) {
+      setLegDepartureOverrides(prev => {
+        const next = { ...prev };
+        delete next[legIndex];
+        return next;
+      });
+      setEditingDeparture(false);
+      setTimelineData(null);
+    }
+  }
 
   // Fetch execution
   useEffect(() => {
@@ -643,7 +701,59 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             <span className="text-2xl font-black px-3 py-1 rounded-lg" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>
             <div className="text-xs" style={{ color: "var(--text-secondary)" }}>
               <div>{resolvedLegDistanceNm.toFixed(1)} NM · ~{resolvedLegHours.toFixed(1)}h · {passage.speed}kt</div>
-              <div>{fmtLocal(leg.departTime, fromTz)} → {resolvedArriveTime ? fmtLocal(resolvedArriveTime, toTz) : "—"}</div>
+              <div className="flex items-center gap-2">
+                {editingDeparture ? (
+                  <>
+                    <input
+                      type="datetime-local"
+                      value={departureInput}
+                      onChange={(e) => setDepartureInput(e.target.value)}
+                      className="px-1 py-0.5 text-[11px] rounded"
+                      style={{ background: "var(--bg-primary)", color: "var(--text-heading)", border: `1px solid var(--border)` }}
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => saveDepartureOverride(departureInput)}
+                      className="text-[10px] px-2 py-0.5 rounded"
+                      style={{ background: "var(--accent-go)", color: "var(--text-green)", border: `1px solid var(--text-green)40` }}
+                    >Save</button>
+                    <button
+                      onClick={() => setEditingDeparture(false)}
+                      className="text-[10px] px-2 py-0.5 rounded"
+                      style={{ background: "var(--bg-primary)", color: "var(--text-muted)", border: `1px solid var(--border)` }}
+                    >Cancel</button>
+                    {legDepartureOverrides[legIndex] && (
+                      <button
+                        onClick={clearDepartureOverride}
+                        className="text-[10px] px-2 py-0.5 rounded"
+                        style={{ background: "var(--accent-nogo)", color: "var(--text-red)", border: `1px solid var(--text-red)40` }}
+                      >Reset to passage</button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <span>{fmtLocal(leg.departTime, fromTz)} → {resolvedArriveTime ? fmtLocal(resolvedArriveTime, toTz) : "—"}</span>
+                    <button
+                      onClick={() => {
+                        // Pre-fill with current leg departTime in local datetime-local format
+                        const d = leg.departTime;
+                        const pad = (n: number) => String(n).padStart(2, "0");
+                        const localStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+                        setDepartureInput(localStr);
+                        setEditingDeparture(true);
+                      }}
+                      className="text-[10px] px-1.5 py-0.5 rounded opacity-70 hover:opacity-100"
+                      style={{ background: "var(--bg-primary)", color: "var(--text-blue-light)", border: `1px solid var(--border-light)` }}
+                      title="Edit departure time for this leg only"
+                    >🕒 edit</button>
+                    {legDepartureOverrides[legIndex] && (
+                      <span className="text-[10px] px-1 py-0.5 rounded" style={{ color: "var(--text-yellow)", background: "var(--accent-caution)" }}>
+                        custom time
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex gap-4 text-xs" style={{ color: "var(--text-secondary)" }}>
