@@ -111,6 +111,9 @@ model Passage {
   model       String   @default("ecmwf_ifs025")
   source      String   @default("openmeteo")  // "openmeteo" | "windy"
 
+  // Vessel for this passage (defaults to Bossanova when null). Resolved by id.
+  vesselProfileId String?
+
   // Cached forecasts — keyed by "{source}_{model}": { data: {...}, cachedAt: ISO }
   forecastCache Json?
 

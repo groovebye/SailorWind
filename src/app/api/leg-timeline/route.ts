@@ -71,7 +71,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Passage not found" }, { status: 404 });
     }
 
-    let vessel = await prisma.vesselProfile.findUnique({ where: { slug: "bossanova" } });
+    // Resolve the passage's vessel; fall back to Bossanova (and create if absent).
+    let vessel = passage.vesselProfileId
+      ? await prisma.vesselProfile.findUnique({ where: { id: passage.vesselProfileId } })
+      : null;
+    if (!vessel) vessel = await prisma.vesselProfile.findUnique({ where: { slug: "bossanova" } });
     if (!vessel) {
       vessel = await prisma.vesselProfile.create({
         data: {

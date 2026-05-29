@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const body = await req.json();
-  const { id, departure, speed, mode, model, source } = body;
+  const { id, departure, speed, mode, model, source, vesselProfileId } = body;
 
   if (!id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
@@ -88,6 +88,7 @@ export async function PATCH(req: NextRequest) {
       ...(mode !== undefined && { mode }),
       ...(model !== undefined && { model }),
       ...(source !== undefined && { source }),
+      ...(vesselProfileId !== undefined && { vesselProfileId: vesselProfileId || null }),
     },
   });
 

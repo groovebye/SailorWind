@@ -28,8 +28,10 @@ interface Waypoint { port: Port; isStop: boolean; isCape: boolean; sortOrder: nu
 interface Passage {
   id: string; shortId: string; name: string | null;
   departure: string; speed: number; mode: string; model: string;
+  vesselProfileId?: string | null;
   waypoints: Waypoint[];
 }
+interface Vessel { id: string; name: string; slug: string; }
 
 function fmtLocal(d: Date, tz: string) {
   const s = d.toLocaleString("en-GB", {
@@ -90,6 +92,8 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
   const [speed, setSpeed] = useState(5.0);
   const [mode, setMode] = useState("daily");
   const [model, setModel] = useState("ecmwf_ifs025");
+  const [vessels, setVessels] = useState<Vessel[]>([]);
+  const [vesselId, setVesselId] = useState("");
 
   useEffect(() => {
     fetch(`/api/passage?id=${id}`)
@@ -101,9 +105,14 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
         setSpeed(data.speed);
         setMode(data.mode);
         setModel(data.model);
+        setVesselId(data.vesselProfileId || "");
         if (data.source === "windy") setWeatherSource("windy");
       });
   }, [id]);
+
+  useEffect(() => {
+    fetch("/api/vessels").then((r) => r.json()).then((v) => { if (Array.isArray(v)) setVessels(v); }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!passage) return;
@@ -230,10 +239,10 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
       fetch("/api/passage", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, departure, speed, mode, model, source: weatherSource }),
+        body: JSON.stringify({ id, departure, speed, mode, model, source: weatherSource, vesselProfileId: vesselId || null }),
       });
     }, 500);
-  }, [departure, speed, mode, model, weatherSource, id, passage]);
+  }, [departure, speed, mode, model, weatherSource, vesselId, id, passage]);
 
   async function handleDelete() {
     if (!confirm("Are you sure you want to delete this passage?")) return;
@@ -393,6 +402,16 @@ export default function PassagePage({ params }: { params: Promise<{ id: string }
               </select>
             )}
           </div>
+          {vessels.length > 1 && (
+            <div>
+              <label className="block text-[10px] mb-0.5" style={{ color: "var(--text-muted)" }}>Vessel</label>
+              <select value={vesselId} onChange={(e) => setVesselId(e.target.value)}
+                style={{ background: "var(--bg-input)", border: `1px solid var(--border)`, color: "var(--text-primary)" }}
+                className="rounded px-2.5 h-9 text-sm focus:outline-none">
+                {vessels.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+            </div>
+          )}
         </div>
       </div>
 
