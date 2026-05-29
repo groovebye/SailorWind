@@ -7,17 +7,18 @@
 - Docs reference secrets as placeholders only: `${POSTGRES_PASSWORD}`, `<SERVER_IP>`.
 - Secret scanning runs via [`.gitleaks.toml`](.gitleaks.toml) — locally and in CI.
 
-## ⚠️ Exposed-credential incident (action required on the server)
+## Exposed-credential incident — RESOLVED 2026-05-29
 
-The following were previously committed to `README.md` / `DOCS.md` and therefore exist
-in git history. **Redacting the files does not remove them from history** — anyone with
-repo access (or a clone) can still read old commits. They must be treated as compromised
-and rotated.
+The DB password and HTTP Basic Auth password were previously committed to
+`README.md` / `DOCS.md` and remain in git history. **Both have now been ROTATED
+on the server** (new values in the local vault `.secrets/credentials.md`), so the
+strings still present in history are dead and no longer grant access. The Windy
+API keys were never in git (server-compose only). Server IP is not a secret.
 
-Compromised values:
-- PostgreSQL password (`POSTGRES_PASSWORD` / `DATABASE_URL`)
-- HTTP Basic Auth credentials (nginx)
-- Server IP
+Status:
+- ✅ PostgreSQL password — rotated 2026-05-29 (`ALTER USER` + compose updated).
+- ✅ HTTP Basic Auth — rotated 2026-05-29 (`.htpasswd` + nginx reload).
+- ◻️ Git-history purge — now OPTIONAL (cosmetic: removes the dead strings). Steps below.
 
 ### 1. Rotate (do this first — owner action on the server)
 
