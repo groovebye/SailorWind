@@ -491,16 +491,39 @@ services:
 
 ### Deploy Workflow
 
-```bash
-# Local
-cd ~/Projects/sailplanner-next
-git add . && git commit -m "..." && git push
+Prod manages schema via `prisma db push` (migrations are incomplete), so the
+runtime image has **no** prisma CLI / tsx. Apply schema changes **surgically**
+(idempotent `ALTER`/`CREATE`) and run seeders from a dev box against the prod DB
+through an SSH tunnel — never `db push --accept-data-loss` on prod (it can drop
+drifted columns).
 
-# Server
-ssh root@sailorwind.com
-cd /opt/sailorwind/app && git pull origin main
-cd /opt/sailorwind && docker compose up --build -d
+```bash
+# 1. Local: commit + push (server tracks origin/master)
+git add . && git commit -m "..." && git push origin main && git push origin main:master
+
+# 2. Prod DB backup (always, before any schema/data change)
+ssh root@sailorwind.com 'docker compose -f /opt/sailorwind/docker-compose.yml \
+  exec -T db pg_dump -U sailor sailplanner | gzip > /opt/sailorwind/backups/predeploy_$(date +%Y%m%d-%H%M).sql.gz'
+
+# 3. Schema change? Apply the specific column/table, e.g.:
+ssh root@sailorwind.com 'docker compose -f /opt/sailorwind/docker-compose.yml exec -T db \
+  psql -U sailor -d sailplanner -c "ALTER TABLE \"PortArea\" ADD COLUMN IF NOT EXISTS \"coastOrder\" DOUBLE PRECISION;"'
+
+# 4. Seed/data change? Tunnel to the db container and run the seeder from local:
+DB_IP=$(ssh root@sailorwind.com 'docker inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" sailorwind-db-1')
+ssh -f -N -L 5433:$DB_IP:5432 root@sailorwind.com
+DATABASE_URL="postgresql://sailor:<DB_PW>@localhost:5433/sailplanner" npm run seed:coast   # additive; never full `seed` (prod has more data)
+pkill -f "5433:$DB_IP:5432"
+
+# 5. Code change? Pull + rebuild the app (db untouched):
+ssh root@sailorwind.com 'cd /opt/sailorwind/app && git pull origin master \
+  && cd /opt/sailorwind && docker compose up --build -d app'
 ```
+
+**Background forecast refresh** runs from the server crontab (every 3 h):
+`0 */3 * * * curl -fsS -X POST http://127.0.0.1:3000/api/forecast/refresh >/dev/null 2>&1`
+
+**Add a vessel:** `npx tsx scripts/add-vessel.ts <spec.json>` (polar from ORC `.pol`/CSV).
 
 ### Regenerate Route Data
 
