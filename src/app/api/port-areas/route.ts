@@ -22,7 +22,8 @@ export async function GET(req: NextRequest) {
   }
 
   const areas = await prisma.portArea.findMany({
-    orderBy: { name: "asc" },
+    // Coast order: Gijón → N coast → La Coruña → Portugal → Gibraltar.
+    orderBy: [{ coastOrder: "asc" }, { name: "asc" }],
     include: {
       marinas: {
         include: { prices: { where: { loaMeters: 9.5 } } },

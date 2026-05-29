@@ -3,6 +3,15 @@ import { buildSeaRoute, type LatLon } from "@/lib/coastline";
 import { getLegRoute } from "@/lib/leg-route";
 import { fetchForecast, type ForecastEntry, type WeatherModel } from "@/lib/weather";
 import { getTidePrediction, tideStateAt, type TidePrediction, type TidalStream } from "@/lib/tides";
+import {
+  toRad,
+  bearing,
+  absoluteAngleDiff,
+  signedAngleDiff,
+  buildCumulativeRoute,
+  positionAtDistance,
+} from "@/lib/geo";
+import { buildClientSchedule } from "@/lib/passage-schedule-client";
 
 type RoutePoint = { name: string; slug: string; lat: number; lon: number; coastlineNm: number; type: string };
 type RouteWaypoint = { port: RoutePoint; isStop: boolean; isCape: boolean; sortOrder: number };
@@ -182,48 +191,6 @@ type TideContext = {
 const HALF_TIDE_HOURS = 6.2;
 const PORT_AREA_NAMES = new Set(["Arrival", "Departure"]);
 
-function toRad(value: number) {
-  return (value * Math.PI) / 180;
-}
-
-function haversineNm(a: [number, number], b: [number, number]) {
-  const rKm = 6371;
-  const dLat = toRad(b[0] - a[0]);
-  const dLon = toRad(b[1] - a[1]);
-  const lat1 = toRad(a[0]);
-  const lat2 = toRad(b[0]);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  const km = 2 * rKm * Math.asin(Math.sqrt(h));
-  return km * 0.539957;
-}
-
-function normalizeAngle(deg: number) {
-  return ((deg % 360) + 360) % 360;
-}
-
-function bearing(from: [number, number], to: [number, number]) {
-  const lat1 = toRad(from[0]);
-  const lat2 = toRad(to[0]);
-  const dLon = toRad(to[1] - from[1]);
-  const y = Math.sin(dLon) * Math.cos(lat2);
-  const x =
-    Math.cos(lat1) * Math.sin(lat2) -
-    Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-  return normalizeAngle((Math.atan2(y, x) * 180) / Math.PI);
-}
-
-function absoluteAngleDiff(a: number, b: number) {
-  const diff = Math.abs(normalizeAngle(a) - normalizeAngle(b));
-  return diff > 180 ? 360 - diff : diff;
-}
-
-function signedAngleDiff(a: number, b: number) {
-  const diff = normalizeAngle(a - b);
-  return diff > 180 ? diff - 360 : diff;
-}
-
 function directionToDegrees(direction: string | null): number | null {
   if (!direction) return null;
   const dirs = [
@@ -239,60 +206,41 @@ function hashValue(value: unknown) {
 }
 
 /**
- * Parse a local datetime string "YYYY-MM-DDTHH:mm" or ISO with TZ to a Date,
- * always treating the wall-clock part as the time we care about.
- * On a UTC server, this means the returned Date.getUTCHours() === the user's intended hour.
+ * Build the leg list (departure/arrival instants) for a passage.
+ *
+ * Delegates to the canonical client schedule engine so the dashboard, the
+ * server schedule wrapper, and the timeline all use ONE implementation and
+ * never diverge. Distance here is the coastlineNm fallback; the actual leg
+ * distance used for the simulation is the resolved route geometry
+ * (see resolveLegTimelineContext → routeDistanceNm).
  */
-function parseLocalish(input: string | Date): Date {
-  if (input instanceof Date) return input;
-  const stripped = input.replace("Z", "").replace(/[+-]\d{2}:?\d{2}$/, "").slice(0, 16);
-  return new Date(stripped + "Z"); // append Z so it's parsed as UTC = same wall clock
-}
-
 function buildLegs(passage: PassageLike) {
   const stops = passage.waypoints.filter((w) => w.isStop);
-  const legs: Array<{
-    from: RouteWaypoint;
-    to: RouteWaypoint;
-    nm: number;
-    departTime: Date;
-    arriveTime: Date;
-    hours: number;
-  }> = [];
+  const flatStops = stops.map((s) => ({
+    name: s.port.name,
+    slug: s.port.slug,
+    lat: s.port.lat,
+    lon: s.port.lon,
+    coastlineNm: s.port.coastlineNm,
+  }));
 
-  const depDate = passage.departure instanceof Date
-    ? new Date(passage.departure)
-    : parseLocalish(passage.departure);
-  let currentTime = depDate.getTime();
-  const depHour = depDate.getUTCHours();
-  const depMinute = depDate.getUTCMinutes();
+  const schedule = buildClientSchedule(
+    passage.departure,
+    passage.speed,
+    passage.mode,
+    flatStops,
+    undefined,
+    passage.legDepartureOverrides,
+  );
 
-  for (let i = 0; i < stops.length - 1; i++) {
-    const nm = stops[i + 1].port.coastlineNm - stops[i].port.coastlineNm;
-    const hours = nm / passage.speed;
-
-    // Apply per-leg departure override if present
-    const override = passage.legDepartureOverrides?.[i];
-    if (override) {
-      currentTime = parseLocalish(override).getTime();
-    }
-
-    const departTime = new Date(currentTime);
-    const arriveTime = new Date(currentTime + hours * 3600000);
-    legs.push({ from: stops[i], to: stops[i + 1], nm, departTime, arriveTime, hours });
-
-    if (passage.mode === "daily" && i < stops.length - 2) {
-      const nextDay = new Date(arriveTime);
-      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-      nextDay.setUTCHours(depHour, depMinute, 0, 0);
-      if (nextDay.getTime() < arriveTime.getTime()) nextDay.setUTCDate(nextDay.getUTCDate() + 1);
-      currentTime = nextDay.getTime();
-    } else {
-      currentTime = arriveTime.getTime();
-    }
-  }
-
-  return legs;
+  return schedule.map((leg, i) => ({
+    from: stops[i],
+    to: stops[i + 1],
+    nm: leg.distanceNm,
+    departTime: leg.departTime,
+    arriveTime: leg.arriveTime,
+    hours: leg.hours,
+  }));
 }
 
 function classifyPointOfSail(twa: number) {
@@ -641,33 +589,6 @@ function signedSide(windFromDeg: number, courseDeg: number): "port" | "starboard
   return signed > 0 ? "starboard" : "port";
 }
 
-function positionAtDistance(route: [number, number][], cumulativeNm: number[], targetNm: number): [number, number] {
-  if (route.length === 0) return [0, 0];
-  if (targetNm <= 0) return route[0];
-  const total = cumulativeNm[cumulativeNm.length - 1] ?? 0;
-  if (targetNm >= total) return route[route.length - 1];
-
-  for (let i = 1; i < cumulativeNm.length; i++) {
-    if (cumulativeNm[i] >= targetNm) {
-      const prev = cumulativeNm[i - 1];
-      const next = cumulativeNm[i];
-      const ratio = next === prev ? 0 : (targetNm - prev) / (next - prev);
-      const [lat1, lon1] = route[i - 1];
-      const [lat2, lon2] = route[i];
-      return [lat1 + (lat2 - lat1) * ratio, lon1 + (lon2 - lon1) * ratio];
-    }
-  }
-  return route[route.length - 1];
-}
-
-function buildCumulativeRoute(route: [number, number][]) {
-  const cumulative = [0];
-  for (let i = 1; i < route.length; i++) {
-    cumulative.push(cumulative[i - 1] + haversineNm(route[i - 1], route[i]));
-  }
-  return cumulative;
-}
-
 function pickSegmentName(fraction: number, remainingNm: number, capes: RouteWaypoint[], from: RouteWaypoint, to: RouteWaypoint) {
   if (fraction < 0.08) return `Departure ${from.port.name}`;
   if (remainingNm < 2) return `Arrival ${to.port.name}`;
@@ -797,7 +718,9 @@ function collectForecastsHash(forecasts: Record<string, ForecastEntry[]>) {
   const compact = Object.fromEntries(
     Object.entries(forecasts).map(([name, entries]) => [
       name,
-      entries.slice(0, 12).map((entry) => [
+      // ~36h of coverage. Entries are now hourly (were 3-hourly), so sample
+      // every 3rd to keep a similar time-span and stable cache signatures.
+      entries.filter((_, i) => i % 3 === 0).slice(0, 12).map((entry) => [
         entry.time,
         Math.round(entry.windKt),
         Math.round(entry.gustKt),
@@ -951,7 +874,12 @@ export function computeLegTimelineFromContext(
   let distanceFromStartNm = 0;
   let guard = 0;
 
-  while (distanceFromStartNm < routeDistanceNm - 0.1 && guard < 72) {
+  // Hourly simulation, bounded only by the forecast horizon. Open-Meteo/Windy
+  // give ~10 days; allow a small interpolation margin and a hard runaway cap.
+  // (Previously hard-capped at 72h, which silently truncated long passages.)
+  const MAX_TIMELINE_HOURS = 14 * 24;
+
+  while (distanceFromStartNm < routeDistanceNm - 0.1 && guard < MAX_TIMELINE_HOURS) {
     const sampleTime = new Date(leg.departTime.getTime() + elapsedHours * 3600000);
     const position = positionAtDistance(routeGeometry, routeCumulative, distanceFromStartNm);
     const ahead = positionAtDistance(routeGeometry, routeCumulative, Math.min(routeDistanceNm, distanceFromStartNm + 0.5));
@@ -1102,6 +1030,21 @@ export function computeLegTimelineFromContext(
   const estimatedArrival = new Date(leg.departTime.getTime() + timeline.length * 3600000);
   const summary = buildSummary(timeline, routeDistanceNm, estimatedArrival, passage.model, vessel);
   const warnings = uniqueWarnings(timeline);
+
+  // Surface coverage limits instead of silently truncating.
+  if (distanceFromStartNm < routeDistanceNm - 0.1) {
+    warnings.unshift(`Timeline truncated at ${guard}h — passage exceeds the simulation cap; treat later legs as indicative only`);
+  } else {
+    const horizon = Math.max(
+      0,
+      ...Object.values(forecasts).map((entries) =>
+        entries.length ? new Date(entries[entries.length - 1].time).getTime() : 0,
+      ),
+    );
+    if (horizon > 0 && estimatedArrival.getTime() > horizon) {
+      warnings.unshift("Arrival is beyond the forecast horizon (~10 days) — later hours reuse the last available forecast");
+    }
+  }
 
   return {
     summary,

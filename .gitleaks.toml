@@ -1,0 +1,32 @@
+# gitleaks config — prevent secrets from being committed.
+# Run locally:  gitleaks detect --no-banner
+# CI / pre-commit should fail the build on any finding.
+title = "SailorWind secret scanning"
+
+[extend]
+useDefault = true
+
+# Project-specific rules on top of gitleaks defaults.
+[[rules]]
+id = "sailorwind-db-url"
+description = "Postgres connection string with embedded password"
+regex = '''postg(?:res|resql)://[^:\s]+:[^@\s]+@'''
+tags = ["database", "credentials"]
+
+[[rules]]
+id = "windy-api-key"
+description = "Hardcoded Windy API key (must come from env)"
+regex = '''(?i)windy[_-]?api[_-]?key\s*[:=]\s*["'][A-Za-z0-9]{8,}["']'''
+tags = ["api-key"]
+
+[allowlist]
+description = "Placeholders and env references are not secrets"
+regexes = [
+  '''\$\{[A-Z_]+\}''',          # ${POSTGRES_PASSWORD}
+  '''<[A-Z_]+>''',              # <SERVER_IP>
+  '''process\.env\.''',         # process.env.WINDY_API_KEY
+]
+paths = [
+  '''package-lock\.json''',
+  '''src/generated/''',
+]

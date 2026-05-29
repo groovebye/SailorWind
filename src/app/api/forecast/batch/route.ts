@@ -21,14 +21,31 @@ export async function POST(req: NextRequest) {
   if (force) clearCache();
 
   const result: Record<string, Awaited<ReturnType<typeof fetchForecast>>> = {};
+  const errors: Record<string, string> = {};
 
-  try {
-    for (const wp of waypoints) {
+  // Sequential by design (Open-Meteo throttles parallel calls → 429), but one
+  // waypoint failing must not blank out the whole passage: collect partials.
+  for (const wp of waypoints) {
+    try {
       result[wp.name] = await fetchForecast(wp.lat, wp.lon, model, wp.isCape ?? false, force);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      errors[wp.name] = msg;
+      result[wp.name] = [];
+      console.error(`[forecast/batch] ${wp.name} failed: ${msg}`);
     }
-    return NextResponse.json(result);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json({ error: msg }, { status: 500 });
   }
+
+  // Only a hard failure (nothing fetched at all) is an error response; partial
+  // failures return 200 with [] for the failed waypoints (logged above), so the
+  // rest of the passage still renders.
+  if (Object.keys(errors).length === waypoints.length) {
+    return NextResponse.json(
+      { error: "All forecast fetches failed", details: errors },
+      { status: 502 },
+    );
+  }
+
+  // Contract preserved: response is strictly { [waypointName]: ForecastEntry[] }.
+  return NextResponse.json(result);
 }

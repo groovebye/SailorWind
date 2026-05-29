@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getLegRoute } from "@/lib/leg-route";
 import { getTidePrediction, tideStateAt } from "@/lib/tides";
-import { buildClientSchedule } from "@/lib/passage-schedule";
+import { buildPassageSchedule } from "@/lib/passage-schedule";
 
 /**
  * Aggregated Leg Brief API
@@ -39,18 +39,22 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Passage not found" }, { status: 404 });
   }
 
-  // Build schedule
-  const stops = passage.waypoints.filter(w => w.isStop);
-  const stopPorts = stops.map(s => ({
-    name: s.port.name, slug: s.port.slug,
-    lat: s.port.lat, lon: s.port.lon,
-    coastlineNm: s.port.coastlineNm,
-  }));
-
-  const schedule = buildClientSchedule(
-    passage.departure, passage.speed,
-    passage.mode as "daily" | "nonstop", stopPorts,
-  );
+  // Build schedule from resolved route geometry (coastlineNm is ordering only)
+  // and honour per-leg departure overrides — keeps it consistent with the timeline.
+  const { legs: schedule } = await buildPassageSchedule({
+    id: passage.id,
+    departure: passage.departure,
+    speed: passage.speed,
+    mode: passage.mode as "daily" | "nonstop",
+    waypoints: passage.waypoints.map(w => ({
+      port: {
+        name: w.port.name, slug: w.port.slug,
+        lat: w.port.lat, lon: w.port.lon,
+        coastlineNm: w.port.coastlineNm,
+      },
+      isStop: w.isStop, isCape: w.isCape,
+    })),
+  });
 
   const leg = schedule[legIndex];
   if (!leg) {

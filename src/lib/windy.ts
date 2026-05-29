@@ -195,6 +195,7 @@ export async function fetchWindyForecast(
     });
   }
 
-  // Filter to 3-hour intervals
-  return entries.filter((_, i) => i % 3 === 0 || i === 0);
+  // Return Windy's native cadence (no down-sampling) so the timeline gets the
+  // finest available resolution.
+  return entries;
 }

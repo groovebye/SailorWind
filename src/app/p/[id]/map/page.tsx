@@ -22,10 +22,8 @@ interface Passage {
 
 const PassageMap = dynamic(() => import("./PassageMap"), { ssr: false });
 
-function tzForPort(lon: number): string {
-  if (lon >= -10 && lon <= 3) return "Europe/Madrid";
-  if (lon > 3 && lon <= 15) return "Europe/Rome";
-  if (lon > 15 && lon <= 30) return "Europe/Athens";
+// Always-local time semantics — render in UTC wall-clock (see dashboard note).
+function tzForPort(_lon: number): string {
   return "UTC";
 }
 

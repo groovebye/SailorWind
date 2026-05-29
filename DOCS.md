@@ -684,14 +684,14 @@ CSS-переменные + ThemeProvider:
 ### 14.1 Сервер
 
 - **Хостинг:** Hetzner CX23 (x86, Нюрнберг, Ubuntu)
-- **IP:** 178.104.144.13
+- **IP:** `<SERVER_IP>` (в secrets manager / ops-vault — не коммитить)
 - **Домен:** sailorwind.com (Namecheap, A-записи)
 - **SSL:** Let's Encrypt (certbot, авто-обновление)
 
 ### 14.2 Nginx
 
 - Reverse proxy: HTTPS → localhost:3000
-- HTTP Basic Auth: `sailor` / `bossanova`
+- HTTP Basic Auth: креды в secrets manager (не в репозитории). См. [SECURITY.md](SECURITY.md).
 
 ### 14.3 Docker Compose
 

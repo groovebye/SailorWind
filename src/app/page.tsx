@@ -5,7 +5,8 @@ export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const portAreas = await prisma.portArea.findMany({
-    orderBy: { name: "asc" },
+    // Sort as you sail the route: Gijón (0) → N coast → La Coruña (160) → Gibraltar.
+    orderBy: [{ coastOrder: "asc" }, { name: "asc" }],
     include: {
       marinas: {
         include: {
@@ -103,7 +104,9 @@ export default async function Home() {
                   style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
                   <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{area.name}</div>
                   <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                    {area.region} · {area.marinas.length} marina{area.marinas.length > 1 ? "s" : ""} · {totalBerths} berths
+                    {area.region} · {area.marinas.length > 0
+                      ? `${area.marinas.length} marina${area.marinas.length > 1 ? "s" : ""} · ${totalBerths} berths`
+                      : area.type === "anchorage" ? "⚓ anchorage" : area.type === "cape" ? "🗻 cape" : "refuge / no marina"}
                   </div>
                   <div className="flex gap-2 mt-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
                     {cheapest && <span style={{ color: "var(--text-green)" }}>€{cheapest.price}/day</span>}

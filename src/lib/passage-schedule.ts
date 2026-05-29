@@ -53,8 +53,8 @@ export async function buildPassageSchedule(
   const stops = passage.waypoints.filter(w => w.isStop);
   const { normalizeDeparture } = await import("@/lib/passage-schedule-client");
   const depDate = normalizeDeparture(passage.departure);
-  const depHour = depDate.getHours();
-  const depMinute = depDate.getMinutes();
+  const depHour = depDate.getUTCHours();
+  const depMinute = depDate.getUTCMinutes();
 
   let currentTime = depDate.getTime();
   const legs: import("@/lib/passage-schedule-client").LegSchedule[] = [];
@@ -103,10 +103,10 @@ export async function buildPassageSchedule(
 
     if (passage.mode === "daily" && i < stops.length - 2) {
       const nextDay = new Date(arriveTime);
-      nextDay.setDate(nextDay.getDate() + 1);
-      nextDay.setHours(depHour, depMinute, 0, 0);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      nextDay.setUTCHours(depHour, depMinute, 0, 0);
       if (nextDay.getTime() < arriveTime.getTime()) {
-        nextDay.setDate(nextDay.getDate() + 1);
+        nextDay.setUTCDate(nextDay.getUTCDate() + 1);
       }
       currentTime = nextDay.getTime();
     } else {

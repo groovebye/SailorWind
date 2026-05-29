@@ -350,7 +350,8 @@ model PortArea {
   region          String?
   lat             Float
   lon             Float
-  type            String   // "major_stopover" | "medium_stopover" | "minor_stopover" | "cape_area"
+  type            String   // "major_stopover" | "medium_stopover" | "minor_stopover" | "cape_area" | "marina" | "port" | "anchorage" | "cape"
+  coastOrder      Float?   // ordering key along the cruising route (Gijón=0 … La Coruña=160 … Gibraltar). Sort the catalog by this.
 
   description         String?
   arrivalSummary      String?

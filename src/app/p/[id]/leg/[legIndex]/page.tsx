@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useTheme } from "@/lib/theme";
 import type { ForecastEntry } from "@/lib/weather";
-import { buildClientSchedule } from "@/lib/passage-schedule-client";
+import { buildClientSchedule, toLocalInputValue } from "@/lib/passage-schedule-client";
 
 const LegMap = dynamic(() => import("./LegMap"), { ssr: false });
 const MarinaMiniMap = dynamic(() => import("@/components/MarinaMiniMap"), { ssr: false });
@@ -82,7 +82,9 @@ interface Webcam { id: string; title: string; lat: number; lon: number; city: st
 
 // ── Helpers ──
 
-function tzForPort(lon: number) { return lon >= -10 && lon <= 3 ? "Europe/Madrid" : lon > 3 && lon <= 15 ? "Europe/Rome" : "UTC"; }
+// Always-local: render every time in UTC wall-clock (see dashboard note). Keeps
+// leg display consistent with the UTC night-detection logic used below.
+function tzForPort(_lon: number) { return "UTC"; }
 function fmtLocal(d: Date, tz: string) { return d.toLocaleString("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).replace(" at ", " "); }
 function parseJson(val: unknown): PlaceInfo[] { if (!val) return []; if (typeof val === "string") try { return JSON.parse(val); } catch { return []; } if (Array.isArray(val)) return val; return []; }
 function parseJsonTyped<T>(val: unknown): T[] { if (!val) return []; if (typeof val === "string") try { return JSON.parse(val); } catch { return []; } if (Array.isArray(val)) return val; return []; }
@@ -735,11 +737,8 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                     <span>{fmtLocal(leg.departTime, fromTz)} → {resolvedArriveTime ? fmtLocal(resolvedArriveTime, toTz) : "—"}</span>
                     <button
                       onClick={() => {
-                        // Pre-fill with current leg departTime in local datetime-local format
-                        const d = leg.departTime;
-                        const pad = (n: number) => String(n).padStart(2, "0");
-                        const localStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-                        setDepartureInput(localStr);
+                        // Pre-fill with current leg departTime as UTC wall-clock (always-local)
+                        setDepartureInput(toLocalInputValue(leg.departTime));
                         setEditingDeparture(true);
                       }}
                       className="text-[10px] px-1.5 py-0.5 rounded opacity-70 hover:opacity-100"

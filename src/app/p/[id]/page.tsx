@@ -12,10 +12,11 @@ const WEATHER_EMOJI: Record<string, string> = {
   fog: "FOG", rain: "\uD83C\uDF27\uFE0F", heavy_rain: "\uD83C\uDF27\uFE0F\uD83C\uDF27\uFE0F", storm: "\u26C8\uFE0F",
 };
 
-function tzForPort(lon: number): string {
-  if (lon >= -10 && lon <= 3) return "Europe/Madrid";
-  if (lon > 3 && lon <= 15) return "Europe/Rome";
-  if (lon > 15 && lon <= 30) return "Europe/Athens";
+// Always-local time semantics: a departure is a naive wall-clock anchored to
+// UTC by the schedule engine, so we render every time in UTC — "what you type
+// is what you see", consistent across dashboard / leg / timeline and accurate
+// regardless of the viewer's timezone. (Per-port local time is a future option.)
+function tzForPort(_lon: number): string {
   return "UTC";
 }
 

@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "npx tsx prisma/seed.ts"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "seed": "npx tsx prisma/seed.ts",
+    "seed:coast": "npx tsx prisma/coast-seed.ts",
+    "coast:table": "npx tsx scripts/gen-coast-table.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
@@ -32,6 +36,7 @@
     "eslint-config-next": "16.2.3",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^2.1.9"
   }
 }

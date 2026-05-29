@@ -5,6 +5,7 @@
 
 import { prisma } from "@/lib/db";
 import { buildSeaRoute, type LatLon } from "@/lib/coastline";
+import { haversineNm } from "@/lib/geo";
 
 export interface LegRouteResult {
   mode: "auto" | "manual";
@@ -14,21 +15,11 @@ export interface LegRouteResult {
   departureOverride?: string | null;
 }
 
-/**
- * Haversine distance in NM between two points.
- */
-function haversineNm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 3440.065; // Earth radius in NM
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
+/** Total length of a {lat,lon} polyline in NM, rounded to 0.1 NM. */
 function polylineDistanceNm(points: { lat: number; lon: number }[]): number {
   let total = 0;
   for (let i = 1; i < points.length; i++) {
-    total += haversineNm(points[i - 1].lat, points[i - 1].lon, points[i].lat, points[i].lon);
+    total += haversineNm([points[i - 1].lat, points[i - 1].lon], [points[i].lat, points[i].lon]);
   }
   return Math.round(total * 10) / 10;
 }

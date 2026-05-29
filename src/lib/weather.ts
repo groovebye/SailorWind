@@ -131,14 +131,34 @@ async function fetchRaw(
   }
 
   async function fetchWithRetry(url: string, label: string, retries = 3): Promise<Response> {
+    const TIMEOUT_MS = 8000;
+    let lastError: Error = new Error(`${label}: max retries`);
     for (let attempt = 0; attempt < retries; attempt++) {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt));
-      const res = await fetch(url);
-      if (res.ok) return res;
-      if (res.status === 429 && attempt < retries - 1) continue;
-      throw new Error(`${label}: ${res.status}`);
+      // Jittered exponential backoff between attempts (avoids 429 thundering herd).
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1000 * attempt + Math.random() * 250));
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (res.ok) return res;
+        // Rate-limited or server hiccup → retry; other 4xx → fail fast.
+        if ((res.status === 429 || res.status >= 500) && attempt < retries - 1) {
+          lastError = new Error(`${label}: ${res.status}`);
+          continue;
+        }
+        throw new Error(`${label}: ${res.status}`);
+      } catch (err) {
+        // Timeout / network error → retry while attempts remain.
+        lastError = err instanceof Error ? err : new Error(`${label}: fetch failed`);
+        const aborted = lastError.name === "AbortError";
+        if (aborted) lastError = new Error(`${label}: timeout after ${TIMEOUT_MS}ms`);
+        if (attempt < retries - 1) continue;
+        throw lastError;
+      } finally {
+        clearTimeout(timer);
+      }
     }
-    throw new Error(`${label}: max retries`);
+    throw lastError;
   }
 
   const weatherRes = await fetchWithRetry(
@@ -186,8 +206,6 @@ export async function fetchForecast(
     swellH: number; swellP: number; swellD: number;
   }>();
 
-  let lastMarine = { waveH: 0, waveP: 0, waveD: 0, swellH: 0, swellP: 0, swellD: 0 };
-
   for (let i = 0; i < timesM.length; i++) {
     const wh = m.wave_height?.[i];
     const sh = m.swell_wave_height?.[i];
@@ -197,14 +215,14 @@ export async function fetchForecast(
       swellH: sh ?? 0, swellP: m.swell_wave_period?.[i] ?? 0, swellD: m.swell_wave_direction?.[i] ?? 0,
     };
     marineLookup.set(timesM[i], entry);
-    lastMarine = entry;
   }
 
   const entries: ForecastEntry[] = [];
 
   for (let i = 0; i < timesW.length; i++) {
     const dt = new Date(timesW[i] + "Z");
-    if (dt.getUTCHours() % 3 !== 0) continue;
+    // Keep full hourly resolution — Open-Meteo already returns hourly for every
+    // model we use. (We previously dropped 2/3 of it with an hourly%3 filter.)
 
     const windKmh = w.wind_speed_10m?.[i] ?? 0;
     const windDeg = w.wind_direction_10m?.[i] ?? 0;

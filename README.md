@@ -462,14 +462,14 @@ The current visibility-graph bypass approach produces zigzag routes around headl
 ## Infrastructure
 
 ### Server: Hetzner CX23
-- **IP:** `178.104.144.13`
+- **IP:** `<SERVER_IP>` (see secrets manager / ops vault — never commit)
 - **Domain:** `sailorwind.com` (Namecheap, A records → server IP)
 - **SSL:** Let's Encrypt via certbot, auto-renewal
 - **SSH:** `ssh root@sailorwind.com`
 
 ### Nginx
 - Reverse proxy: HTTPS → localhost:3000
-- HTTP Basic Auth: user `sailor`, password `bossanova`
+- HTTP Basic Auth: credentials stored in secrets manager (not in repo). See [SECURITY.md](SECURITY.md).
 
 ### Docker Compose (`/opt/sailorwind/docker-compose.yml`)
 
@@ -479,14 +479,14 @@ services:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: sailplanner
-      POSTGRES_USER: sailor
-      POSTGRES_PASSWORD: sw_db_2026!secure
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}   # from untracked .env / secrets manager
 
   app:
     build: ./app
     ports: ["127.0.0.1:3000:3000"]
     environment:
-      DATABASE_URL: "postgresql://sailor:sw_db_2026!secure@db:5432/sailplanner"
+      DATABASE_URL: ${DATABASE_URL}   # from untracked .env / secrets manager
 ```
 
 ### Deploy Workflow

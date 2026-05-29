@@ -4,10 +4,15 @@
  * Pure client-side schedule computation (no DB access, no Prisma imports).
  * Used by passage dashboard and leg page for immediate rendering.
  *
- * Rules for "always local time":
- * - Treat all input timestamps as local wall-clock time
- * - Strip TZ markers (Z, ±HH:MM) from ISO strings before parsing
- * - On a UTC server, append "Z" so wall-clock parses identically
+ * Rules for "always local time" (timezone-independent):
+ * - A departure is a naive wall-clock ("2026-06-15T08:00"), no timezone.
+ * - We anchor it to a FIXED instant by appending "Z" (parse as UTC), and we
+ *   sequence the schedule purely with UTC getters/setters. This makes the
+ *   result identical on any machine/browser timezone — "what you type is what
+ *   you see" — provided the display layer also renders in UTC (fmtLocal + "UTC").
+ * - This is the single canonical schedule engine. The server wrapper
+ *   (passage-schedule.ts) and the timeline engine (passage-computation buildLegs)
+ *   both delegate here so all three never diverge.
  *
  * Rules for daily mode:
  * - Leg 1 departs at passage departure datetime
@@ -32,9 +37,19 @@ export interface LegSchedule {
  */
 export function normalizeDeparture(input: string | Date): Date {
   if (input instanceof Date) return input;
-  // Strip TZ info if present — treat as local
+  // Strip any TZ marker, then anchor the wall-clock to UTC so parsing is
+  // identical regardless of the machine/browser timezone.
   const stripped = input.replace("Z", "").replace(/[+-]\d{2}:?\d{2}$/, "").slice(0, 16);
-  return new Date(stripped);
+  return new Date(stripped + "Z");
+}
+
+/**
+ * Format a Date's UTC wall-clock as a `datetime-local` input value
+ * ("YYYY-MM-DDTHH:mm"). Mirror of normalizeDeparture for the edit UI.
+ */
+export function toLocalInputValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
 
 export function buildClientSchedule(
@@ -46,8 +61,8 @@ export function buildClientSchedule(
   legDepartureOverrides?: Record<number, string>,
 ): LegSchedule[] {
   const depDate = normalizeDeparture(departure);
-  const depHour = depDate.getHours();
-  const depMinute = depDate.getMinutes();
+  const depHour = depDate.getUTCHours();
+  const depMinute = depDate.getUTCMinutes();
 
   let currentTime = depDate.getTime();
   const legs: LegSchedule[] = [];
@@ -78,10 +93,10 @@ export function buildClientSchedule(
 
     if (mode === "daily" && i < stops.length - 2) {
       const nextDay = new Date(arriveTime);
-      nextDay.setDate(nextDay.getDate() + 1);
-      nextDay.setHours(depHour, depMinute, 0, 0);
+      nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+      nextDay.setUTCHours(depHour, depMinute, 0, 0);
       if (nextDay.getTime() < arriveTime.getTime()) {
-        nextDay.setDate(nextDay.getDate() + 1);
+        nextDay.setUTCDate(nextDay.getUTCDate() + 1);
       }
       currentTime = nextDay.getTime();
     } else {
