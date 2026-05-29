@@ -601,3 +601,10 @@ model PassageWaypoint {
   @@unique([passageId, sortOrder])
   @@index([passageId])
 }
+
+// ── App key/value state (persistent rate-limits, last-refresh, etc.) ──────
+model AppKv {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
