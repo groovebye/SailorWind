@@ -90,6 +90,31 @@ function parseJson(val: unknown): PlaceInfo[] { if (!val) return []; if (typeof 
 function parseJsonTyped<T>(val: unknown): T[] { if (!val) return []; if (typeof val === "string") try { return JSON.parse(val); } catch { return []; } if (Array.isArray(val)) return val; return []; }
 function parseJsonObject<T>(val: unknown): T | null { if (!val) return null; if (typeof val === "string") try { return JSON.parse(val); } catch { return null; } if (typeof val === "object") return val as T; return null; }
 
+// Voyage Companion — geo-anchored lore passed along this leg.
+interface Poi { id: string; type: string; name: string; title: string; body: string; lat: number; lon: number; radiusNm: number; year?: number | null; era?: string | null; region?: string | null; imageUrl?: string | null; imageCredit?: string | null; sourceUrl?: string | null; confidence?: string | null; }
+const POI_EMOJI: Record<string, string> = { history: "📜", battle: "⚔️", ship: "⛵", person: "👤", book: "📖", landmark: "🗺️", wildlife: "🐦", sky: "✨", event: "🎉" };
+function LoreCard({ p }: { p: Poi }) {
+  const yr = p.year == null ? null : p.year < 0 ? `${-p.year} BC` : String(p.year);
+  return (
+    <div className="rounded-lg p-3 overflow-hidden" style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
+      {p.imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={p.imageUrl} alt={p.title} loading="lazy" className="w-full h-32 object-cover rounded mb-2" style={{ border: `1px solid var(--border)` }} />
+      )}
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+        <span className="text-sm">{POI_EMOJI[p.type] ?? "•"}</span><span>{p.type}</span>
+        {yr && <span>· {yr}</span>}{p.era && <span>· {p.era}</span>}
+      </div>
+      <div className="font-semibold text-sm mt-0.5" style={{ color: "var(--text-heading)" }}>{p.title}</div>
+      <div className="text-xs mt-1 leading-relaxed" style={{ color: "var(--text-secondary)" }}>{p.body}</div>
+      <div className="flex items-center justify-between gap-2 mt-1.5 text-[10px]" style={{ color: "var(--text-muted)" }}>
+        <span className="truncate">{p.name}{p.imageCredit ? ` · img: ${p.imageCredit}` : ""}</span>
+        {p.sourceUrl && <a href={p.sourceUrl} target="_blank" rel="noreferrer" className="shrink-0" style={{ color: "var(--text-blue-light)" }}>source ↗</a>}
+      </div>
+    </div>
+  );
+}
+
 function haversineNm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 3440.065;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -236,6 +261,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [resolvedRouteDistanceNm, setResolvedRouteDistanceNm] = useState<number | null>(null);
   const [isSavingRoute, setIsSavingRoute] = useState(false);
   const [routeRefreshKey, setRouteRefreshKey] = useState(0);
+  const [lore, setLore] = useState<Poi[]>([]);
 
   // Execution state
   interface ExecutionData { id: string; status: string; startedAt: string | null; endedAt: string | null; checkpoints: { type: string; title: string; recordedAt: string; note: string | null }[]; observations: { recordedAt: string; observedWindKt: number | null; observedWaveM: number | null; comfort: string | null; note: string | null }[]; }
@@ -531,6 +557,30 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
       .then((data) => { if (!data.error) setTimelineData(data); })
       .catch(() => {});
   }, [passage?.id, legIndex, leg?.from.port.slug, leg?.to.port.slug, routeMode, resolvedRouteDistanceNm, routeRefreshKey]);
+
+  // Voyage Companion: fetch POIs in the leg's bbox, keep those within radiusNm of
+  // the route (sampled), ordered in passing sequence from the departure port.
+  useEffect(() => {
+    const fp = leg?.from.port, dp = leg?.to.port;
+    if (!fp || !dp) { setLore([]); return; }
+    const M = 0.7; // ~42 NM margin to catch offshore battles/wildlife within radiusNm
+    const lat1 = Math.min(fp.lat, dp.lat) - M, lat2 = Math.max(fp.lat, dp.lat) + M;
+    const lon1 = Math.min(fp.lon, dp.lon) - M, lon2 = Math.max(fp.lon, dp.lon) + M;
+    const samples: [number, number][] = [0, 0.25, 0.5, 0.75, 1].map((t) => [fp.lat + (dp.lat - fp.lat) * t, fp.lon + (dp.lon - fp.lon) * t]);
+    const minDist = (p: Poi) => Math.min(...samples.map((s) => haversineNm(s[0], s[1], p.lat, p.lon)));
+    const c = new AbortController();
+    fetch(`/api/lore?minLat=${lat1}&maxLat=${lat2}&minLon=${lon1}&maxLon=${lon2}`, { signal: c.signal })
+      .then((r) => r.json())
+      .then((rows: Poi[]) => {
+        if (!Array.isArray(rows)) return;
+        const near = rows
+          .filter((p) => minDist(p) <= (p.radiusNm ?? 10) + 6)
+          .sort((a, b) => haversineNm(fp.lat, fp.lon, a.lat, a.lon) - haversineNm(fp.lat, fp.lon, b.lat, b.lon));
+        setLore(near);
+      })
+      .catch(() => {});
+    return () => c.abort();
+  }, [leg?.from.port.slug, leg?.to.port.slug]);
 
   if (!passage) return <div className="h-screen flex items-center justify-center" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>Loading...</div>;
   if (!leg || !dest || !fromPort) return <div className="p-8" style={{ color: "var(--text-red)" }}>Leg not found</div>;
@@ -1921,6 +1971,18 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           </div>
         )}
       </Section>
+
+      {/* ══════ VOYAGE COMPANION — what you pass on this leg ══════ */}
+      {viewMode === "full" && lore.length > 0 && (
+        <Section title={`Along this leg — history, sea & sky (${lore.length})`} icon="🧭" defaultOpen={false}>
+          <p className="text-[11px] mb-3" style={{ color: "var(--text-muted)" }}>
+            What you sail past on the {fromPort.name} → {dest.name} leg — long watches, rich water. Ordered in passing sequence.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {lore.map((p) => <LoreCard key={p.id} p={p} />)}
+          </div>
+        </Section>
+      )}
 
       {/* ══════ OFFICIAL FORECAST & OBSERVATIONS ══════ */}
       <Section title="Official Sources" icon="📡" defaultOpen={false}>

@@ -608,3 +608,28 @@ model AppKv {
   value     String
   updatedAt DateTime @updatedAt
 }
+
+// ── Voyage Companion: geo-anchored points of interest along the route ─────
+// History, battles, ships, people, books, landmarks, wildlife, night sky.
+model PointOfInterest {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  type        String   // history|battle|ship|person|book|landmark|wildlife|sky|event
+  name        String
+  title       String
+  body        String
+  lat         Float
+  lon         Float
+  radiusNm    Float    @default(10) // a passing yacht within this range is "near"
+  year        Int?
+  era         String?
+  region      String?
+  imageUrl    String?
+  imageCredit String?
+  sourceUrl   String?
+  confidence  String?  // verified|curated|estimated
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([lat, lon])
+}

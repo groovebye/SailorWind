@@ -1,0 +1,28 @@
+{
+  "_note": "South-coast tidal stations (PT/Cádiz/Gibraltar). meanHWIntervalH is HW time offset vs the referencePort (Lisbon for PT, Gibraltar for Strait). Ranges in metres. ADVISORY — exact HW intervals need official IH/Admiralty tables (verifyNeeded). Used to extend the harmonic model south.",
+  "stations": [
+    { "slug": "viana-do-castelo", "name": "Viana do Castelo", "lat": 41.694, "lon": -8.833, "ref": "Lisbon", "mhwIntervalH": 0.0, "springRangeM": 3.9, "neapRangeM": 2.0, "confidence": "curated" },
+    { "slug": "leixoes", "name": "Leixões (Porto)", "lat": 41.185, "lon": -8.703, "ref": "Lisbon", "mhwIntervalH": -0.1, "springRangeM": 3.8, "neapRangeM": 1.9, "confidence": "curated" },
+    { "slug": "douro", "name": "Douro Bar", "lat": 41.143, "lon": -8.673, "ref": "Lisbon", "mhwIntervalH": 0.27, "springRangeM": 3.8, "neapRangeM": 1.9, "confidence": "curated" },
+    { "slug": "aveiro", "name": "Aveiro Bar", "lat": 40.645, "lon": -8.755, "ref": "Lisbon", "mhwIntervalH": -0.1, "springRangeM": 3.6, "neapRangeM": 1.8, "confidence": "curated" },
+    { "slug": "figueira-da-foz", "name": "Figueira da Foz", "lat": 40.149, "lon": -8.862, "ref": "Lisbon", "mhwIntervalH": -0.1, "springRangeM": 3.7, "neapRangeM": 1.8, "confidence": "curated" },
+    { "slug": "nazare", "name": "Nazaré", "lat": 39.600, "lon": -9.071, "ref": "Lisbon", "mhwIntervalH": -0.05, "springRangeM": 3.8, "neapRangeM": 1.9, "confidence": "curated" },
+    { "slug": "peniche", "name": "Peniche", "lat": 39.356, "lon": -9.381, "ref": "Lisbon", "mhwIntervalH": -0.05, "springRangeM": 3.7, "neapRangeM": 1.9, "confidence": "curated" },
+    { "slug": "cascais", "name": "Cascais", "lat": 38.694, "lon": -9.421, "ref": "Lisbon", "mhwIntervalH": 0.0, "springRangeM": 3.8, "neapRangeM": 1.7, "confidence": "curated" },
+    { "slug": "lisboa-tagus", "name": "Lisbon / Tagus", "lat": 38.708, "lon": -9.136, "ref": "Lisbon", "mhwIntervalH": 0.0, "springRangeM": 3.9, "neapRangeM": 2.0, "confidence": "official" },
+    { "slug": "sesimbra", "name": "Sesimbra", "lat": 38.444, "lon": -9.100, "ref": "Lisbon", "mhwIntervalH": -0.05, "springRangeM": 3.8, "neapRangeM": 1.9, "confidence": "curated" },
+    { "slug": "setubal-sado", "name": "Setúbal / Sado", "lat": 38.524, "lon": -8.896, "ref": "Lisbon", "mhwIntervalH": 0.17, "springRangeM": 3.9, "neapRangeM": 2.0, "confidence": "curated" },
+    { "slug": "sines", "name": "Sines", "lat": 37.955, "lon": -8.870, "ref": "Lisbon", "mhwIntervalH": -0.1, "springRangeM": 3.7, "neapRangeM": 1.9, "confidence": "curated" },
+    { "slug": "lagos", "name": "Lagos", "lat": 37.103, "lon": -8.674, "ref": "Lisbon", "mhwIntervalH": -0.17, "springRangeM": 3.6, "neapRangeM": 1.8, "confidence": "curated" },
+    { "slug": "portimao", "name": "Portimão", "lat": 37.118, "lon": -8.535, "ref": "Lisbon", "mhwIntervalH": -0.17, "springRangeM": 3.6, "neapRangeM": 1.8, "confidence": "curated" },
+    { "slug": "vilamoura", "name": "Vilamoura", "lat": 37.071, "lon": -8.121, "ref": "Lisbon", "mhwIntervalH": -0.17, "springRangeM": 3.5, "neapRangeM": 1.7, "confidence": "curated" },
+    { "slug": "faro-ria-formosa", "name": "Faro / Ria Formosa", "lat": 37.019, "lon": -7.965, "ref": "Lisbon", "mhwIntervalH": -0.2, "springRangeM": 3.4, "neapRangeM": 1.6, "confidence": "curated" },
+    { "slug": "vila-real-guadiana", "name": "Vila Real / Guadiana", "lat": 37.196, "lon": -7.414, "ref": "Lisbon", "mhwIntervalH": -0.25, "springRangeM": 3.2, "neapRangeM": 1.5, "confidence": "estimated" },
+    { "slug": "ayamonte", "name": "Ayamonte", "lat": 37.215, "lon": -7.405, "ref": "Lisbon", "mhwIntervalH": -0.25, "springRangeM": 3.0, "neapRangeM": 1.4, "confidence": "estimated" },
+    { "slug": "chipiona-guadalquivir", "name": "Chipiona / Guadalquivir", "lat": 36.749, "lon": -6.438, "ref": "Gibraltar", "mhwIntervalH": 0.5, "springRangeM": 3.2, "neapRangeM": 1.6, "confidence": "estimated" },
+    { "slug": "cadiz", "name": "Cádiz", "lat": 36.534, "lon": -6.299, "ref": "Gibraltar", "mhwIntervalH": 0.4, "springRangeM": 3.5, "neapRangeM": 1.8, "confidence": "curated" },
+    { "slug": "barbate", "name": "Barbate", "lat": 36.180, "lon": -5.921, "ref": "Gibraltar", "mhwIntervalH": 0.1, "springRangeM": 2.8, "neapRangeM": 1.3, "confidence": "estimated" },
+    { "slug": "tarifa", "name": "Tarifa", "lat": 36.014, "lon": -5.607, "ref": "Gibraltar", "mhwIntervalH": 0.0, "springRangeM": 1.35, "neapRangeM": 0.65, "confidence": "curated" },
+    { "slug": "gibraltar", "name": "Gibraltar", "lat": 36.140, "lon": -5.354, "ref": "Gibraltar", "mhwIntervalH": 0.0, "springRangeM": 1.0, "neapRangeM": 0.4, "confidence": "curated" }
+  ]
+}
