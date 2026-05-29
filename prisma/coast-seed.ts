@@ -72,6 +72,36 @@ function slugify(s: string): string {
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
 }
 
+// Display the town, not the marina/club name, on the catalog card.
+const NAME_PREFIXES = [
+  /^real club n[aá]utico de /i, /^real club n[aá]utico /i,
+  /^club n[aá]utico deportivo de /i, /^club n[aá]utico de /i, /^club n[aá]utico /i,
+  /^puerto pesquero y deportivo de /i, /^puerto deportivo de /i, /^puerto deportivo /i,
+  /^porto deportivo de /i, /^porto de recreio do /i, /^porto de recreio de /i,
+  /^nucleo de recreio do porto da /i, /^doca de recreio das /i,
+  /^marina d[aeo] /i, /^marina /i, /^puerto de /i, /^porto de /i, /^nauta /i,
+];
+// Explicit overrides where the town sits inside the parenthetical / club name.
+const NAME_OVERRIDES: Record<string, string> = {
+  "Club Nautico do Caraminal (A Pobra do Caraminal)": "A Pobra do Caraminal",
+  "Marina Arousa (Vilanova de Arousa)": "Vilanova de Arousa",
+  "Club Nautico San Vicente do Mar (O Grove)": "O Grove",
+  "Marina Clube da Gafanha (Aveiro / Barra)": "Aveiro",
+  "Marina Clube Naval de Sesimbra": "Sesimbra",
+  "Doca de Recreio das Fontainhas (Setubal)": "Setubal",
+  "Marina Porto Atlantico (Leixoes)": "Leixoes",
+  "Marina da Povoa de Varzim": "Povoa de Varzim",
+  "Douro Marina (Marina da Afurada)": "Vila Nova de Gaia",
+  "Alcaidesa Marina (La Linea)": "La Linea",
+  "Porto de Baleeira (Sagres fishing harbour)": "Sagres (Baleeira)",
+};
+function cleanCityName(raw: string): string {
+  if (NAME_OVERRIDES[raw]) return NAME_OVERRIDES[raw];
+  let s = raw.replace(/\s*\(.*?\)\s*/g, " ").split(/\s+\/\s+/)[0].replace(/\s+-\s+.*$/, "").trim();
+  for (const p of NAME_PREFIXES) { const t = s.replace(p, "").trim(); if (t !== s) { s = t; break; } }
+  return s.length >= 3 ? s : raw;
+}
+
 function loadEntries(): Entry[] {
   const files = readdirSync(DATA_DIR).filter((f) => f.endsWith(".json")).sort();
   const all: Entry[] = [];
@@ -81,7 +111,7 @@ function loadEntries(): Entry[] {
   return all;
 }
 
-const cityOf = (e: Entry) => CITY_GROUPS[e.name] ?? { slug: slugify(e.name), name: e.name };
+const cityOf = (e: Entry) => CITY_GROUPS[e.name] ?? { slug: slugify(e.name), name: cleanCityName(e.name) };
 const isMarina = (e: Entry) => e.type === "marina" || e.type === "port";
 const marinaKind = (t: string) => (t === "port" ? "mixed_port" : "marina");
 const b = (v: boolean | null | undefined) => v === true;
