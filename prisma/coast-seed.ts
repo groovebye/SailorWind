@@ -1,16 +1,19 @@
 /**
- * Seed the La Coruña -> Gibraltar coast into PortArea (+ one MarinaOption each)
+ * Seed La Coruña -> Gibraltar into PortArea (+ MarinaOptions), GROUPED BY CITY,
  * and assign `coastOrder` so the catalog sorts as you sail south to Gibraltar.
  *
  * - Reads the route-ordered datasets in prisma/coast-data/*.json.
- * - Derives coastOrder = cumulative great-circle distance from La Coruña (=160),
- *   which is strictly increasing in route order (so sorting reproduces it).
- * - Upserts each entry as a PortArea; marina/port entries also get one
- *   MarinaOption (anchorages/capes are berth-less).
- * - Backfills coastOrder for the EXISTING northern PortAreas from the matching
- *   Port.coastlineNm (by slug, else nearest Port).
+ * - coastOrder = cumulative great-circle distance from La Coruña (=160),
+ *   strictly increasing in route order (sorting reproduces it).
+ * - Multi-marina cities (Vigo, Baiona, Lisboa, Cádiz, El Puerto, Gibraltar, …)
+ *   collapse into ONE PortArea with several MarinaOptions; everything else stays
+ *   1:1. Anchorages/capes are berth-less PortAreas.
+ * - Re-seed is DESTRUCTIVE for coast areas only: deletes PortAreas with
+ *   coastOrder >= 170 (cascades their marinas) and recreates them. The northern
+ *   base ports (Gijón..La Coruña, coastOrder 0..160) are never touched; their
+ *   coastOrder is backfilled from the matching Port.coastlineNm.
  *
- * Idempotent (upsert by slug). Run: npx tsx prisma/coast-seed.ts
+ * Idempotent. Run: npx tsx prisma/coast-seed.ts
  */
 import "dotenv/config";
 import { readFileSync, readdirSync } from "node:fs";
@@ -24,6 +27,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = join(__dirname, "coast-data");
 const LA_CORUNA: LatLon = [43.37, -8.4];
 const LA_CORUNA_NM = 160;
+const COAST_ORDER_FLOOR = 170; // PortAreas at/above this are coast-seeded (deletable)
 
 const prisma = new PrismaClient({ adapter: new PrismaPg(process.env.DATABASE_URL!) });
 
@@ -40,6 +44,29 @@ type Entry = {
   coastOrder?: number;
 };
 
+// Entries that belong to one city (cleaner than a card per marina).
+const CITY_GROUPS: Record<string, { slug: string; name: string }> = {
+  "Nauta Sanxenxo (Puerto Deportivo Juan Carlos I)": { slug: "sanxenxo", name: "Sanxenxo / Portonovo" },
+  "Club Nautico de Portonovo": { slug: "sanxenxo", name: "Sanxenxo / Portonovo" },
+  "Real Club Nautico de Vigo": { slug: "vigo", name: "Vigo" },
+  "Marina Davila Sport (Vigo / Bouzas)": { slug: "vigo", name: "Vigo" },
+  "Marina Punta Lagoa (Vigo / Teis)": { slug: "vigo", name: "Vigo" },
+  "Liceo Maritimo de Bouzas (Vigo)": { slug: "vigo", name: "Vigo" },
+  "Monte Real Club de Yates de Baiona (MRCYB)": { slug: "baiona", name: "Baiona" },
+  "Puerto Deportivo de Baiona": { slug: "baiona", name: "Baiona" },
+  "Doca do Bom Sucesso (Belem)": { slug: "lisboa", name: "Lisboa (Tejo)" },
+  "Doca de Belem (Porto de Lisboa)": { slug: "lisboa", name: "Lisboa (Tejo)" },
+  "Doca de Alcantara (Porto de Lisboa)": { slug: "lisboa", name: "Lisboa (Tejo)" },
+  "Marina Parque das Nacoes (Lisbon East)": { slug: "lisboa", name: "Lisboa (Tejo)" },
+  "Puerto Sherry": { slug: "el-puerto-de-santa-maria", name: "El Puerto de Santa Maria" },
+  "Real Club Nautico El Puerto de Santa Maria": { slug: "el-puerto-de-santa-maria", name: "El Puerto de Santa Maria" },
+  "Marina Puerto America (Cadiz)": { slug: "cadiz", name: "Cadiz" },
+  "Real Club Nautico de Cadiz": { slug: "cadiz", name: "Cadiz" },
+  "Queensway Quay Marina, Gibraltar": { slug: "gibraltar", name: "Gibraltar" },
+  "Ocean Village Marina, Gibraltar": { slug: "gibraltar", name: "Gibraltar" },
+  "Marina Bay, Gibraltar": { slug: "gibraltar", name: "Gibraltar" },
+};
+
 function slugify(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "")
     .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
@@ -54,48 +81,56 @@ function loadEntries(): Entry[] {
   return all;
 }
 
-const marinaKind = (t: string) => (t === "marina" ? "marina" : t === "port" ? "mixed_port" : "marina");
+const cityOf = (e: Entry) => CITY_GROUPS[e.name] ?? { slug: slugify(e.name), name: e.name };
+const isMarina = (e: Entry) => e.type === "marina" || e.type === "port";
+const marinaKind = (t: string) => (t === "port" ? "mixed_port" : "marina");
 const b = (v: boolean | null | undefined) => v === true;
+const ORCA_RANK: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3 };
 
 async function main() {
   const entries = loadEntries();
-  let areaCount = 0, marinaCount = 0;
 
+  // Group entries by city.
+  const cities = new Map<string, { name: string; entries: Entry[] }>();
   for (const e of entries) {
-    const slug = slugify(e.name);
-    const area = await prisma.portArea.upsert({
-      where: { slug },
-      update: {
-        name: e.name, country: e.country ?? "ES", region: e.region, lat: e.lat, lon: e.lon,
-        type: e.type, coastOrder: e.coastOrder, orcaRisk: e.orcaRisk ?? null, orcaNotes: e.orcaNotes ?? null,
-        description: e.notes ?? null, arrivalSummary: e.approachNotes ?? null, shoreSummary: e.nearestTown ?? null,
-      },
-      create: {
-        slug, name: e.name, country: e.country ?? "ES", region: e.region, lat: e.lat, lon: e.lon,
-        type: e.type, coastOrder: e.coastOrder, orcaRisk: e.orcaRisk ?? null, orcaNotes: e.orcaNotes ?? null,
-        description: e.notes ?? null, arrivalSummary: e.approachNotes ?? null, shoreSummary: e.nearestTown ?? null,
+    const c = cityOf(e);
+    if (!cities.has(c.slug)) cities.set(c.slug, { name: c.name, entries: [] });
+    cities.get(c.slug)!.entries.push(e);
+  }
+
+  // Destructive (coast areas only): drop and recreate.
+  const del = await prisma.portArea.deleteMany({ where: { coastOrder: { gte: COAST_ORDER_FLOOR } } });
+
+  let areaCount = 0, marinaCount = 0;
+  for (const [slug, city] of cities) {
+    const es = city.entries;
+    const rep = es[0]; // earliest in route order
+    const coastOrder = Math.min(...es.map((e) => e.coastOrder ?? 0));
+    const orca = es.map((e) => e.orcaRisk).filter(Boolean)
+      .sort((a, b2) => (ORCA_RANK[b2!] ?? 0) - (ORCA_RANK[a!] ?? 0))[0] ?? null;
+    const marinasInCity = es.filter(isMarina);
+
+    const area = await prisma.portArea.create({
+      data: {
+        slug, name: city.name, country: rep.country ?? "ES", region: rep.region,
+        lat: rep.lat, lon: rep.lon, type: marinasInCity.length ? "marina" : rep.type,
+        coastOrder, orcaRisk: orca, orcaNotes: es.find((e) => e.orcaNotes)?.orcaNotes ?? null,
+        description: es.length > 1
+          ? `${marinasInCity.length} marinas/harbours in ${city.name}.`
+          : rep.notes ?? null,
+        arrivalSummary: rep.approachNotes ?? null,
+        shoreSummary: rep.nearestTown ?? null,
       },
     });
     areaCount++;
 
-    // Marina/port entries get one MarinaOption; anchorages/capes are berth-less.
-    if (e.type === "marina" || e.type === "port") {
-      const mSlug = `${slug}-marina`;
-      await prisma.marinaOption.upsert({
-        where: { slug: mSlug },
-        update: {
-          portAreaId: area.id, name: e.name, kind: marinaKind(e.type), lat: e.lat, lon: e.lon,
-          website: e.website ?? null, email: e.email ?? null, phone: e.phone ?? null, vhfCh: e.vhfCh != null ? String(e.vhfCh) : null,
-          shelter: e.shelter ?? null, maxDraft: e.maxDraft ?? null, maxLength: e.maxLength ?? null,
-          berthCount: e.berthCount ?? null, visitorBerths: e.visitorBerths ?? null,
-          fuel: b(e.fuel), water: b(e.water), electric: b(e.electric), repairs: b(e.repairs), customs: b(e.customs),
-          laundry: b(e.laundry), showers: b(e.showers), wifi: b(e.wifi),
-          marinaHours: e.marinaHours ?? null, approachDescription: e.approachNotes ?? null,
-          swellSensitivity: e.swellSensitivity ?? null, bestTideEntry: e.bestTideEntry ?? null, notes: e.notes ?? null,
-        },
-        create: {
-          portAreaId: area.id, slug: mSlug, name: e.name, kind: marinaKind(e.type), lat: e.lat, lon: e.lon,
-          website: e.website ?? null, email: e.email ?? null, phone: e.phone ?? null, vhfCh: e.vhfCh != null ? String(e.vhfCh) : null,
+    for (const e of marinasInCity) {
+      await prisma.marinaOption.create({
+        data: {
+          portAreaId: area.id, slug: `${slugify(e.name)}-marina`, name: e.name,
+          kind: marinaKind(e.type), lat: e.lat, lon: e.lon,
+          website: e.website ?? null, email: e.email ?? null, phone: e.phone ?? null,
+          vhfCh: e.vhfCh != null ? String(e.vhfCh) : null,
           shelter: e.shelter ?? null, maxDraft: e.maxDraft ?? null, maxLength: e.maxLength ?? null,
           berthCount: e.berthCount ?? null, visitorBerths: e.visitorBerths ?? null,
           fuel: b(e.fuel), water: b(e.water), electric: b(e.electric), repairs: b(e.repairs), customs: b(e.customs),
@@ -108,7 +143,7 @@ async function main() {
     }
   }
 
-  // Backfill coastOrder for existing PortAreas without one (the northern set).
+  // Backfill coastOrder for the northern base PortAreas (from matching Port).
   const ports = await prisma.port.findMany({ select: { slug: true, lat: true, lon: true, coastlineNm: true } });
   const noOrder = await prisma.portArea.findMany({ where: { coastOrder: null }, select: { id: true, slug: true, lat: true, lon: true } });
   let backfilled = 0;
@@ -126,7 +161,7 @@ async function main() {
   }
 
   const total = await prisma.portArea.count();
-  console.log(`Coast seed: upserted ${areaCount} port areas (+${marinaCount} marinas). Backfilled coastOrder for ${backfilled} existing areas.`);
+  console.log(`Coast seed (grouped): deleted ${del.count} old coast areas; created ${areaCount} city areas (+${marinaCount} marinas). Backfilled ${backfilled} northern areas.`);
   console.log(`Total PortAreas now: ${total}`);
 }
 
