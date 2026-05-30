@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import PortsCatalog from "./PortsCatalog";
 
 export const dynamic = "force-dynamic";
 
@@ -85,43 +86,30 @@ export default async function Home() {
         </section>
       )}
 
-      {/* Ports & Marinas catalog */}
+      {/* Ports & Marinas catalog — compact searchable grid, kept in coast order */}
       {portAreas.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-lg font-semibold text-slate-300 mb-4">
-            ⚓ Ports & Marinas
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {portAreas.map((area) => {
-              const totalBerths = area.marinas.reduce((s, m) => s + (m.berthCount || 0), 0);
-              const cheapest = area.marinas.flatMap(m => m.prices).sort((a, b) => a.price - b.price)[0];
-              const hasRepairs = area.marinas.some(m => m.repairs);
-              const hasFuel = area.marinas.some(m => m.fuel);
-              const recommended = (area.nearbyPlaces || []).length;
-              return (
-                <Link key={area.id} href={`/port/${area.slug}`}
-                  className="block rounded-lg p-4 hover:opacity-80 transition-opacity"
-                  style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
-                  <div className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{area.name}</div>
-                  <div className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
-                    {area.region} · {area.marinas.length > 0
-                      ? `${area.marinas.length} marina${area.marinas.length > 1 ? "s" : ""} · ${totalBerths} berths`
-                      : area.type === "anchorage" ? "⚓ anchorage" : area.type === "cape" ? "🗻 cape" : "refuge / no marina"}
-                  </div>
-                  <div className="flex gap-2 mt-1.5 text-xs" style={{ color: "var(--text-secondary)" }}>
-                    {cheapest && <span style={{ color: "var(--text-green)" }}>€{cheapest.price}/day</span>}
-                    {hasFuel && <span>⛽</span>}
-                    {hasRepairs && <span>🔧</span>}
-                    {recommended > 0 && <span>⭐ {recommended}</span>}
-                  </div>
-                  {area.orcaRisk && area.orcaRisk !== "none" && area.orcaRisk !== "low" && (
-                    <div className="text-[10px] mt-1" style={{ color: "var(--text-yellow)" }}>🐋 Orca: {area.orcaRisk}</div>
-                  )}
-                </Link>
-              );
-            })}
-          </div>
-        </section>
+        <PortsCatalog
+          areas={portAreas.map((area) => {
+            const prices = area.marinas.flatMap((m) => m.prices);
+            const cheapest = prices.length
+              ? Math.min(...prices.map((p) => p.price))
+              : null;
+            return {
+              id: area.id,
+              name: area.name,
+              slug: area.slug,
+              region: area.region,
+              type: area.type,
+              marinaCount: area.marinas.length,
+              berths: area.marinas.reduce((s, m) => s + (m.berthCount || 0), 0),
+              cheapest,
+              fuel: area.marinas.some((m) => m.fuel),
+              repairs: area.marinas.some((m) => m.repairs),
+              recommended: (area.nearbyPlaces || []).length,
+              orcaRisk: area.orcaRisk,
+            };
+          })}
+        />
       )}
     </div>
   );
