@@ -3,6 +3,8 @@
 import { usePathname } from "next/navigation";
 import Topbar from "./Topbar";
 import WindField from "./WindField";
+import MobileNav from "./MobileNav";
+import ScrollReset from "./ScrollReset";
 
 /**
  * The persistent shell: dark-ocean backdrop + wind-field canvas + sticky topbar,
@@ -32,6 +34,8 @@ export default function AppShell({
           <main className="view-scroll">{children}</main>
         )}
       </div>
+      {!isChart && <MobileNav activeId={activeId} />}
+      <ScrollReset />
     </div>
   );
 }

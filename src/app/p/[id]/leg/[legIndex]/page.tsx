@@ -208,21 +208,22 @@ function segmentAccent(name: string) {
 
 function Section({ title, children, icon, defaultOpen = true }: { title: string; children: React.ReactNode; icon?: string; defaultOpen?: boolean }) {
   return (
-    <details open={defaultOpen} className="group mb-3 rounded-xl overflow-hidden" style={{ border: `1px solid var(--border-light)` }}>
-      <summary className="px-4 py-3 cursor-pointer flex items-center gap-2 select-none font-semibold text-sm" style={{ background: "var(--bg-card)", color: "var(--text-heading)" }}>
-        <svg className="w-3.5 h-3.5 transition-transform group-open:rotate-90" style={{ color: "var(--text-muted)" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-        {icon && <span>{icon}</span>} {title}
+    <details open={defaultOpen} className="glass group mb-3" style={{ overflow: "hidden" }}>
+      <summary className="px-4 py-3 cursor-pointer flex items-center gap-2.5 select-none">
+        <svg className="w-3.5 h-3.5 transition-transform group-open:rotate-90" style={{ color: "var(--cyan)", flex: "none" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+        {icon && <span style={{ fontSize: 15 }}>{icon}</span>}
+        <span className="display" style={{ fontSize: 17, color: "var(--fg)" }}>{title}</span>
       </summary>
-      <div className="px-4 py-3 text-sm" style={{ background: "var(--bg-card)" }}>{children}</div>
+      <div className="px-4 pb-4 pt-2 text-sm" style={{ borderTop: `1px solid var(--glass-border)` }}>{children}</div>
     </details>
   );
 }
 
 function PlaceCard({ place }: { place: PlaceInfo }) {
   return (
-    <div className="rounded-lg px-3 py-2.5 mb-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>
+    <div className="rounded-lg px-3 py-2.5 mb-2" style={{ background: "rgba(255,255,255,0.04)", border: `1px solid var(--glass-border)` }}>
       <div className="flex items-center justify-between mb-0.5">
-        <span className="font-semibold text-sm" style={{ color: "var(--text-heading)" }}>{place.name}</span>
+        <span className="font-semibold text-sm" style={{ color: "var(--fg)" }}>{place.name}</span>
         {place.rating && <span className="text-xs px-1.5 py-0.5 rounded" style={{ background: "var(--accent-go)", color: "var(--text-green)" }}>★ {place.rating}</span>}
       </div>
       {place.cuisine && <div className="text-xs mb-0.5" style={{ color: "var(--text-secondary)" }}>{place.cuisine}</div>}
@@ -733,20 +734,20 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
       </div>
 
       {/* ══════ HEADER ══════ */}
-      <div className="rounded-xl px-5 py-4 mb-3" style={{ background: `linear-gradient(to right, var(--bg-header-from), var(--bg-header-to))`, border: `1px solid var(--border)` }}>
+      <div className="glass px-5 py-4 mb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-lg font-bold" style={{ color: "var(--text-heading)" }}>
-              ⛵ {passage.mode === "daily" ? `Day ${legIndex + 1}` : `Leg ${legIndex + 1}`}: {fromPort.name} → {dest.name}
+            <h1 className="display" style={{ fontSize: 22, margin: 0, color: "var(--fg)" }}>
+              ⛵ {passage.mode === "daily" ? `Day ${legIndex + 1}` : `Leg ${legIndex + 1}`}: <span style={{ color: "var(--cyan)" }}>{fromPort.name} → {dest.name}</span>
             </h1>
-            {guide?.description && <p className="text-xs mt-1 max-w-2xl" style={{ color: "var(--text-secondary)" }}>{guide.description}</p>}
+            {guide?.description && <p className="dim" style={{ fontSize: 13, marginTop: 6, maxWidth: "42rem" }}>{guide.description}</p>}
           </div>
-          {guide?.difficulty && <span className="text-xs font-bold px-2 py-1 rounded" style={{ color: DIFF_COLORS[guide.difficulty] || "var(--text-muted)", border: `1px solid ${DIFF_COLORS[guide.difficulty] || "var(--border)"}` }}>{guide.difficulty.toUpperCase()}</span>}
+          {guide?.difficulty && <span className="pill" style={{ color: DIFF_COLORS[guide.difficulty] || "var(--fg-dim)", borderColor: DIFF_COLORS[guide.difficulty] || "var(--glass-border)" }}>{guide.difficulty.toUpperCase()}</span>}
         </div>
       </div>
 
       {/* ══════ DECISION SUMMARY ══════ */}
-      <div className="rounded-xl px-5 py-4 mb-3" style={{ background: "var(--bg-card)", border: `1px solid var(--border-light)` }}>
+      <div className="glass px-5 py-4 mb-3">
         {/* Verdict + metrics row */}
         <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
           <div className="flex items-center gap-3">
