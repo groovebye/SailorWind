@@ -7,7 +7,7 @@
  *  POSTs are never cached — live-fetch features degrade; cached GETs + the
  *  forecast pre-warm cron are the offline data path.
  */
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL = `sw-shell-${VERSION}`;
 const RUNTIME = `sw-runtime-${VERSION}`;
 const TILES = `sw-tiles-${VERSION}`;
@@ -92,10 +92,21 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Same-origin API GETs: stale-while-revalidate
+  // Same-origin API GETs. Catalog lists must be current → network-first (fall back
+  // to cache offline). Heavy/derived data (forecast, tides, lore) → stale-while-revalidate.
   if (url.pathname.startsWith("/api/")) {
+    const networkFirst = url.pathname === "/api/ports" || url.pathname === "/api/port-areas";
     event.respondWith((async () => {
       const c = await caches.open(RUNTIME);
+      if (networkFirst) {
+        try {
+          const res = await fetch(request);
+          if (res.ok) c.put(request, res.clone());
+          return res;
+        } catch {
+          return (await c.match(request)) || Response.error();
+        }
+      }
       const hit = await c.match(request);
       const network = fetch(request)
         .then((res) => { if (res.ok) c.put(request, res.clone()); return res; })

@@ -232,6 +232,13 @@ body {
   background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
   border-radius: 11px; padding: 11px 14px; width: 100%;
   transition: border-color 0.16s, box-shadow 0.16s, background 0.16s;
+  color-scheme: dark; /* dark native date/number widgets */
+}
+.select {
+  appearance: none; -webkit-appearance: none;
+  padding-right: 38px; cursor: pointer;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239fb0c4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m6 9 6 6 6-6'/></svg>");
+  background-repeat: no-repeat; background-position: right 12px center;
 }
 .input:focus, .select:focus { outline: none; border-color: rgba(52,224,255,0.55); box-shadow: 0 0 0 3px rgba(52,224,255,0.16); background: rgba(255,255,255,0.07); }
 .input::placeholder { color: var(--fg-faint); }

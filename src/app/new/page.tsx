@@ -186,21 +186,25 @@ export default function NewPassage() {
             </div>
           </div>
 
-          <div className="grid" style={{ gridTemplateColumns: "2fr 1fr 1fr", gap: 16 }}>
+          <div className="grid" style={{ gridTemplateColumns: "1.4fr 1.1fr 1.1fr", gap: 16, alignItems: "end" }}>
             <div>
               <label className="field-label">Departure</label>
               <input className="input" type="datetime-local" value={departure} onChange={(e) => setDeparture(e.target.value)} />
             </div>
             <div>
-              <label className="field-label">Speed (kt)</label>
-              <input className="input" type="number" value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value) || 5)} min={1} max={15} step={0.5} />
+              <label className="field-label">Boat speed</label>
+              <div className="center gap-10">
+                <input type="range" min={3} max={9} step={0.5} value={speed} onChange={(e) => setSpeed(+e.target.value)} className="range" />
+                <span className="mono" style={{ fontSize: 15, fontWeight: 600, minWidth: 48 }}>{speed} kt</span>
+              </div>
             </div>
             <div>
               <label className="field-label">Mode</label>
-              <select className="select" value={mode} onChange={(e) => setMode(e.target.value as "daily" | "nonstop")}>
-                <option value="daily">Daily stops</option>
-                <option value="nonstop">Non-stop</option>
-              </select>
+              <div className="seg">
+                {([["daily", "Daily stops"], ["nonstop", "Non-stop"]] as [typeof mode, string][]).map(([k, label]) => (
+                  <button key={k} type="button" className={`seg-opt${mode === k ? " active" : ""}`} onClick={() => setMode(k)}>{label}</button>
+                ))}
+              </div>
             </div>
           </div>
 
