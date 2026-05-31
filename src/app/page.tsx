@@ -31,7 +31,8 @@ export default async function Home() {
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-12">
+    <div className="py-12">
+      <div className="max-w-4xl mx-auto px-6">
       <header className="mb-12">
         <h1 className="text-3xl font-bold text-blue-400 mb-2">
           &#9973; SailorWind
@@ -86,9 +87,11 @@ export default async function Home() {
           </div>
         </section>
       )}
+      </div>
 
-      {/* Ports & Marinas catalog — compact searchable grid, kept in coast order */}
+      {/* Ports & Marinas catalog — full-width searchable table, kept in coast order */}
       {portAreas.length > 0 && (
+        <div className="px-4 sm:px-6 lg:px-8">
         <PortsCatalog
           areas={portAreas.map((area, i) => {
             const prices = area.marinas.flatMap((m) => m.prices);
@@ -117,6 +120,7 @@ export default async function Home() {
             };
           })}
         />
+        </div>
       )}
     </div>
   );
