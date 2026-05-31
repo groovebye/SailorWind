@@ -1,0 +1,282 @@
+[
+  {
+    "slug": "club-nautico-de-camarinas",
+    "controllingDepthM": 5.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Ria de Camarinas has two deep entrance channels (Canal A Barca S and Canal de las Quebrantas N). Both are free of bars or sills. Marina pontoons range 2.0–5.0 m at chart datum; outer pontoons 5 m. Approach 300 m wide at mouth. No tidal restriction for 2.0 m draft.",
+    "source": "Input notes; marine-project.com (pontoon depths 2.0–5.0 m, mouth 300 m); pilotage knowledge of Ria de Camarinas.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "marina-muxia",
+    "controllingDepthM": 4.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Modern marina (2018) on S shore of Ria de Camarinas. Same deep approach channels as Camarinas. No bar or sill. Berth depths in the range 3–6 m; controlling depth of outer/visitor berths conservatively 4 m at chart datum. No tidal restriction for 2.0 m draft.",
+    "source": "Input notes (Blue Flag 2018 marina, berthMaxDraftM 6 m); pilotage knowledge; same ria as Camarinas (deep water).",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "porto-de-fisterra-finisterre",
+    "controllingDepthM": null,
+    "access": "unknown",
+    "barOrLagoon": false,
+    "note": "Small fishing harbour on S side of Cabo Fisterra. Inner harbour fills with fishing boats; dedicated visitor space limited. Input notes do not state a confirmed berth or approach depth at chart datum. Navily lists the port but specific datum depths are unconfirmed. In S winds swell enters. Approach from NE after rounding the cape is clear of bars, but inner berth depth is uncertain. Conservative classification: unknown until datum depth confirmed.",
+    "source": "Input notes; navily.com (page found but no datum depths retrieved); pilotage knowledge of Cabo Fisterra fishing harbour.",
+    "confidence": "low",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "corcubion-cee-ria-de-corcubion-anchorage",
+    "controllingDepthM": 5.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Ria de Corcubion is a deep, well-sheltered ría. Multiple cruising guides confirm good holding in 5–10 m over mud. The approach from the W is clear of bars; the ría widens inside. Anchor off Corcubión town in 4–8 m on mud. No tidal restriction for 2.0 m draft.",
+    "source": "Noonsite Corcubion page (secure anchorage, good holding, no tidal gate mentioned); Yachting World Galicia guide; aleriasadventures blog (Ría de Corcubión deep, sheltered); pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "marina-muros-muport",
+    "controllingDepthM": 3.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Approach via Ria de Muros e Noia (~3 nm wide mouth) is unproblematic. Marina behind breakwater in outer basin of Ensenada de Muros. Published harbour-mouth depth 3 m at chart datum (noonsite/transeuropemarinas sources). Entrance 70 m wide. For a 2.0 m draft with 0.5 m UKC requiring ≥2.5 m, the 3 m datum depth is sufficient. Classified all-tide but the margin is narrow — verify current dredging status.",
+    "source": "noonsite.com (Marina Muros Muport profile); transeuropemarinas.com; turismo.gal (depth at harbour mouth 3 m, entrance 70 m wide); input notes.",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "real-club-nautico-portosin",
+    "controllingDepthM": 6.4,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Input notes explicitly state mouth 8.5 m and inner 6.4 m at chart datum. Deep mid-ria location with no bar or sill. Blue Flag. Controlling depth is the inner at 6.4 m — well above the 2.5 m threshold. No tidal restriction for any normal cruising yacht.",
+    "source": "Input notes (mouth 8.5 m, inner depth 6.4 m stated explicitly); rcnportosin.com; asnauga.com.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "club-nautico-deportivo-de-ribeira",
+    "controllingDepthM": 2.0,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Input notes (corroborated by Navily/turismo.gal) state mouth 5 m but inner harbour only 2 m at chart datum. The input explicitly flags 'check tide for >2.0 m draft'. The controlling depth of 2.0 m is below the 2.5 m required for a 2.0 m draft with 0.5 m UKC. Accessible only around HW when tidal lift adds >0.5 m.",
+    "source": "Input notes; turismo.gal (harbour-mouth 5 m, inner 2 m); navily.com Ribeira profile; pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "puerto-de-aguino",
+    "controllingDepthM": 2.5,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Fishing port with average harbour-basin depth ~2.5 m (turismo.gal, masmar.net). The Canal de Sagres outer channel is 7–10 m but approach to the harbour itself involves exposed headland and reef hazards in all but settled conditions. Input notes confirm 'emergency refuge only'. Basin depth of ~2.5 m is marginal at datum; parts may be shallower, and the exposed approach in onshore weather makes entry dangerous. Conservative: tide-gated.",
+    "source": "turismo.gal Aguiño fishing port (average basin depth ~2.5 m); masmar.net Ría de Arousa Norte guide; input notes; pilotage knowledge.",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "club-nautico-do-caraminal-a-pobra-do-caraminal",
+    "controllingDepthM": 3.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Input notes state entrance 5 m and inner 3 m at chart datum. The approach is via the main Ria de Arousa channel, deep and well-marked S of Jidoiro Pedregoso. Inner 3 m ≥ 2.5 m required. No bar or sill. Mussel rafts to avoid but no depth restriction for 2.0 m draft.",
+    "source": "Input notes (inner 3 m, entrance 5 m); ailladearousa.com (preferred by sailing cruisers for good draft and easy approach); pilotage knowledge.",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "marina-vilagarcia-de-arousa",
+    "controllingDepthM": 3.0,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Input notes state entrance 5 m, inner 3 m at chart datum, and explicitly warn 'check depth for >2.5 m draft at MLW'. The inner depth of 3.0 m exactly matches the 2.5 m required (2.0 m draft + 0.5 m UKC). The marina's own caution about >2.5 m draft at MLW indicates that at lowest tides the inner berths may be less than 3 m. Conservative rule: tide-gated.",
+    "source": "Input notes (5 m entrance, 3 m inner, explicit MLW caution for >2.5 m draft); marinavilagarcia.com; pilotage knowledge.",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "marina-arousa-vilanova-de-arousa",
+    "controllingDepthM": 3.0,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Input notes state mouth 5 m, inside 3 m at chart datum. The 3.0 m inner depth exactly meets but does not safely exceed the 2.5 m minimum for a 2.0 m draft with 0.5 m UKC. No explicit tidal warning in notes, but same conservative reasoning as Vilagarcia applies. Classified tide-gated pending confirmation of LW datum depths in visitor berths.",
+    "source": "Input notes (50 m entrance 5 m, inside 3 m); pilotage knowledge; same ría as Vilagarcia with similar bathymetry.",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "cambados-anchorage-fishing-port",
+    "controllingDepthM": null,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Cambados sits near the shallow S end of the Ría de Arousa, where extensive sandbanks and drying areas are charted. The nearby 'O Serrido / A Seca' area dries at LW. The approach from the main ría channel becomes shallow well before the town; Wikipedia confirms the southern ría is characterised by shallow waters with sand banks. Reliable datum depth for the anchorage/fishing port approach is not confirmed but the shallow topography makes tide-gating certain for a 2.0 m draft.",
+    "source": "Input notes (no depth data); Wikipedia Ría de Arousa (southern zone shallow sandbanks); turismo.gal (drying O Serrido zone near Cambados); pilotage knowledge.",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "club-nautico-san-vicente-do-mar-o-grove",
+    "controllingDepthM": 2.0,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Input notes state mouth 5 m but inner only 2 m at chart datum. Notes explicitly state 'HW for yachts drawing >1.5 m' and 'keeled yachts near HW'. The controlling depth of 2.0 m is below the 2.5 m required. Accessible only at or near HW for a 2.0 m draft.",
+    "source": "Input notes (inner 2 m, explicit HW restriction for >1.5 m draft); turismo.gal O Grove marina; pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "sanxenxo",
+    "controllingDepthM": 3.5,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Input notes state mouth 7.5 m and inner 3.5 m at chart datum. Search (turismo.gal, nautasanxenxo.com) confirms entrance depth 5–8 m range and the marina accommodates yachts up to 45 m with berths up to 8 m draft. Inner 3.5 m > 2.5 m required. No bar or tidal sill. All-tide access for a 2.0 m draft.",
+    "source": "Input notes (7.5 m mouth, 3.5 m inner); turismo.gal / nautasanxenxo.com; pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "illa-de-ons-anchorage",
+    "controllingDepthM": 5.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "The principal anchorage is on the E side of Illa de Ons (Ensenada de Canexol / Praia de Canexol). This is a clean sandy bay within the Parque Nacional Illas Atlánticas. The approach from the E through the Ría de Pontevedra is deep (>10 m). Typical anchoring depth over sand 4–8 m at chart datum. No bar, no sill, no tidal restriction for a 2.0 m draft.",
+    "source": "turismo.gal Canexol (fondeo Sí); masmar.net Canexol guide; pilotage knowledge of Ons anchorages; Yachting Monthly Rías Baixas guide.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "puerto-deportivo-de-combarro-marina-combarro",
+    "controllingDepthM": 3.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Input notes state outer pontoon 3 m at MLW (chart datum) and note that the marina was dredged, making old chart soundings misleading (previously showed shallower). This was corroborated by a sailing cruiser account (Yachting World Galicia, Calypso Capers) describing 3 m alongside at MLW. 3.0 m ≥ 2.5 m required. Classified all-tide, but the margin (0.5 m UKC exactly) is tight at the datum — confirm before first visit on a spring low.",
+    "source": "Input notes (outer pontoon 3 m MLW, dredged, old charts misleading); ronautica.com Combarro Marina; cruiserswiki.org Ria de Pontevedra; TYHA Gold Anchor profile.",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "pontevedra-club-naval-de-pontevedra",
+    "controllingDepthM": 2.0,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Input notes explicitly state 'max draft 2 m at LW' and 'HW only; tidal gate'. Mouth of Río Lérez at ría head with spring range ~3 m. A 2.0 m draft yacht requires 2.5 m water; at LW only 2.0 m is available. Air-draft restriction (Barca bridge 12 m) additionally limits sailing yachts. Tide-gated.",
+    "source": "Input notes (max draft 2 m at LW, explicit HW tidal gate note); Wikipedia Pontevedra marina; pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "marin-port-of-marin",
+    "controllingDepthM": 7.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Port of Marín is a large mixed military/commercial/fishing port. Channel depth 26–30 ft (≈7.1–9.1 m) with no approach bar. Deep water access at all tides. However, this is NOT a recreational marina — visitor berths for yachts are not routine and require contacting the port authority on VHF 16. Depth classification is all-tide based on physical access, but practical yacht access is very limited.",
+    "source": "searates.com Port of Marin (channel 26–30 ft depth); Wikipedia Port of Marín; input notes; pilotage knowledge.",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "puerto-pesquero-y-deportivo-de-bueu",
+    "controllingDepthM": 3.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Search (yachtdigest.com, hellonautic.com) confirms min 2 m / max 4 m draft at the marina; principal channels into the Ría de Pontevedra entrance are 9.4–15 m deep. The sports marina area has berths up to 4 m draft. Input notes berthMaxDraftM 4 m and describe approach as straightforward. Visitor berths likely 3–4 m. Approach via the S (safest) channel is accessible in any sea state. All-tide for a 2.0 m draft assuming outer/visitor berths ≥2.5 m; inner berths may be shallower (min 2 m stated).",
+    "source": "yachtdigest.com Bueu (min 2 m, max 4 m draft, approach channels 9.4–15 m); capetanos.com; navily.com Bueu; input notes.",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "ria-de-aldan-anchorage",
+    "controllingDepthM": 4.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Ría de Aldán is a small, clean anchorage on the S side of the Ría de Pontevedra entrance. Multiple cruising accounts (Calypso Capers, Oyster Yachts Galicia guide) describe anchoring in sandy coves in 3–6 m. The approach from the N is straightforward with depths >10 m. No bar, no sill. Warmest water of the Rías due to sandy bottom. All-tide for 2.0 m draft.",
+    "source": "calypsocapers.co.uk Ría de Aldán (several sandy coves 3–6 m sand); oysteryachts.com Galicia guide; jimbsail.info; pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "porto-deportivo-de-cangas-rcn-rodeira",
+    "controllingDepthM": 3.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Input notes state berthMaxDraftM 3 m. RCN Rodeira is in the deep Ría de Vigo; approach channels are well-marked and deep (main channel >10 m). The marina breakwater approach is clear of shoals once past the Borneira buoy on the described leading lines. Berth depths 3 m. No bar or sill. All-tide for 2.0 m draft.",
+    "source": "turismo.gal RCN Rodeira (depth 3 m); nauticorodeira.com; input notes; pilotage knowledge Ría de Vigo.",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "puerto-deportivo-moana-mar",
+    "controllingDepthM": 3.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Moana Mar is inside the deep Ría de Vigo on the N shore. masmar.net Moaña guide states entrance 5 m and overall port depth 3 m. Input notes describe approach as straightforward mid-channel from the Ría de Vigo. Some berths near shore may be shallower (as low as 1 m), but visitor/outer berths are ~3 m. Conservative controlling depth taken as 3 m. All-tide for 2.0 m draft on outer berths.",
+    "source": "masmar.net Puerto Deportivo de Moaña (entrance 5 m, 3 m overall depth); moanamar.es; boatview.io; input notes; pilotage knowledge.",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "ensenada-de-barra-anchorage",
+    "controllingDepthM": 7.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Ensenada de Barra is a bay on the N shore of the Ría de Vigo between Cangas and Moaña. svmadrone.com and calypsocapers.co.uk reports confirm ~25 ft (≈7.6 m) of clear water just offshore. The bay is wide and clean with three sandy beaches; W-most beach offers best shelter from NW swell. Approach via the deep Ría de Vigo main channel. All-tide for any cruising draft.",
+    "source": "svmadrone.com Rías de Vigo (~25 ft water off Ensenada de Barra); calypsocapers.co.uk; pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "islas-cies-anchorage-ensenada-de-rodas",
+    "controllingDepthM": 5.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Ensenada de Rodas (between Isla Norte and Isla Sur of the Cíes) is an outstanding clean sandy anchorage. Playa de Rodas is one of the world's best beaches. Anchoring depths 3–8 m over sand at chart datum. Approach from E through the Ría de Vigo or from S via Canal del Sur is deep and clear. No bar or sill. All-tide for 2.0 m draft. Note: anchoring permit required (Parque Nacional Illas Atlánticas).",
+    "source": "sailingkerguelen.com (anchorage Cíes, permit required); motyvel.com (anchoring at Ensenada de Rodas, depths described); sailway.es; pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "vigo",
+    "controllingDepthM": 4.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Multiple marinas in Vigo, all inside the deep Ría de Vigo with no approach bar. RCN Vigo accepts draft 1.5–8 m (portbooker.com); Davila Sport entrance 3 m, outer berths 4–8 m. Input notes say mouth 10 m, innermost berths 2 m, best berths 4–8 m. Controlling depth for visitor berths is conservatively 4 m. A 2.0 m draft yacht with 0.5 m UKC needs 2.5 m — well within range for outer/visitor berths. All-tide with caveat: request a berth with ≥2.5 m; avoid innermost shallow berths.",
+    "source": "Input notes (mouth 10 m, best berths 4–8 m); portbooker.com RCN Vigo (draft 1.5–8 m accepted); turismo.gal Davila Sport; turismodevigo.org; pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "baiona",
+    "controllingDepthM": 6.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Baiona (MRCYB and adjacent municipal marina) is in a deep sheltered bay SW of the Ría de Vigo. Approach from S/NW is deep; no bar or sill. no-frills-sailing.com review confirms entrance 12 m depth and inner 6 m. Input notes state entrance ~12 m, inner 6 m, berthMaxDraftM 6 m. Well inside safe range for a 2.0 m draft. All-tide.",
+    "source": "no-frills-sailing.com (entrance 12 m, inner 6 m, approach straightforward); noonsite.com Ría de Vigo and Baiona; input notes; mrcyb.es; pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "puerto-de-a-guarda",
+    "controllingDepthM": null,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Very narrow entrance (8.2 m wide) in an open NW-facing cove. Input notes confirm 'deepens to 8 m at breakwater head, 0 m at slipway' — the slipway area is drying. Approach is only viable in settled weather from the right sector; dangerous in W/SW conditions. Input notes explicitly state 'daylight, slack, settled weather only' and 'ONLY for small craft in settled weather; 8.2 m entrance is very tight; emergency use only'. The physical depth at the breakwater head may be adequate, but the 8.2 m entrance width (not depth), exposure, and restricted conditions mean this cannot be treated as all-tide. tide-gated (weather/time constrained, not purely depth-gated).",
+    "source": "Input notes (8.2 m entrance width, deepens to 8 m at breakwater head, 0 m slipway, daylight/slack/settled only); turismoaguarda.es; pilotage knowledge.",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "caminha-porto-de-recreio-de-seixas",
+    "controllingDepthM": null,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "River Minho mouth with a notorious shifting sand bar (1,400 m wide). Input and altominho.pt confirm max draft 2.5 m, tidal range ~2 m springs, no charted channel marks, local knowledge strongly recommended. Bar exposed to W/SW swell; in onshore swell or on the ebb the bar produces dangerous conditions. The Capitania signal station near Ponta do Cabedo issues mandatory instructions. Ongoing silting shifts the bar seasonally. Crossable near HW in calm conditions only. barOrLagoon true.",
+    "source": "Input notes (bar 1,400 m, max draft 2.5 m, near HW with local knowledge); manorhouses.com Caminha anchorage (tidal bar, 4 kt ebb, navigate at HW); altominho.pt Seixas marina; pilotage knowledge.",
+    "confidence": "high",
+    "verifyNeeded": false
+  }
+]

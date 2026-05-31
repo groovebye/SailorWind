@@ -118,6 +118,9 @@ export default async function Home() {
               orcaRisk: area.orcaRisk,
               toNextNm,
               isMajor: area.isMajor,
+              draftAccess: area.draftAccess,
+              controllingDepthM: area.controllingDepthM,
+              accessNote: area.accessNote,
             };
           })}
         />

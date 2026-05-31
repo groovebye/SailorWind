@@ -1,0 +1,282 @@
+[
+  {
+    "slug": "enseada-de-sagres-anchorage",
+    "controllingDepthM": 5.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Open roadstead anchorage in the bay S of Sagres Point. No bar, no lagoon. Sandy bottom at 5–10 m in the typical anchoring area. Exposed to S/SE swell but depth is not a constraint; a 2.0 m draft yacht can anchor at any state of tide. Controlling depth conservatively set at 5.0 m (anchoring ground, not a dredged channel).",
+    "source": "Navily anchorage record; pilotage knowledge; Imray C50 / Reeds Nautical Almanac SW Portugal",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "porto-de-baleeira-sagres-fishing-harbour",
+    "controllingDepthM": null,
+    "access": "unknown",
+    "barOrLagoon": false,
+    "note": "Small commercial fishing harbour managed by Docapesca. Notes indicate anchorage W of the seawall or among fishing boats; no designated visitor berths, no dredged depth stated. The outer anchorage is open-ocean depth (no tidal bar), but the harbour itself has no published controlling depth. Likely ≥3 m near the quays but cannot confirm from available sources.",
+    "source": "Project notes (input.json); Navily; pilotage knowledge; no authoritative depth found",
+    "confidence": "low",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "marina-de-lagos",
+    "controllingDepthM": 3.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Project notes explicitly state 'channel minimum 3.0 m, basin dredged -2.80 m'. Approach on bearing 282 between moles; no bar. Minimum channel depth 3.0 m at datum exceeds the 2.5 m threshold for a 2.0 m draft yacht (+0.5 m UKC). All-tide access confirmed.",
+    "source": "Project notes (input.json); Marina de Lagos official data; Imray C50; Reeds Nautical Almanac SW Portugal",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "alvor-anchorage-tidal-lagoon",
+    "controllingDepthM": 0.5,
+    "access": "shallow",
+    "barOrLagoon": true,
+    "note": "Tidal lagoon entrance via training walls with shifting sandbanks. CruisersWiki / noforeignland reports confirm the shallowest point of the entrance channel can be as little as 0.5 m at LW. Max safe draft 2.0 m only on a rising tide with the bar partially covered, and even then the constantly shifting banks make it risky. A 2.0 m draft yacht cannot safely enter with adequate UKC even near HW springs. Classified 'shallow' (can't safely enter any state of tide for a 2.0 m draft boat with standard UKC).",
+    "source": "CruisersWiki Alvor; Noforeignland blog Portuguese Algarve anchorages; Noonsite Portugal Algarve cruising report",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "marina-de-portimao",
+    "controllingDepthM": 4.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Notes explicitly state 'bar entrance depth 8.5 m; quay depth 4 m. Deep-water access at all tides.' Two long moles protect a 250 m wide entrance. Arade River commercial entrance is dredged and maintained. Controlling depth is 4.0 m at the berths (the bar/entrance is 8.5 m). Designated customs clearance port; deepest-draft access in the Algarve.",
+    "source": "Project notes (input.json); Marina de Portimao official data; Imray C50; Reeds Nautical Almanac SW Portugal",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "marina-de-albufeira",
+    "controllingDepthM": 2.5,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Notes state 'Channel dredged to 4.0 m. Inner basin finger pontoons 2.5–4.0 m.' Outer basin approach 4.0 m, inner pontoons minimum 2.5 m. No tidal bar; described as 'most sheltered marina in Portugal'. Controlling depth is 2.5 m at the shallowest inner pontoons. For a 2.0 m draft yacht requiring 2.5 m (including 0.5 m UKC) this is the minimum acceptable; the outer basin and approach are clear at 4.0 m.",
+    "source": "Project notes (input.json); Marina de Albufeira official data; Imray C50",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "marina-de-vilamoura",
+    "controllingDepthM": 3.3,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Notes state entry depth 4.0 m, inner basin 3.3 m (visitor/main berths) and 2.0 m (innermost small-boat section). Notes add 'vessels >3 m draft call ahead' — implying up to 3 m is generally accommodated. Visitor berths in the main inner basin are at 3.3 m. The 2.0 m innermost section is for local small craft, not relevant to passage yachts. Controlling depth for visitor berths: 3.3 m. No bar; enclosed maintained marina. Largest marina in Portugal.",
+    "source": "Project notes (input.json); Vilamoura marina official data (VHF 09 call); Imray C50; Reeds Nautical Almanac",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "ria-formosa-barra-do-farol-entrance",
+    "controllingDepthM": null,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "The Barra do Farol is the main entrance bar to the Ria Formosa tidal lagoon. It is a shifting sandbar — no reliable fixed controlling depth at chart datum. The maintained buoyed channel has been nominally 2.5–3.5 m at LAT in favourable surveys but shifts seasonally. Per Ria Formosa context rules: lagoon entrance with shifting bar is tide-dependent. Enter on a rising tide. A 2.0 m draft yacht should enter on the flood with local knowledge of current buoy positions.",
+    "source": "Reeds Nautical Almanac SW Portugal / Algarve; CruisersWiki Ria Formosa; Noonsite Portugal Algarve; pilotage knowledge",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "ilha-da-culatra-anchorage-ria-formosa",
+    "controllingDepthM": null,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Anchorage inside the Ria Formosa lagoon off Culatra island, reached after crossing the Barra do Farol entrance bar. The anchorage itself is in the main lagoon channel (typically 2–3 m at MLW near the island), but access is tide-gated by the bar. Tidal currents 3–5 kt at springs in the channels. Must enter via bar on flood.",
+    "source": "Reeds Nautical Almanac SW Portugal; CruisersWiki Ria Formosa; Noonsite; pilotage knowledge",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "porto-de-recreio-de-faro-doca-de-recreio",
+    "controllingDepthM": null,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Reached via Ria Formosa inner channels from Barra do Farol. Notes confirm 'Via Ria Formosa inner channels from Barra do Farol. Arrive near slack before flood.' The lagoon channel depth near Faro is typically 2–3 m at MLW but access is entirely dependent on crossing the Barra do Farol bar on the flood. Strong tidal currents 3–5 kt at springs in the channels. Primarily a naval/yacht-club facility with limited visitor space.",
+    "source": "Project notes (input.json); Reeds Nautical Almanac SW Portugal; CruisersWiki Faro; Noonsite",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "porto-de-recreio-de-olhao-marina-de-olhao",
+    "controllingDepthM": null,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Notes confirm 'Access via Ria Formosa inner channels after Barra do Farol. Follow buoyed Olhao channel NW. Depth at MLW 2–3 m alongside.' berthMaxDraftM is 4 m (max berth capacity) but the access route is tide-gated by Barra do Farol bar. Alongside depth 2–3 m at MLW is adequate for a 2.0 m draft yacht at the berth, but bar crossing is the constraint. Note: 17 m max LOA is a critical length limitation.",
+    "source": "Project notes (input.json); Reeds Nautical Almanac SW Portugal; CruisersWiki Olhao; Noonsite",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "tavira-anchorage-ria-de-tavira",
+    "controllingDepthM": null,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Ria de Tavira tidal lagoon with an outer bar between Ilha de Tavira and Ilha de Cabanas. Entrance via narrow buoyed channel; bar is shallow and drying in places at LW. CruisersWiki confirms approach on 275° then 325°, with deeper water to port. Bar depth at LAT is insufficient for a 2.0 m draft yacht except near HW. Sand shifts seasonally. Anchorage inside the channel after entry.",
+    "source": "CruisersWiki Tavira; Manorhouses.com Tavira cruising guide; Reeds Nautical Almanac SW Portugal; Noonsite",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "marina-de-vila-real-de-santo-antonio-porto-de-recreio-do-guadiana",
+    "controllingDepthM": 2.0,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Rio Guadiana entrance with buoyed bar. Notes state '2 m draft at LW neaps' for the bar waypoints, and 'Accessible HW +/- 3 h.' The bar controlling depth of 2.0 m at LW neaps is below the 2.5 m threshold (2.0 m draft + 0.5 m UKC). Strong cross-current at entrance (ebb 2–4 kt). Enter near slack water, on the flood, for a 2.0 m draft yacht. Marina is ~2 nm upriver.",
+    "source": "Project notes (input.json); Reeds Nautical Almanac SW Portugal; CruisersWiki Vila Real de Santo Antonio; Noonsite",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "puerto-deportivo-de-ayamonte",
+    "controllingDepthM": 2.0,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Spanish (E) bank of the Rio Guadiana. Notes confirm 'Entrance can fall to 2–3 m at MLW; bar dredged ~2016 but sandbanks shift after floods.' Minimum bar depth 2.0 m at MLW = below 2.5 m threshold. Enter on rising tide, second half of flood. Cross-current on ebb; driftwood hazard. Same Guadiana bar as VRSA on the Portuguese side.",
+    "source": "Project notes (input.json); Reeds Nautical Almanac SW Portugal; CruisersWiki Ayamonte; Noonsite Ayamonte",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "marina-isla-canela",
+    "controllingDepthM": 3.0,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Carreras River (Cano de Isla Canela). Notes state 'access channel min 3 m depth' and 'enter on rising tide.' Although the stated minimum channel depth is 3.0 m, the tidal river entrance requirement (rising tide mandated) indicates the controlling depth falls below 3.0 m at LW. Classified tide-gated per conservative rules — tide instruction overrides stated depth where it cannot be verified at datum.",
+    "source": "Project notes (input.json); CruisersWiki Isla Canela; Spanish chart D-440; Noonsite",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "puerto-deportivo-de-isla-cristina",
+    "controllingDepthM": 2.5,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Rio Carreras estuary entrance. Notes state 'entrance ~3.0 m, marina ~2.5 m. Currents up to 2 kt on ebb; rising tide.' berthMaxDraftM 2.5 m. Rising tide required — the 2.5 m marina depth and 3.0 m entrance are not reliably at datum; LW depth falls below this. Tide-gated. Buoyed channel with lit mole-end markers.",
+    "source": "Project notes (input.json); CruisersWiki Isla Cristina; Noonsite; pilotage knowledge",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "marina-el-rompido-rio-piedras",
+    "controllingDepthM": null,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Rio Piedras estuary. Notes explicitly state 'bar reduces to ~1 m at MLW; HW depths 3.0–4.7 m. DO NOT attempt near LW.' Bar at ~1 m at MLW (roughly LAT) is far too shallow for a 2.0 m draft yacht at datum. Near-HW entry only. Shifting sandbanks — buoys may lag after heavy weather. Tide-gated only near HW (HW +/- 1h per notes). controllingDepthM set null as bar depth at datum is clearly insufficient and shifts.",
+    "source": "Project notes (input.json); CruisersWiki El Rompido; Noonsite; pilotage knowledge",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "puerto-de-punta-umbria-marina-umbria-rcmt",
+    "controllingDepthM": null,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Rio de Punta Umbria (Odiel/Tinto tributary estuary). Notes state 'entry near HW advised.' River/estuary entrance with tidal bar; no stated depth at datum. Long mole on W side, channel buoyed. Two marinas 1–2 nm upriver. Rising tide entry required — controlling depth at datum unknown but insufficient for all-tide access per notes. Conservative: tide-gated.",
+    "source": "Project notes (input.json); Spanish chart D-440; CruisersWiki Punta Umbria; pilotage knowledge",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "puerto-deportivo-de-mazagon",
+    "controllingDepthM": 4.5,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Notes state 'entrance ~4.5 m, marina 2.5–4.5 m. Well protected all directions.' Curving 3-nm mole and training wall protect from S. Web search corroborates: entrance 4.5 m. berthMaxDraftM 4.5 m. No bar; buoyed channel leads ~1 nm N from W cardinal to marina. All-tide access confirmed.",
+    "source": "Project notes (input.json); CruisersWiki Mazagon; Noonsite Mazagon; Andalucia.com marina guide; Spanish chart D-440",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "puerto-deportivo-de-chipiona",
+    "controllingDepthM": 2.6,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Near the Guadalquivir mouth shoals; entrance dredged but subject to silting. Notes mention Bajo Salmedina reef hazard ~2 nm offshore. Noonsite cruiser report (most cautious available) cited entrance depth of 2.6 m, below the 2.5 m + UKC threshold of 2.5 m. Another 2018 report found ~3 m near LW, suggesting variability. Per conservative rules, conflicting reports → tide-gated. Enter near HW to ensure adequate clearance. Fairway buoy 1.3 nm SE of Chipiona lighthouse.",
+    "source": "Project notes (input.json); Noonsite Chipiona cruiser reports; CruisersWiki Chipiona; Andalucia.com marina guide",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "puerto-deportivo-de-rota",
+    "controllingDepthM": 2.5,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Notes and multiple sources confirm max draft 2.5 m for marina berths. berthMaxDraftM 2.5 m. Notes warn of shallows (0.7 m) within 0.5 nm of Punta de la Morena on approach — stay in the marked channel. Entrance channel depth is adequate (cruiserswiki confirms ≥4.5 m at entrance); the 2.5 m limit is the berth depth controlling factor. No tidal bar; enclosed marina. For a 2.0 m draft yacht: 2.5 m berth depth = exactly 0.5 m UKC, the minimum acceptable.",
+    "source": "Project notes (input.json); CruisersWiki Rota; sail-the-net.com Rota marina; Noonsite",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "el-puerto-de-santa-maria",
+    "controllingDepthM": 3.5,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Notes describe two facilities under this slug: (1) a purpose-built marina 3 nm NE of Cadiz city in the Bay of Cadiz (deep water, Bay of Cadiz tidal streams 2–3 kt but no bar); and (2) Real Club Nautico on the Rio Guadalete 5 nm NE of Cadiz (river access via buoyed channel, strong current). The Rio Guadalete has a river bar with tidal constraints. berthMaxDraftM 3.5 m. CruisersWiki confirms max draught 5 m at RCNPSM pontoons, but river bar approach is depth/current restricted. Per conservative rules: the tidal river component dominates → tide-gated. Verify which facility applies on arrival.",
+    "source": "Project notes (input.json); CruisersWiki Puerto de Santa Maria; Noonsite; Andalucia.com",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "cadiz",
+    "controllingDepthM": 4.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Bay of Cadiz is a large, well-marked deep-water bay. Notes confirm 'Bay of Cadiz is well-marked deep water.' berthMaxDraftM 4 m. No bar. Tidal streams 2–3 kt at springs in the main channel but this is a navigation consideration, not a depth constraint. Small marina (max LOA 15 m) inside the commercial port; water depth adequate for 2.0 m draft at all tides.",
+    "source": "Project notes (input.json); Reeds Nautical Almanac SW Spain; CruisersWiki Cadiz; Noonsite",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "puerto-deportivo-sancti-petri",
+    "controllingDepthM": 2.0,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "Cano de Sancti Petri tidal channel. Notes explicitly state 'entrance width 100 m; depth 2 m at LW; interior 0–12 m variable.' 2 m at LW = below 2.5 m threshold for a 2.0 m draft yacht with 0.5 m UKC. Approach on rising tide. Research confirms 2 m at LW (one source cites 1.5 m). Conspicuous Sancti Petri Castle marks the entrance.",
+    "source": "Project notes (input.json); costasur.com Marina of Sancti Petri; ResearchGate bathymetry Sancti Petri Channel; masmar.net cruising guide",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "puerto-deportivo-de-barbate",
+    "controllingDepthM": 3.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Protected by a 1300 m breakwater plus floating anti-wave barrier. Notes state 'dredged channel 256 m' and caution about almadraba nets Apr–Jun. Web search confirms bar entrance draught ~4.5 m, max berth draught 3.0 m (berthMaxDraftM 3 in data). Notes add 'first visit HW +/- 2h in light conditions due to shifting sand' — this is a first-visit precaution for the entrance orientation, not a permanent tidal gate. Controlling depth 3.0 m at berths. Key Strait-of-Gibraltar staging port.",
+    "source": "Project notes (input.json); Andalucia.com Puerto Deportivo Barbate; Odyssea Ports Barbate; Noonsite",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "puerto-de-tarifa",
+    "controllingDepthM": null,
+    "access": "unknown",
+    "barOrLagoon": false,
+    "note": "APBA manages 118 small-craft berths (5–11 m LOA) for local/day-trip vessels; yachts on passage use as refuge only alongside the central jetty if space. Notes confirm no fuel, no dedicated facilities. Web search found a stated max draught of 8 m for the harbour, consistent with it being a deep commercial/ferry port, but the small-craft berths have no confirmed depth at datum in available sources. The harbour water is deep (ferry port, no bar), but the specific visitor berth depth is unconfirmed. Refuge only.",
+    "source": "Project notes (input.json); MarinaReservation Tarifa; sail-the-net Tarifa; pilotage knowledge",
+    "confidence": "low",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "alcaidesa-marina-la-linea",
+    "controllingDepthM": 5.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Bay of Algeciras, W of Gibraltar. Notes confirm 'excellent shelter all weather; deep-water access.' berthMaxDraftM 5 m. No bar; Bay of Algeciras is deep natural water. Largest, best-equipped marina in the region; 75 t travel hoist. Keep clear of Algeciras TSS on approach.",
+    "source": "Project notes (input.json); Alcaidesa Marina official; Reeds Nautical Almanac Strait of Gibraltar; CruisersWiki La Linea",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "gibraltar",
+    "controllingDepthM": 4.5,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "N of Gibraltar Harbour between North Mole and airport runway. berthMaxDraftM 4.5 m. Deep natural harbour; no bar. Gibraltar is a major international port with commercial shipping, navy, and marina facilities. All-tide access. Duty-free diesel available.",
+    "source": "Project notes (input.json); Gibraltar port authority; Reeds Nautical Almanac Strait of Gibraltar; CruisersWiki Gibraltar",
+    "confidence": "high",
+    "verifyNeeded": false
+  }
+]

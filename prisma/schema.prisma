@@ -357,6 +357,12 @@ model PortArea {
   coastOrder      Float?   // ordering key along the cruising route (Gijón=0 … La Coruña=160 … Gibraltar). Sort the catalog by this.
   isMajor         Boolean  @default(false) // curated: a principal harbour-city hub — secure marina + provisioning + transport, good for an overnight / 1-2 day rest. Highlighted in the catalog.
 
+  // Draft access (sourced; feeds the draft-safety filter). controllingDepthM = shallowest
+  // point of the normal yacht approach + visitor berths, at chart datum (LAT).
+  draftAccess       String?  // "all-tide" | "tide-gated" | "shallow" | "unknown"
+  controllingDepthM Float?
+  accessNote        String?  // short skipper-facing reason incl. tide window if gated
+
   description         String?
   arrivalSummary      String?
   shoreSummary        String?

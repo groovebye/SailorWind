@@ -22,10 +22,24 @@ export type PortCard = {
   toNextNm: number | null;
   /** Curated principal hub — good for an overnight / 1-2 day rest & provisioning. */
   isMajor: boolean;
+  /** Sourced entry classification for a 2.0 m draft (≥2.5 m all-tide). */
+  draftAccess: string | null; // "all-tide" | "tide-gated" | "shallow" | "unknown"
+  controllingDepthM: number | null;
+  accessNote: string | null;
 };
 
 /** A Monsun 31 daysails comfortably to ~55 nm; longer hops imply a night passage. */
 const OVERNIGHT_NM = 55;
+
+/** Boat draft the access data is classified for. */
+const DRAFT_M = 2.0;
+
+const ACCESS_META: Record<string, { chip: string; label: string; color: string }> = {
+  "all-tide": { chip: "✓", label: "all-tide", color: "var(--text-green)" },
+  "tide-gated": { chip: "◑ HW", label: "near HW only", color: "var(--text-yellow)" },
+  shallow: { chip: "✕", label: "too shallow", color: "var(--text-red)" },
+  unknown: { chip: "?", label: "depth unverified", color: "var(--text-muted)" },
+};
 
 function Tag({ children, tone }: { children: React.ReactNode; tone?: "warn" }) {
   return (
@@ -41,6 +55,22 @@ function Tag({ children, tone }: { children: React.ReactNode; tone?: "warn" }) {
   );
 }
 
+function AccessCell({
+  access, depthM, note, className,
+}: { access: string | null; depthM: number | null; note: string | null; className: string }) {
+  const m = ACCESS_META[access ?? "unknown"] ?? ACCESS_META.unknown;
+  return (
+    <td className={`${className} whitespace-nowrap`} title={note ?? m.label}>
+      <span style={{ color: m.color }}>{m.chip}</span>
+      {depthM != null && (
+        <span className="ml-1 text-[11px] tabular-nums" style={{ color: "var(--text-muted)" }}>
+          {depthM}m
+        </span>
+      )}
+    </td>
+  );
+}
+
 /**
  * Ports & Marinas: a compact table kept in coast order (as you sail toward
  * Gibraltar) with a live name/region filter on top. The "#" column is the true
@@ -51,8 +81,13 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [majorOnly, setMajorOnly] = useState(false);
+  const [draftSafe, setDraftSafe] = useState(true);
   const query = q.trim().toLowerCase();
   const majorCount = useMemo(() => areas.filter((a) => a.isMajor).length, [areas]);
+  const hiddenByDraft = useMemo(
+    () => areas.filter((a) => a.draftAccess !== "all-tide").length,
+    [areas],
+  );
 
   // Number rows by their coast position before filtering, so "#" = sailing order.
   const indexed = useMemo(() => areas.map((a, i) => ({ ...a, order: i + 1 })), [areas]);
@@ -60,11 +95,12 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
     return indexed.filter(
       (a) =>
         (!majorOnly || a.isMajor) &&
+        (!draftSafe || a.draftAccess === "all-tide") &&
         (!query ||
           a.name.toLowerCase().includes(query) ||
           (a.region ?? "").toLowerCase().includes(query)),
     );
-  }, [indexed, query, majorOnly]);
+  }, [indexed, query, majorOnly, draftSafe]);
 
   const th = "px-3 py-2 text-[11px] font-medium uppercase tracking-wide";
   const td = "px-3 py-2 align-middle";
@@ -74,7 +110,9 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
       <div className="flex items-baseline justify-between gap-3 mb-3">
         <h2 className="text-lg font-semibold text-slate-300">⚓ Ports &amp; Marinas</h2>
         <span className="text-xs tabular-nums" style={{ color: "var(--text-muted)" }}>
-          {query || majorOnly ? `${filtered.length} of ${areas.length}` : `${areas.length} along the route`}
+          {query || majorOnly || draftSafe
+            ? `${filtered.length} of ${areas.length}`
+            : `${areas.length} along the route`}
         </span>
       </div>
 
@@ -94,6 +132,21 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
         />
         <button
           type="button"
+          onClick={() => setDraftSafe((v) => !v)}
+          aria-pressed={draftSafe}
+          title={`Show only harbours a ${DRAFT_M} m draft enters at any state of tide (≥2.5 m, no bar). Turn off to see every port with its access rating.`}
+          className="px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors"
+          style={{
+            background: draftSafe ? "var(--text-green)" : "var(--bg-card)",
+            border: "1px solid var(--border-light)",
+            color: draftSafe ? "#0f172a" : "var(--text-secondary)",
+            fontWeight: draftSafe ? 600 : 400,
+          }}
+        >
+          ⚓ Draft {DRAFT_M} m{draftSafe ? ` · ${hiddenByDraft} hidden` : ""}
+        </button>
+        <button
+          type="button"
           onClick={() => setMajorOnly((v) => !v)}
           aria-pressed={majorOnly}
           title="Show only the principal hubs — good for an overnight / 1-2 day rest"
@@ -105,13 +158,28 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
             fontWeight: majorOnly ? 600 : 400,
           }}
         >
-          ★ Major hubs{majorOnly ? "" : ` (${majorCount})`}
+          ★ Major{majorOnly ? "" : ` (${majorCount})`}
         </button>
       </div>
 
-      <p className="text-[11px] mb-4" style={{ color: "var(--text-muted)" }}>
-        <span style={{ color: "var(--text-yellow)" }}>★</span> highlighted = principal hub: secure marina,
-        provisioning &amp; transport ashore — good for an overnight or 1–2 day rest.
+      <p className="text-[11px] mb-4 leading-relaxed" style={{ color: "var(--text-muted)" }}>
+        <span style={{ color: "var(--text-yellow)" }}>★</span> = principal hub (provisioning · overnight ·
+        1–2 day rest).{" "}
+        {draftSafe ? (
+          <>
+            Showing only harbours a <b>{DRAFT_M} m</b> draft enters at <b>any</b> tide (≥2.5 m, no bar);{" "}
+            {hiddenByDraft} tide-gated / shallow / unverified hidden — turn off{" "}
+            <span style={{ color: "var(--text-green)" }}>⚓ Draft</span> to see them with ratings.
+          </>
+        ) : (
+          <>
+            Access rating per port:{" "}
+            <span style={{ color: "var(--text-green)" }}>✓ all-tide</span> ·{" "}
+            <span style={{ color: "var(--text-yellow)" }}>◑ HW only</span> ·{" "}
+            <span style={{ color: "var(--text-red)" }}>✕ too shallow</span> ·{" "}
+            <span>? unverified</span> (for {DRAFT_M} m draft).
+          </>
+        )}
       </p>
 
       {filtered.length === 0 ? (
@@ -133,6 +201,7 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
                 </th>
                 <th className={`${th} hidden sm:table-cell`}>Region</th>
                 <th className={th}>Berths</th>
+                {!draftSafe && <th className={th}>Access</th>}
                 <th className={`${th} text-right`}>€/day</th>
                 <th className={th}>Facilities</th>
               </tr>
@@ -199,6 +268,14 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
                       </span>
                     )}
                   </td>
+                  {!draftSafe && (
+                    <AccessCell
+                      access={a.draftAccess}
+                      depthM={a.controllingDepthM}
+                      note={a.accessNote}
+                      className={td}
+                    />
+                  )}
                   <td
                     className={`${td} text-right whitespace-nowrap tabular-nums`}
                     style={{ color: a.cheapest != null ? "var(--text-green)" : "var(--text-muted)" }}

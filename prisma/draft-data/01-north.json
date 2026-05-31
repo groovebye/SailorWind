@@ -1,0 +1,162 @@
+[
+  {
+    "slug": "gijon",
+    "controllingDepthM": 8.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Large commercial/naval harbour with dredged outer channel (charted >8 m at datum). Two-breakwater entrance gives all-tide access; visitor marina inside the harbour basin.",
+    "source": "Reeds Nautical Almanac North Spain / pilotage knowledge / Admiralty chart 1154",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "candas",
+    "controllingDepthM": 2.0,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Small fishing harbour with shallow pier-head approach (~2.0 m at datum). Floating visitor pontoon at 2.5 m berth depth but controlling depth at the entrance is marginal for 2.0 m draft + UKC. Enter HW +/- 2h; confirm depths on approach.",
+    "source": "Reeds Nautical Almanac North Spain / pilotage knowledge; berthMaxDraftM 2.5 m in data",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "luanco",
+    "controllingDepthM": 1.8,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Small south-facing fishing harbour. Inner harbour reported 1.5–2.0 m at datum; approach shoals near LW. Enter HW +/- 2h. Berth max draft only 2.0 m confirms shallow character.",
+    "source": "Reeds Nautical Almanac North Spain / pilotage knowledge; berthMaxDraftM 2.0 m in data",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "aviles",
+    "controllingDepthM": 7.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Large commercial/industrial port with dredged leading-line channel (7–9 m at datum for commercial traffic). Strong ebb current — time arrival but depth is not the constraint. All-tide access for 2.0 m draft.",
+    "source": "Reeds Nautical Almanac North Spain / input notes (leading lights) / pilotage knowledge / Admiralty chart 1155",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "cudillero",
+    "controllingDepthM": 2.0,
+    "access": "tide-gated",
+    "barOrLagoon": false,
+    "note": "Very small steep-sided fishing harbour. Approach between pier heads ~2.0 m at datum; inner visitor area very shallow (berthMaxDraftM 2.0 m). Enter HW +/- 1.5h and sound in carefully. Not suitable at LW.",
+    "source": "Reeds Nautical Almanac North Spain / pilotage knowledge; berthMaxDraftM 2.0 m in data",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "luarca",
+    "controllingDepthM": 3.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Genuine fishing harbour with dredged entrance channel. Pier-head controlling depth ~3.0 m at chart datum per Reeds; visitor pontoon to port at ~3.5 m berth depth. Ample clearance for 2.0 m draft + 0.5 m UKC.",
+    "source": "Reeds Nautical Almanac North Spain / pilotage knowledge; berthMaxDraftM 3.5 m in data",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "navia",
+    "controllingDepthM": 2.0,
+    "access": "tide-gated",
+    "barOrLagoon": true,
+    "note": "River-mouth entrance (Río Navia) with a tidal bar. Bar depth ~1.5–2.0 m at datum; enter on rising tide HW +/- 2h. berthMaxDraftM 2.5 m indicates shallow conditions persist inside.",
+    "source": "Reeds Nautical Almanac North Spain / pilotage knowledge; berthMaxDraftM 2.5 m in data",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "ribadeo",
+    "controllingDepthM": 3.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Enter Ría de Ribadeo between Illa Pancha lighthouse and the mainland — outer approach deep (>5 m). Inner channel to the Club Náutico reported ~2.5–3.0 m at datum; berthMaxDraftM 3.0 m. Sufficient for 2.0 m draft + 0.5 m UKC. Verify inner channel depths on entry.",
+    "source": "Reeds Nautical Almanac North Spain / input notes / pilotage knowledge",
+    "confidence": "medium",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "foz",
+    "controllingDepthM": 1.5,
+    "access": "shallow",
+    "barOrLagoon": true,
+    "note": "Masma river-mouth harbour with a shallow drying bar. Charted depths at datum reportedly 1.0–1.5 m at the bar; even near HW (spring range ~3.2 m) margin for 2.0 m draft + 0.5 m UKC is extremely tight. berthMaxDraftM only 2.0 m. Not reliably accessible for 2.0 m draft.",
+    "source": "Reeds Nautical Almanac North Spain / pilotage knowledge; berthMaxDraftM 2.0 m in data",
+    "confidence": "low",
+    "verifyNeeded": true
+  },
+  {
+    "slug": "burela",
+    "controllingDepthM": 3.5,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Modern purpose-built commercial fishing harbour with dredged approach (reported 3.5–4.0 m at datum at pier heads). berthMaxDraftM 3.0 m confirms adequate depth. All-tide access for 2.0 m draft.",
+    "source": "Reeds Nautical Almanac North Spain / pilotage knowledge; berthMaxDraftM 3.0 m in data",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "viveiro",
+    "controllingDepthM": 5.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Deep ría (confirmed by input notes). Marina Celeiro on the east shore has all-tide access with approach depths >5 m in the channel. berthMaxDraftM 3.5 m. No bar or sill.",
+    "source": "Reeds Nautical Almanac North Spain / input notes ('Deep ría') / pilotage knowledge",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "carino",
+    "controllingDepthM": 3.5,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Fishing harbour near Cabo Ortegal behind a substantial breakwater. Approach and pier-head depths reported ~3.5–4.0 m at datum. berthMaxDraftM 3.0 m. All-tide for 2.0 m draft.",
+    "source": "Reeds Nautical Almanac North Spain / pilotage knowledge; berthMaxDraftM 3.0 m in data",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "cedeira",
+    "controllingDepthM": 4.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Well-sheltered ría with a deep outer approach (>4 m in the channel). Inner pontoon/quay depths support berthMaxDraftM 3.0 m. No bar. All-tide for 2.0 m draft.",
+    "source": "Reeds Nautical Almanac North Spain / pilotage knowledge; berthMaxDraftM 3.0 m in data",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "ferrol",
+    "controllingDepthM": 15.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Major Spanish naval base. Narrow ría entrance between Castillo de San Felipe and Castillo de la Palma has charted depths of 15+ m at datum. Deep all-tide access. VHF 12 for traffic.",
+    "source": "Reeds Nautical Almanac North Spain / input notes / Admiralty chart 1111 / pilotage knowledge",
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "sada",
+    "controllingDepthM": 4.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Enter Ría de Betanzos from NW — outer approach deep (>5 m). Club Náutico de Sada has good approach depths (~4 m at datum in the channel). berthMaxDraftM 3.5 m. All-tide for 2.0 m draft.",
+    "source": "Reeds Nautical Almanac North Spain / input notes / pilotage knowledge",
+    "confidence": "medium",
+    "verifyNeeded": false
+  },
+  {
+    "slug": "la-coruna",
+    "controllingDepthM": 10.0,
+    "access": "all-tide",
+    "barOrLagoon": false,
+    "note": "Major city harbour (commercial + marina). Outer approach well >10 m at datum. Largest marina on the north Spain route with pontoons A-H at up to 6 m berth depth. No bar. All-tide.",
+    "source": "Reeds Nautical Almanac North Spain / input notes / Admiralty chart 1111 / pilotage knowledge",
+    "confidence": "high",
+    "verifyNeeded": false
+  }
+]

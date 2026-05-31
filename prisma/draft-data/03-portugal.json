@@ -1,0 +1,162 @@
+[
+ {
+  "slug": "marina-de-viana-do-castelo",
+  "controllingDepthM": 2.5,
+  "access": "tide-gated",
+  "barOrLagoon": true,
+  "note": "River Lima training-wall entrance. Main channel dredged to 8 m and passable in most conditions, but a documented obstruction ~2.5 m below LWS sits between the outer mole and the first port-hand buoy — deep-draught vessels must await the tide. Spring ebb + river outflow adds current hazard. Controlling depth at datum = 2.5 m (obstruction at LWS). A 2.0 m draft yacht clears at chart datum with zero UKC margin; wait for ~1 m of tide to achieve 0.5 m UKC.",
+  "source": "Input notes (detailed); corroborated by cruiserswiki.org/wiki/Marina_de_Viana_do_Castelo and predictwind.com/marinas/portugal/viana-do-castelo/marina-viana-do-castelo",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "marina-da-povoa-de-varzim",
+  "controllingDepthM": 1.6,
+  "access": "tide-gated",
+  "barOrLagoon": false,
+  "note": "Open harbour entered on 045. Depths inside range from 1.6 m to 3.0 m; 4 designated visitor berths carry min 3.0 m but a 2.0 m draft yacht must navigate through areas charting 1.6 m to reach them. Exposed breakwater head dangerous in heavy NW swell. Controlling depth at datum is the 1.6 m minimum inside. Accessible near HW; at datum a 2.0 m yacht grounds in the shallower areas.",
+  "source": "Input notes; sea-seek.com; harbourguides.com; predictwind.com/marinas/portugal/povoa-de-varzim",
+  "confidence": "medium",
+  "verifyNeeded": true
+ },
+ {
+  "slug": "marina-porto-atlantico-leixoes",
+  "controllingDepthM": 3.5,
+  "access": "all-tide",
+  "barOrLagoon": false,
+  "note": "Large commercial port of Leixoes with outer breakwaters providing full sea protection. No bar or river entrance. Marina Porto Atlantico sits inside the commercial harbour; visitor berths to 3.5 m depth. Input notes state 'outer commercial port entered in any conditions — big breakwaters give full protection' and 'can be entered in all conditions'. Controlling depth set to 3.5 m (visitor berth maximum). A 2.0 m draft yacht has ample clearance at all states of tide.",
+  "source": "Input notes (explicit all-conditions statement); marine-project.com; sea-seek.com/en/Marina-de-Leixoes-Porto-Atlantico",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "douro-marina-marina-da-afurada",
+  "controllingDepthM": null,
+  "access": "tide-gated",
+  "barOrLagoon": true,
+  "note": "The Douro bar is one of the most dangerous river entrances on the Iberian Atlantic coast. Strong river current on ebb, W/SW swell produces breaking seas at the bar, and the port may close in adverse conditions. Input notes: 'W wind + ebb + river outflow = steep breaking seas; port may close. Enter near HW.' Channel inside carries ~5 m but the bar is the controlling hazard and its depth is weather/tide-state dependent, not a fixed chart datum figure. Marina is 1.5 nm upriver on S bank. Must be treated as tide-gated (near-HW only in calm conditions).",
+  "source": "Input notes (explicit); marinasdeportugal.pt; douromarina.com; yachtdigest.com/en/ports-portugal/douro-marina",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "marina-clube-da-gafanha-aveiro-barra",
+  "controllingDepthM": 1,
+  "access": "shallow",
+  "barOrLagoon": true,
+  "note": "WARNING port. Input data records berthMaxDraftM = 1.0 m; this is confirmed: Marina Clube da Gafanha has approach and berth depth of approximately 1 m. The Aveiro Barra is one of Portugal's most dangerous bar entrances with strong tidal currents in a narrow channel (~550 m between piers, marina entrance only ~20 m wide). In any onshore wind or swell the bar produces dangerous breaking seas. Not accessible to a 2.0 m draft vessel at any state of tide — both the berths and the approach channel are too shallow.",
+  "source": "Input notes (explicit warning, berthMaxDraftM=1.0); predictwind.com/marinas/portugal/aveiro; noonsite.com Aveiro entry",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "marina-da-figueira-da-foz",
+  "controllingDepthM": 3,
+  "access": "tide-gated",
+  "barOrLagoon": true,
+  "note": "River Mondego training-wall entrance. Bar dredged to minimum 7 m but is highly dynamic and produces dangerous breaking seas in onshore winds/swell. Input notes: 'WARNING: dangerous bar — has caused groundings and fatalities ... enter on the last 2 h of the rising tide.' Marina visitor berths accommodate max 3.0 m draft. Controlling depth = 3.0 m (berth limit). The bar itself can carry 7 m when calm and dredged, but weather and timing make this a tide-gated/weather-gated entrance. A 2.0 m draft yacht must cross the bar only near HW on flood.",
+  "source": "Input notes (explicit warning); cruiserswiki.org/wiki/Marina_de_Figueira_da_Foz; marine-project.com; gpsnauticalcharts.com",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "nucleo-de-recreio-do-porto-da-nazare",
+  "controllingDepthM": 3.5,
+  "access": "all-tide",
+  "barOrLagoon": false,
+  "note": "Input notes explicitly state: 'Nazare can be entered at virtually any tide and in almost any weather — the basin is protected by its configuration ... Any — no tidal gate.' No bar, no river, no lagoon. The Nazare Canyon to the north amplifies Atlantic swell but the harbour basin itself is well-sheltered. Marina berths accommodate up to 4.0 m draft with 52 berths; visitor pontoons may surge in very large NW swell but access is all-tide. Controlling depth set conservatively to 3.5 m (visitor pontoon area).",
+  "source": "Input notes (explicit all-tide statement); bluemoment.com Nazare harbour; navily.com/port/clube-naval-da-nazare-sur/2743",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "marina-de-peniche-ribeira",
+  "controllingDepthM": 4,
+  "access": "all-tide",
+  "barOrLagoon": false,
+  "note": "Peniche peninsula marina (Ribeira basin) inside the W jetty. Input notes: 'fair approach, good channel marking, negligible current/tidal flow in the basin. Max draft 4 m.' No river bar or lagoon. Fishing port approach is straightforward; marina on the inner basin. Berths to 4.0 m confirmed by multiple sources including marinasdeportugal.pt. A 2.0 m draft yacht has ample clearance at all tides.",
+  "source": "Input notes; sail-the-net.com/marinas/europe/portugal/peniche/marina-da-ribeira.html; marinasdeportugal.pt/en/marinas-ports/center/docapesca-marina-da-ribeira-peniche",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "berlengas-carreiro-do-mosteiro-anchorage",
+  "controllingDepthM": null,
+  "access": "unknown",
+  "barOrLagoon": false,
+  "note": "Open anchorage in the Carreiro do Mosteiro (main beach bay) on Berlenga Grande island. No chart-datum depth data found from any source. The anchorage is exposed to W/NW swell and is surrounded by rocks and reefs; the island is a nature reserve. Tourist ferries use the pier at moderate depth but no confirmed LAT datum depth for an anchoring yacht. Classified unknown — no reliable depth figure at datum; verify with Portuguese hydrographic chart 26405 or pilot book.",
+  "source": "Input notes (no data); berlengas.eu; wikipedia.org/wiki/Berlengas; no nautical depth found in any searched source",
+  "confidence": "low",
+  "verifyNeeded": true
+ },
+ {
+  "slug": "marina-de-cascais",
+  "controllingDepthM": 6,
+  "access": "all-tide",
+  "barOrLagoon": false,
+  "note": "Well-established marina on the N shore of Cascais Bay. Input notes: 'min depth 6 m'. No bar, no river, no lagoon — sheltered coastal bay approach. Multiple sources confirm berths to 6 m and a separate outer pontoon for vessels to 50 m. The approach from sea is deep water throughout. Internationally recognised as home of Portuguese sailing. All-tide with 6 m controlling depth — a 2.0 m draft yacht has 4 m UKC at chart datum.",
+  "source": "Input notes (explicit 6 m); sailingclick.com/marina/cascais-marina; marinasdeportugal.pt",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "porto-de-recreio-de-oeiras",
+  "controllingDepthM": 3,
+  "access": "all-tide",
+  "barOrLagoon": false,
+  "note": "Marina at mouth of the Tagus, 0.5 nm E of Sao Juliao fortress. Input notes: 'No significant bar/swell — the Tagus mouth shelters from the Atlantic.' Approach from SW along S bank of Tagus — deep water throughout. Berths to 3.0–3.5 m (sources vary; 3.0 m used conservatively). All-tide access confirmed by input notes and marina documentation. A 2.0 m draft yacht has 1 m UKC at datum.",
+  "source": "Input notes; sailingclick.com/marina/oeiras-marina; sail-the-net.com",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "lisboa",
+  "controllingDepthM": 5,
+  "access": "all-tide",
+  "barOrLagoon": false,
+  "note": "Deep tidal Tagus estuary; all-tide berthing at the river-side docks (Doca de Alcântara/Santo Amaro, ~5-7 m). NB Marina Parque das Nações inner channel is shallower (~2.5 m) — use the deep docks.",
+  "source": "Reeds; Lisbon port (APL) charts; marina sites",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "seixal-bay-tagus-south-bank-anchorage",
+  "controllingDepthM": null,
+  "access": "unknown",
+  "barOrLagoon": false,
+  "note": "Free anchorage on the S bank of the Tagus estuary opposite Alcantara/central Lisbon. The Tagus in this area is generally 5–15 m deep (commercial shipping lane) so adequate depth for a 2.0 m yacht is probable. However, the Seixal bay itself is shoaler than the main channel, and the SW corner near the town quay and former industrial areas may have shallower patches. No confirmed chart-datum depth for the anchorage position was found in any source. Classified unknown — verify on Portuguese hydrographic chart or via Navily/OpenSeaMap before anchoring.",
+  "source": "Input notes (no data); seixalyachtingbay.com; manorhouses.com/ports/seixal.htm (timeout); jimbsail.info/tidal-europe/west-portugal",
+  "confidence": "low",
+  "verifyNeeded": true
+ },
+ {
+  "slug": "marina-clube-naval-de-sesimbra",
+  "controllingDepthM": 3.5,
+  "access": "all-tide",
+  "barOrLagoon": false,
+  "note": "Marina at SE end of fishing-harbour breakwater. Input notes: 'max draft 3.5 m', approach straightforward once long SE breakwater is identified. Bay is sheltered from prevailing NW by Serra da Arrabida cliffs. No bar, no river, no lagoon. Multiple sources confirm berths to 3.5 m; west side up to 2.5 m. Controlling depth set at 3.5 m (berth maximum; visitor berths may be 3.5 m per input notes). A 2.0 m draft yacht has 1.5 m UKC at datum.",
+  "source": "Input notes; marinasdeportugal.pt/en/marinas-ports/lisbon/clube-naval-de-sesimbra; sailingclick.com/marina/marina-sesimbra-clube-naval-de-sesimbra",
+  "confidence": "high",
+  "verifyNeeded": false
+ },
+ {
+  "slug": "doca-de-recreio-das-fontainhas-setubal",
+  "controllingDepthM": 2.5,
+  "access": "tide-gated",
+  "barOrLagoon": false,
+  "note": "Marina in Sado estuary, 40 km S of Lisbon. Marina berths confirmed at 2.5 m on both E side (<=10 m LOA) and W side (<=15 m LOA). The Sado approach channel is dredged commercially to 13 m but sandbanks are present on the Troia (NW) side and must be avoided. Controlling depth = 2.5 m (berth limit). A 2.0 m draft yacht fits berths (0.5 m UKC exactly met) but this is the absolute minimum. Conservative classification: tide-gated — the 2.5 m berth depth is the exact minimum, any silting or uncharted shallow patches could reduce clearance to unsafe levels; approach sandbanks require careful navigation.",
+  "source": "Input notes (2.5 m berths explicit); marinasdeportugal.pt/en/marinas-ports/lisbon/apss-doca-de-recreio-das-fontainhas; predictwind.com/marinas/portugal/setbal/doca-de-recreio-das-fontainhas",
+  "confidence": "medium",
+  "verifyNeeded": true
+ },
+ {
+  "slug": "marina-de-sines",
+  "controllingDepthM": 8,
+  "access": "all-tide",
+  "barOrLagoon": false,
+  "note": "Large commercial/industrial port with a 1700 m N-S breakwater. Input notes: 'deep anchorage area inside the breakwater', berths to 8.0 m. No bar, no river, no lagoon — purpose-built deep-water harbour. Primary Atlantic/Med staging port. Approach from N keeping red buoy marking submerged outer breakwater section to port. All-tide access confirmed by input notes and widely documented in cruising literature. A 2.0 m draft yacht has 6 m UKC at datum.",
+  "source": "Input notes (explicit deep anchorage, berthMaxDraftM=8); marinasdeportugal.pt; predictwind.com/marinas/portugal/sines",
+  "confidence": "high",
+  "verifyNeeded": false
+ }
+]
