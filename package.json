@@ -19,6 +19,7 @@
     "@prisma/pg-worker": "^6.9.0",
     "@types/leaflet": "^1.9.21",
     "leaflet": "^1.9.4",
+    "lucide-react": "^1.17.0",
     "next": "16.2.3",
     "pg": "^8.20.0",
     "prisma": "^7.7.0",
