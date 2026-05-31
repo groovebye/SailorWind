@@ -3,6 +3,7 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { ArrowLeft, Anchor } from "lucide-react";
 import { useTheme } from "@/lib/theme";
 import { generateRecommendations, assessShorePracticality } from "@/lib/marina-recommendations";
 
@@ -118,16 +119,18 @@ export default function PortAreaPage({ params }: { params: Promise<{ slug: strin
   if (!area) return <div className="h-screen flex items-center justify-center" style={{ background: "var(--bg-primary)", color: "var(--text-secondary)" }}>Loading...</div>;
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-4" style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
-      <Link href="/" className="text-sm mb-3 inline-block hover:opacity-80" style={{ color: "var(--text-secondary)" }}>← Home</Link>
+    <div className="container fade-up" style={{ maxWidth: 1200, paddingTop: 20, paddingBottom: 64 }}>
+      <Link href="/" className="btn btn-sm btn-ghost" style={{ marginBottom: 14 }}><ArrowLeft size={15} /> Home</Link>
 
       {/* Header */}
-      <div className="rounded-xl px-5 py-4 mb-4" style={{ background: `linear-gradient(to right, var(--bg-header-from), var(--bg-header-to))`, border: `1px solid var(--border)` }}>
-        <h1 className="text-xl font-bold" style={{ color: "var(--text-heading)" }}>⚓ {area.name}</h1>
-        <div className="text-xs mt-1" style={{ color: "var(--text-muted)" }}>{area.region}, {area.country} · {area.type.replace("_", " ")}</div>
-        {area.description && <p className="text-sm mt-2" style={{ color: "var(--text-secondary)" }}>{area.description}</p>}
+      <div className="glass" style={{ padding: "20px 22px", marginBottom: 16 }}>
+        <h1 className="display center gap-10" style={{ fontSize: 30, margin: 0 }}>
+          <Anchor size={22} style={{ color: "var(--cyan)" }} /> {area.name}
+        </h1>
+        <div className="mono faint" style={{ fontSize: 12, marginTop: 6 }}>{area.region}, {area.country} · {area.type.replace("_", " ")}</div>
+        {area.description && <p className="dim" style={{ fontSize: 14, marginTop: 10, maxWidth: 760 }}>{area.description}</p>}
         {area.orcaRisk && area.orcaRisk !== "none" && (
-          <div className="text-xs mt-2" style={{ color: "var(--text-yellow)" }}>🐋 Orca risk: {area.orcaRisk.toUpperCase()}</div>
+          <div className="mono" style={{ fontSize: 12, marginTop: 8, color: "var(--caution)" }}>🐋 Orca risk: {area.orcaRisk.toUpperCase()}</div>
         )}
       </div>
 
