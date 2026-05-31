@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Search, List, Fuel, Wrench, Anchor, AlertTriangle, ChevronRight } from "lucide-react";
 import { Facilities, OrcaChip } from "@/components/design/Primitives";
+import { haversineNm } from "@/lib/geo";
+import { almanacDistanceNm } from "@/lib/almanac-distances";
 
 export type PortRow = {
-  id: string; name: string; slug: string; region: string | null; type: string;
+  id: string; name: string; slug: string; lat: number; lon: number; region: string | null; type: string;
   marinaCount: number; berths: number; cheapest: number | null;
   fuel: boolean; repairs: boolean; recommended: number; orcaRisk: string | null;
   isMajor: boolean; draftAccess: string | null; controllingDepthM: number | null; accessNote: string | null;
@@ -35,7 +37,7 @@ export default function PortsExplorer({ ports }: { ports: PortRow[] }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [draftSafe, setDraftSafe] = useState(false);
-  const [majorOnly, setMajorOnly] = useState(false);
+  const [majorOnly, setMajorOnly] = useState(true); // default: principal ports only (clean view)
   const query = q.trim().toLowerCase();
 
   const majorCount = useMemo(() => ports.filter((p) => p.isMajor).length, [ports]);
@@ -116,9 +118,13 @@ export default function PortsExplorer({ ports }: { ports: PortRow[] }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p) => {
+            {filtered.map((p, i) => {
               const anchorage = p.marinaCount === 0;
               const m = ACCESS_META[p.draftAccess ?? "unknown"] ?? ACCESS_META.unknown;
+              // Leg to the next VISIBLE port: almanac route distance if known, else great-circle (≈).
+              const nb = filtered[i + 1];
+              const alm = nb ? almanacDistanceNm(p.name, nb.name) : null;
+              const leg = nb ? (alm ?? haversineNm([p.lat, p.lon], [nb.lat, nb.lon])) : null;
               return (
                 <tr
                   key={p.id}
@@ -138,7 +144,10 @@ export default function PortsExplorer({ ports }: { ports: PortRow[] }) {
                       </Link>
                     </div>
                   </td>
-                  <td className="num dim hide-mobile">{p.toNextNm != null ? `${Math.round(p.toNextNm)} nm` : "—"}</td>
+                  <td className="num dim hide-mobile"
+                      title={leg == null ? undefined : alm != null ? "Reeds route distance (clears capes/TSS)" : "approx straight-line (great-circle)"}>
+                    {leg == null ? "—" : alm != null ? `${Math.round(leg)} nm` : `≈${Math.round(leg)} nm`}
+                  </td>
                   <td className="dim" style={{ fontSize: 12.5 }}>{p.region}</td>
                   <td className="num">
                     {anchorage ? (

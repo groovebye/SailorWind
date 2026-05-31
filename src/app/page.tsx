@@ -68,6 +68,8 @@ export default async function Home() {
       id: area.id,
       name: area.name,
       slug: area.slug,
+      lat: area.lat,
+      lon: area.lon,
       region: area.region,
       type: area.type,
       marinaCount: area.marinas.length,
