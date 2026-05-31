@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, Navigation, Sailboat, Map as MapIcon, ExternalLink, RefreshCw,
   Calendar, Gauge, Route, Satellite, Activity, Info, Table2, LineChart, ShieldAlert,
-  AlertTriangle, MapPin, Radio, Triangle, Anchor, Clock, Sun, Moon, Sunrise,
+  AlertTriangle, MapPin, Radio, Triangle, Anchor, Clock, Sun, Moon, Sunrise, ChevronRight,
 } from "lucide-react";
 import { Verdict } from "@/components/design/Primitives";
 import { windColor, bfColor, beaufort, overallVerdict, type VerdictV } from "@/components/design/helpers";
@@ -89,6 +89,28 @@ export default function PassageCockpit(props: {
       };
     });
   }, [series, baseTime, depEpoch, legs, speed, wps]);
+
+  // Group waypoints into legs (consecutive STOP→STOP, matching the leg page's indexing).
+  const legCards = useMemo(() => {
+    if (!rows.length) return [];
+    const stopIdx = wps.map((w, i) => (w.isStop ? i : -1)).filter((i) => i >= 0);
+    const out: { index: number; from: string; to: string; dist: number; hours: number; depEta: string; arrEta: string; verdict: VerdictV; maxWind: number; maxGust: number; capes: number }[] = [];
+    for (let k = 0; k < stopIdx.length - 1; k++) {
+      const a = stopIdx[k], b = stopIdx[k + 1];
+      const lr = rows.slice(a, b + 1);
+      const dist = legs.cum[b] - legs.cum[a];
+      out.push({
+        index: k, from: wps[a].name, to: wps[b].name,
+        dist, hours: speed > 0 ? dist / speed : 0,
+        depEta: rows[a].eta, arrEta: rows[b].eta,
+        verdict: overallVerdict(lr.map((r) => r.verdict)),
+        maxWind: Math.max(...lr.map((r) => r.wind)),
+        maxGust: Math.max(...lr.map((r) => r.gust)),
+        capes: lr.filter((r) => r.type === "CAPE").length,
+      });
+    }
+    return out;
+  }, [rows, wps, legs, speed]);
 
   const overall: VerdictV = rows.length ? overallVerdict(rows.map((r) => r.verdict)) : "GO";
   const durationH = speed > 0 ? legs.totalNm / speed : 0;
@@ -301,6 +323,47 @@ export default function PassageCockpit(props: {
               </table>
             </div>
           </div>
+
+          {/* legs — drill-down into the full per-leg detail */}
+          {legCards.length > 0 && (
+            <div className="glass fade-up" style={{ padding: 22, animationDelay: ".23s" }}>
+              <div className="center gap-10" style={{ marginBottom: 14 }}>
+                <div className="sec-icon" style={{ width: 32, height: 32 }}><Route size={16} /></div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 16 }}>Legs — full detail</div>
+                  <div className="faint mono" style={{ fontSize: 11 }}>open a leg for hazards · tides · pilotage · marina · checklist</div>
+                </div>
+              </div>
+              <div className="col gap-10">
+                {legCards.map((l) => (
+                  <Link
+                    key={l.index}
+                    href={`/p/${props.passageId}/leg/${l.index}`}
+                    className="glass-hover"
+                    style={{ display: "block", padding: 14, borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid var(--glass-border)", textDecoration: "none", color: "inherit" }}
+                  >
+                    <div className="between" style={{ flexWrap: "wrap", gap: 8 }}>
+                      <div className="center gap-8">
+                        <span className="mono faint" style={{ fontSize: 11 }}>Leg {l.index + 1}</span>
+                        <span style={{ fontWeight: 600 }}>{l.from} <span style={{ color: "var(--cyan)" }}>→</span> {l.to}</span>
+                      </div>
+                      <Verdict v={l.verdict} />
+                    </div>
+                    <div className="flex gap-16 wrap dim" style={{ fontSize: 12, marginTop: 8 }}>
+                      <span className="mono">{l.dist.toFixed(1)} NM</span>
+                      <span className="mono">~{l.hours.toFixed(1)} h</span>
+                      <span className="mono">{l.depEta} → {l.arrEta}</span>
+                      <span className="mono" style={{ color: windColor(l.maxWind) }}>max {l.maxWind} kt · gust {l.maxGust}</span>
+                      {l.capes > 0 && <span className="mono">{l.capes} cape{l.capes > 1 ? "s" : ""}</span>}
+                    </div>
+                    <div className="center gap-6 faint mono" style={{ fontSize: 11, marginTop: 8 }}>
+                      Hazards · Tides · Pilotage · Marina · Checklist <ChevronRight size={12} />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* detailed forecast */}
           <div className="glass fade-up" style={{ padding: 22, animationDelay: ".25s" }}>
