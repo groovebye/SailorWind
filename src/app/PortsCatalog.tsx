@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 /** Lean card shape — derived fields are computed server-side in page.tsx. */
@@ -19,23 +20,44 @@ export type PortCard = {
   orcaRisk: string | null;
 };
 
+function Tag({ children, tone }: { children: React.ReactNode; tone?: "warn" }) {
+  return (
+    <span
+      className="inline-block px-1.5 py-0.5 rounded text-[10px] leading-none whitespace-nowrap"
+      style={{
+        background: "var(--bg-input)",
+        color: tone === "warn" ? "var(--text-yellow)" : "var(--text-secondary)",
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
 /**
- * Ports & Marinas catalog: compact grid kept in coast order (as you sail toward
- * Gibraltar) with a live name/region filter on top. Order is set server-side and
- * preserved here, since Array.filter is stable.
+ * Ports & Marinas: a compact table kept in coast order (as you sail toward
+ * Gibraltar) with a live name/region filter on top. The "#" column is the true
+ * sailing position, so it stays stable when the list is filtered. Whole rows are
+ * clickable; the port name is also a real link for keyboard / open-in-new-tab.
  */
 export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const query = q.trim().toLowerCase();
 
+  // Number rows by their coast position before filtering, so "#" = sailing order.
+  const indexed = useMemo(() => areas.map((a, i) => ({ ...a, order: i + 1 })), [areas]);
   const filtered = useMemo(() => {
-    if (!query) return areas;
-    return areas.filter(
+    if (!query) return indexed;
+    return indexed.filter(
       (a) =>
         a.name.toLowerCase().includes(query) ||
         (a.region ?? "").toLowerCase().includes(query),
     );
-  }, [areas, query]);
+  }, [indexed, query]);
+
+  const th = "px-3 py-2 text-[11px] font-medium uppercase tracking-wide";
+  const td = "px-3 py-2 align-middle";
 
   return (
     <section className="mt-12">
@@ -65,50 +87,78 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
           No ports match “{q.trim()}”.
         </p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
-          {filtered.map((area) => (
-            <Link
-              key={area.id}
-              href={`/port/${area.slug}`}
-              className="block rounded-lg p-3 hover:opacity-80 transition-opacity"
-              style={{ background: "var(--bg-card)", border: "1px solid var(--border-light)" }}
-            >
-              <div
-                className="font-semibold text-sm leading-snug"
-                style={{ color: "var(--text-heading)" }}
-              >
-                {area.name}
-              </div>
-              <div className="text-[11px] mt-0.5 truncate" style={{ color: "var(--text-muted)" }}>
-                {area.region}
-              </div>
-              <div className="text-[11px] mt-1" style={{ color: "var(--text-secondary)" }}>
-                {area.marinaCount > 0
-                  ? `${area.marinaCount} marina${area.marinaCount > 1 ? "s" : ""} · ${area.berths} berths`
-                  : area.type === "anchorage"
-                    ? "⚓ anchorage"
-                    : area.type === "cape"
-                      ? "🗻 cape"
-                      : "refuge"}
-              </div>
-              <div
-                className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-1.5 text-[11px]"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                {area.cheapest != null && (
-                  <span style={{ color: "var(--text-green)" }}>€{area.cheapest}/day</span>
-                )}
-                {area.fuel && <span title="Fuel">⛽</span>}
-                {area.repairs && <span title="Repairs">🔧</span>}
-                {area.recommended > 0 && <span title="Recommended places">⭐ {area.recommended}</span>}
-                {area.orcaRisk && area.orcaRisk !== "none" && area.orcaRisk !== "low" && (
-                  <span title={`Orca risk: ${area.orcaRisk}`} style={{ color: "var(--text-yellow)" }}>
-                    🐋
-                  </span>
-                )}
-              </div>
-            </Link>
-          ))}
+        <div
+          className="overflow-x-auto rounded-lg"
+          style={{ border: "1px solid var(--border-light)" }}
+        >
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="text-left" style={{ color: "var(--text-muted)" }}>
+                <th className={`${th} text-right`}>#</th>
+                <th className={th}>Port</th>
+                <th className={`${th} hidden sm:table-cell`}>Region</th>
+                <th className={th}>Berths</th>
+                <th className={`${th} text-right`}>€/day</th>
+                <th className={th}>Facilities</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((a) => (
+                <tr
+                  key={a.id}
+                  onClick={() => router.push(`/port/${a.slug}`)}
+                  className="cursor-pointer border-t hover:bg-slate-800/50 transition-colors"
+                  style={{ borderColor: "var(--border-light)" }}
+                >
+                  <td className={`${td} text-right tabular-nums text-xs`} style={{ color: "var(--text-muted)" }}>
+                    {a.order}
+                  </td>
+                  <td className={`${td} font-semibold whitespace-nowrap`}>
+                    <Link
+                      href={`/port/${a.slug}`}
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ color: "var(--text-heading)" }}
+                    >
+                      {a.name}
+                    </Link>
+                  </td>
+                  <td className={`${td} hidden sm:table-cell`} style={{ color: "var(--text-muted)" }}>
+                    {a.region}
+                  </td>
+                  <td className={`${td} whitespace-nowrap tabular-nums`} style={{ color: "var(--text-secondary)" }}>
+                    {a.marinaCount > 0 ? (
+                      <>
+                        {a.berths || "—"}
+                        {a.marinaCount > 1 && (
+                          <span style={{ color: "var(--text-muted)" }}> ·{a.marinaCount}m</span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ color: "var(--text-muted)" }}>
+                        {a.type === "anchorage" ? "anchorage" : a.type === "cape" ? "cape" : "refuge"}
+                      </span>
+                    )}
+                  </td>
+                  <td
+                    className={`${td} text-right whitespace-nowrap tabular-nums`}
+                    style={{ color: a.cheapest != null ? "var(--text-green)" : "var(--text-muted)" }}
+                  >
+                    {a.cheapest != null ? `€${a.cheapest}` : "—"}
+                  </td>
+                  <td className={td}>
+                    <div className="flex flex-wrap gap-1">
+                      {a.fuel && <Tag>fuel</Tag>}
+                      {a.repairs && <Tag>repair</Tag>}
+                      {a.recommended > 0 && <Tag>★{a.recommended}</Tag>}
+                      {a.orcaRisk && a.orcaRisk !== "none" && a.orcaRisk !== "low" && (
+                        <Tag tone="warn">orca {a.orcaRisk}</Tag>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>
