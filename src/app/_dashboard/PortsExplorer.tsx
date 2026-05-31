@@ -39,16 +39,28 @@ export default function PortsExplorer({ ports }: { ports: PortRow[] }) {
   const query = q.trim().toLowerCase();
 
   const majorCount = useMemo(() => ports.filter((p) => p.isMajor).length, [ports]);
-  const hiddenByDraft = useMemo(() => ports.filter((p) => p.draftAccess !== "all-tide").length, [ports]);
+  const anchorCount = useMemo(() => ports.filter((p) => p.marinaCount === 0).length, [ports]);
+  // Marinas we can't vouch for: a marina exists but its berth count is unknown.
+  const unverifiedCount = useMemo(
+    () => ports.filter((p) => p.marinaCount > 0 && p.berths === 0).length,
+    [ports],
+  );
   const indexed = useMemo(() => ports.map((p, i) => ({ ...p, order: i + 1 })), [ports]);
 
   const filtered = useMemo(() => {
     return indexed.filter((p) => {
       const anchorage = p.marinaCount === 0;
-      if (filter === "fuel" && !p.fuel) return false;
-      if (filter === "repair" && !p.repairs) return false;
-      if (filter === "anchor" && !anchorage) return false;
-      if (filter === "orca" && (!p.orcaRisk || p.orcaRisk === "none")) return false;
+      const unverified = p.marinaCount > 0 && p.berths === 0; // marina with no berth info
+      // Always hide marinas with no berth data — keep only what's confirmed.
+      if (unverified) return false;
+      if (filter === "anchor") {
+        if (!anchorage) return false; // anchorages live behind their own filter
+      } else {
+        if (anchorage) return false; // default/All shows only verified marinas
+        if (filter === "fuel" && !p.fuel) return false;
+        if (filter === "repair" && !p.repairs) return false;
+        if (filter === "orca" && (!p.orcaRisk || p.orcaRisk === "none")) return false;
+      }
       if (draftSafe && p.draftAccess !== "all-tide") return false;
       if (majorOnly && !p.isMajor) return false;
       if (query && !(p.name.toLowerCase().includes(query) || (p.region ?? "").toLowerCase().includes(query)))
@@ -56,6 +68,11 @@ export default function PortsExplorer({ ports }: { ports: PortRow[] }) {
       return true;
     });
   }, [indexed, filter, draftSafe, majorOnly, query]);
+
+  const hiddenByDraft = useMemo(
+    () => indexed.filter((p) => p.marinaCount > 0 && p.berths > 0 && p.draftAccess !== "all-tide").length,
+    [indexed],
+  );
 
   return (
     <div className="glass" style={{ padding: 18 }}>
@@ -175,12 +192,15 @@ export default function PortsExplorer({ ports }: { ports: PortRow[] }) {
 
       <div className="ports-foot">
         <span className="faint mono" style={{ fontSize: 12 }}>
-          Showing {filtered.length} of {ports.length} ports · Gijón → Gibraltar
+          Showing {filtered.length} {filter === "anchor" ? "anchorages" : "verified marinas"}
+          {draftSafe ? ` · draft-safe for ${DRAFT_M} m` : ""}
         </span>
         <span className="faint mono center gap-6" style={{ fontSize: 11 }}>
-          {draftSafe
-            ? <>⚓ draft-safe for {DRAFT_M} m · {hiddenByDraft} tide-gated/shallow hidden</>
-            : <>✓ all-tide · ◑ HW only · ✕ shallow · ? unverified</>}
+          {filter === "anchor"
+            ? <>{anchorCount} anchorages · depth-checked</>
+            : draftSafe
+              ? <>{hiddenByDraft} tide-gated/shallow · {unverifiedCount} no-berth-data hidden</>
+              : <>✓ all-tide · ◑ HW only · ✕ shallow · ? unverified</>}
         </span>
       </div>
     </div>
