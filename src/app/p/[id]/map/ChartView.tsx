@@ -14,6 +14,11 @@ import { routePolyline } from "@/lib/searoute";
 
 type Cond = { wind: number; gust: number; wave: string; swell: string; power: number; verdict: VerdictV; eta: string; current: string };
 
+// Colour-blind-safe isobath palette: amber for the shallow danger line, then
+// light→dark blue by depth (distinguishable by hue and lightness for all CVD types).
+const DEPTH_LEVELS = [10, 20, 50, 100, 200];
+const DEPTH_COLOR: Record<number, string> = { 10: "#f4c95d", 20: "#9ad0ec", 50: "#5aa9e6", 100: "#3b6fb0", 200: "#274690" };
+
 export default function ChartView(props: {
   passageId: string; from: string; to: string; nm: number; wps: WP[];
 }) {
@@ -23,7 +28,7 @@ export default function ChartView(props: {
   const orcaGroup = useRef<LType.LayerGroup | null>(null);
   const overlay = useRef<HTMLCanvasElement>(null);
   const [layers, setLayers] = useState({ wind: true, waves: false, orca: true, depth: false });
-  const depthLayer = useRef<LType.TileLayer | null>(null);
+  const depthLayer = useRef<LType.LayerGroup | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const [series, setSeries] = useState<LocSeries[] | null>(null);
   const layersRef = useRef(layers);
@@ -80,14 +85,24 @@ export default function ChartView(props: {
         attribution: "© OSM © CARTO", maxZoom: 19, subdomains: "abcd",
       }).addTo(map);
 
-      // EMODnet bathymetry — colour-shaded depth zones (warm = shallow/danger,
-      // cool = deep), toggled overlay so the skipper can read depth at a glance.
-      const depth = L.tileLayer.wms("https://ows.emodnet-bathymetry.eu/wms", {
-        layers: "emodnet:mean", styles: "rainbowcolour", format: "image/png",
-        transparent: true, version: "1.3.0", opacity: 0.6, attribution: "© EMODnet Bathymetry",
-      });
-      depthLayer.current = depth;
-      if (layersRef.current.depth) depth.addTo(map);
+      // Depth: subtle, per-depth-coloured isobath LINES (self-generated from
+      // EMODnet bathymetry, colour-blind-safe palette). Lines only — land keeps
+      // the normal chart look, no colour wash.
+      const depthGroup = L.layerGroup();
+      depthLayer.current = depthGroup;
+      fetch("/depth-contours.geojson")
+        .then((r) => r.json())
+        .then((fc) => {
+          L.geoJSON(fc, {
+            attribution: "© EMODnet Bathymetry",
+            style: (f) => {
+              const d = f?.properties?.d as number;
+              return { color: DEPTH_COLOR[d] ?? "#5aa9e6", weight: d <= 10 ? 1.4 : 1, opacity: d <= 10 ? 0.7 : 0.5, lineJoin: "round" };
+            },
+          }).addTo(depthGroup);
+        })
+        .catch(() => {});
+      if (layersRef.current.depth) depthGroup.addTo(map);
 
       L.polyline(pts, { color: "#34e0ff", weight: 7, opacity: 0.18 }).addTo(map);
       L.polyline(pts, { color: "#34e0ff", weight: 2.5, opacity: 0.95, dashArray: "1 8", lineCap: "round" }).addTo(map);
@@ -233,11 +248,11 @@ export default function ChartView(props: {
         <LayerToggle on={layers.depth} onClick={() => setLayers((s) => ({ ...s, depth: !s.depth }))} icon={<Waves size={15} />} label="Depth zones" c="var(--foam)" />
         {layers.depth && (
           <div className="depth-legend">
-            <div className="depth-legend-bar" />
-            <div className="depth-legend-scale mono">
-              <span>0</span><span>20</span><span>50</span><span>200</span><span>1km+</span>
-            </div>
-            <div className="faint mono" style={{ fontSize: 9, marginTop: 2 }}>metres · EMODnet</div>
+            {DEPTH_LEVELS.map((d) => (
+              <span key={d} className="depth-legend-item mono">
+                <i style={{ background: DEPTH_COLOR[d] }} />{d} m
+              </span>
+            ))}
           </div>
         )}
       </div>

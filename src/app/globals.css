@@ -436,9 +436,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .map-readout { position: absolute; bottom: 24px; left: 18px; z-index: 500; padding: 16px; width: 290px; }
 .map-readout-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
 .ro-cell { display: flex; flex-direction: column; gap: 3px; }
-.depth-legend { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border); }
-.depth-legend-bar { height: 8px; border-radius: 99px; background: linear-gradient(90deg, #e2483d, #f0a23c, #f3e94b, #6fd66a, #34c0e0, #3b7fe0, #15306b); }
-.depth-legend-scale { display: flex; justify-content: space-between; font-size: 9px; color: var(--fg-faint); margin-top: 3px; }
+.depth-legend { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border); display: flex; flex-wrap: wrap; gap: 5px 12px; }
+.depth-legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--fg-dim); }
+.depth-legend-item i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
 .map-legend { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 500; padding: 8px 14px; display: flex; align-items: center; gap: 10px; }
 .legend-bar { width: 140px; height: 8px; border-radius: 99px; background: linear-gradient(90deg, #7fe9c4, #34e0ff, #4fb0ff, #ffc24b, #ff9b5a, #ff6b8a); }
 .legend-scale { display: flex; justify-content: space-between; width: 140px; font-size: 9px; color: var(--fg-faint); }
