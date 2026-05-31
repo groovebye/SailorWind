@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { haversineNm } from "@/lib/geo";
 import PortsCatalog from "./PortsCatalog";
 
 export const dynamic = "force-dynamic";
@@ -89,10 +90,15 @@ export default async function Home() {
       {/* Ports & Marinas catalog — compact searchable grid, kept in coast order */}
       {portAreas.length > 0 && (
         <PortsCatalog
-          areas={portAreas.map((area) => {
+          areas={portAreas.map((area, i) => {
             const prices = area.marinas.flatMap((m) => m.prices);
             const cheapest = prices.length
               ? Math.min(...prices.map((p) => p.price))
+              : null;
+            // Approx straight-line hop to the next port down the coast (great-circle).
+            const next = portAreas[i + 1];
+            const toNextNm = next
+              ? haversineNm([area.lat, area.lon], [next.lat, next.lon])
               : null;
             return {
               id: area.id,
@@ -107,6 +113,7 @@ export default async function Home() {
               repairs: area.marinas.some((m) => m.repairs),
               recommended: (area.nearbyPlaces || []).length,
               orcaRisk: area.orcaRisk,
+              toNextNm,
             };
           })}
         />

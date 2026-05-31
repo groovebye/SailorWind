@@ -18,7 +18,12 @@ export type PortCard = {
   repairs: boolean;
   recommended: number;
   orcaRisk: string | null;
+  /** Great-circle distance to the next port down the coast (nm); null for the last. */
+  toNextNm: number | null;
 };
+
+/** A Monsun 31 daysails comfortably to ~55 nm; longer hops imply a night passage. */
+const OVERNIGHT_NM = 55;
 
 function Tag({ children, tone }: { children: React.ReactNode; tone?: "warn" }) {
   return (
@@ -96,6 +101,9 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
               <tr className="text-left" style={{ color: "var(--text-muted)" }}>
                 <th className={`${th} text-right`}>#</th>
                 <th className={th}>Port</th>
+                <th className={`${th} text-right`} title="Approx. distance to the next port along the coast">
+                  → next
+                </th>
                 <th className={`${th} hidden sm:table-cell`}>Region</th>
                 <th className={th}>Berths</th>
                 <th className={`${th} text-right`}>€/day</th>
@@ -121,6 +129,22 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
                     >
                       {a.name}
                     </Link>
+                  </td>
+                  <td
+                    className={`${td} text-right whitespace-nowrap tabular-nums`}
+                    title={a.toNextNm != null && a.toNextNm > OVERNIGHT_NM ? "Likely an overnight passage" : undefined}
+                    style={{
+                      color:
+                        a.toNextNm == null
+                          ? "var(--text-muted)"
+                          : a.toNextNm > OVERNIGHT_NM
+                            ? "var(--text-yellow)"
+                            : "var(--text-secondary)",
+                    }}
+                  >
+                    {a.toNextNm == null
+                      ? "—"
+                      : `${a.toNextNm < 1 ? "<1" : Math.round(a.toNextNm)} nm`}
                   </td>
                   <td className={`${td} hidden sm:table-cell`} style={{ color: "var(--text-muted)" }}>
                     {a.region}
