@@ -280,6 +280,33 @@ body {
   .hide-mobile { display: none !important; }
 }
 
+/* ===================== Dashboard ===================== */
+.hero-grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 48px; align-items: center; }
+.hero-stats { display: flex; align-items: center; gap: 26px; margin-top: 40px; flex-wrap: wrap; }
+.stat-div { width: 1px; height: 38px; background: var(--glass-border); }
+.sec-icon { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: var(--glass-2); border: 1px solid var(--glass-border); color: var(--cyan); flex: none; }
+.passage-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.passage-card { position: relative; overflow: hidden; display: block; text-decoration: none; color: inherit; }
+.passage-card-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(400px 120px at 80% -20%, rgba(52,224,255,0.10), transparent 70%); }
+.route-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.route-port { font-family: var(--serif); font-size: 22px; font-weight: 600; }
+.route-arrow { color: var(--cyan); display: flex; }
+.live-card { padding: 26px; }
+.live-dot { width: 8px; height: 8px; border-radius: 99px; background: var(--go); animation: pulseDot 2s infinite; }
+.live-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.live-cell { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); }
+.ports-controls { display: flex; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.ports-table-wrap { max-height: 520px; overflow-y: auto; border-radius: 12px; border: 1px solid var(--glass-border); }
+.ports-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; gap: 12px; flex-wrap: wrap; }
+.toggle-chip { font-size: 13px; font-weight: 600; cursor: pointer; padding: 7px 13px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass); color: var(--fg-dim); display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; transition: all 0.16s; }
+.toggle-chip:hover { color: var(--fg); }
+.toggle-chip.on-go { background: var(--go); color: #02131c; border-color: transparent; }
+.toggle-chip.on-amber { background: var(--caution); color: #02131c; border-color: transparent; }
+@media (max-width: 980px) {
+  .hero-grid { grid-template-columns: 1fr; gap: 32px; }
+  .passage-grid { grid-template-columns: 1fr; }
+}
+
 /* Depth contour labels (Leaflet) */
 .depth-label-permanent {
   background: rgba(0, 0, 0, 0.7) !important; border: 1px solid rgba(255, 255, 255, 0.2) !important;

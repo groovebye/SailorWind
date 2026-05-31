@@ -9,8 +9,8 @@ export function useCountUp(target: number, dur = 1100): number {
   useEffect(() => {
     if (typeof window !== "undefined" &&
         window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-      setVal(target);
-      return;
+      raf.current = requestAnimationFrame(() => setVal(target));
+      return () => cancelAnimationFrame(raf.current);
     }
     let start: number | undefined;
     const step = (t: number) => {
