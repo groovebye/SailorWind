@@ -5,18 +5,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft, Navigation, Sailboat, Map as MapIcon, ExternalLink, RefreshCw,
   Calendar, Gauge, Route, Satellite, Activity, Info, Table2, LineChart, ShieldAlert,
-  AlertTriangle, MapPin, Radio, Triangle, Anchor, Clock,
+  AlertTriangle, MapPin, Radio, Triangle, Anchor, Clock, Sun, Moon, Sunrise,
 } from "lucide-react";
 import { Verdict } from "@/components/design/Primitives";
 import { windColor, bfColor, beaufort, overallVerdict, type VerdictV } from "@/components/design/helpers";
 import AICoskipper from "./AICoskipper";
+import MetarCard from "./MetarCard";
+import { nearestAirport } from "./airports";
 import {
-  buildLegs, fetchSeries, nearestIdx, fmtMS, verdictFor, powerFor, buildTimeline,
-  type WP, type LocSeries, type TimelineHour,
+  buildLegs, fetchSeries, fetchConsensus, sunForDay, nearestIdx, fmtMS, verdictFor, powerFor, buildTimeline,
+  type WP, type LocSeries, type TimelineHour, type Consensus,
 } from "./forecast";
+import { moon, isDaylight } from "@/lib/astro";
 
 const MODEL_SHORT: Record<string, string> = { gfs: "GFS_SEAMLESS", ecmwf: "ECMWF_IFS025", ens: "BEST_MATCH" };
 const VC_HEX: Record<VerdictV, string> = { GO: "#36d399", CAUTION: "#ffc24b", NOGO: "#ff6b8a" };
+const fmtHM = (epoch: number | null): string =>
+  epoch == null ? "—" : new Date(epoch).toLocaleString("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: false });
 
 export default function PassageCockpit(props: {
   passageId: string; from: string; to: string; boat: string; boatModel: string;
@@ -31,6 +36,7 @@ export default function PassageCockpit(props: {
   );
   const [openWp, setOpenWp] = useState(wps[0]?.name ?? "");
   const [series, setSeries] = useState<LocSeries[] | null>(null);
+  const [consensus, setConsensus] = useState<Consensus | null>(null);
   // Floor "now" to the hour for the 48h window. Client-only value; nothing that
   // depends on it renders until the forecast fetch resolves, so no SSR mismatch.
   const [baseTime] = useState(() => (typeof window === "undefined" ? 0 : Math.floor(Date.now() / 3600_000) * 3600_000));
@@ -41,8 +47,8 @@ export default function PassageCockpit(props: {
     let ignore = false;
     (async () => {
       try {
-        const s = await fetchSeries(wps, model);
-        if (!ignore) { setSeries(s); setErr(false); }
+        const [s, c] = await Promise.all([fetchSeries(wps, model), fetchConsensus(wps[0].lat, wps[0].lon)]);
+        if (!ignore) { setSeries(s); setConsensus(c); setErr(false); }
       } catch {
         if (!ignore) setErr(true);
       }
@@ -52,8 +58,8 @@ export default function PassageCockpit(props: {
 
   const legs = useMemo(() => buildLegs(wps), [wps]);
   const timeline = useMemo<TimelineHour[]>(
-    () => (series && baseTime ? buildTimeline(series[0], baseTime) : []),
-    [series, baseTime],
+    () => (series && baseTime ? buildTimeline(series[0], baseTime, consensus) : []),
+    [series, baseTime, consensus],
   );
   const depEpoch = baseTime + depIdx * 3600_000;
 
@@ -69,12 +75,16 @@ export default function PassageCockpit(props: {
       const period = idx >= 0 ? s.period[idx] : null;
       const swell = idx >= 0 ? s.swell[idx] : null;
       const swellP = idx >= 0 ? s.swellPeriod[idx] : null;
+      const cur = idx >= 0 ? s.current[idx] : null;
+      const curDir = idx >= 0 ? s.currentDir[idx] : null;
+      const { sunrise, sunset } = sunForDay(s, etaEpoch);
       const type: "STOP" | "CAPE" | "PORT" = w.isStop ? "STOP" : w.isCape ? "CAPE" : "PORT";
       return {
         name: w.name, slug: w.slug, type,
         eta: new Date(etaEpoch).toLocaleString("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: false }),
         etaEpoch, wind, gust, bf: beaufort(wind),
         wave: fmtMS(wave, period), swell: fmtMS(swell, swellP),
+        cur, curDir, daylight: isDaylight(etaEpoch, sunrise, sunset),
         power: powerFor(wind, gust, wave), verdict: verdictFor(wind, gust, wave),
       };
     });
@@ -102,12 +112,27 @@ export default function PassageCockpit(props: {
     });
   }, [series, baseTime, depEpoch, openIdx]);
 
+  // Daylight / moon / model-spread for the chosen departure.
+  const startSun = series && baseTime ? sunForDay(series[0], depEpoch) : { sunrise: null, sunset: null };
+  const moonNow = baseTime ? moon(depEpoch) : null;
+  const depSpread = consensus ? consensus.spread[nearestIdx(consensus.time, depEpoch)] ?? 0 : 0;
+  const arrivalRow = rows[rows.length - 1];
+
   const aiCtx = {
     timeline, wps,
-    capeEtas: rows.filter((r) => r.type === "CAPE").map((r) => ({ name: r.name, eta: r.eta })),
-    arrival, modelShort: MODEL_SHORT[model],
+    capeEtas: rows.filter((r) => r.type === "CAPE").map((r) => ({ name: r.name, eta: r.eta, daylight: r.daylight })),
+    arrival, arrivalDaylight: arrivalRow?.daylight ?? true,
+    sunsetLabel: fmtHM(startSun.sunset), sunriseLabel: fmtHM(startSun.sunrise),
+    moonIllum: moonNow ? Math.round(moonNow.illum * 100) : null, moonName: moonNow?.name ?? null,
+    consensusModels: consensus?.models ?? [], depSpread,
+    modelShort: MODEL_SHORT[model],
   };
   const orcaWps = wps.filter((w) => w.orcaRisk && w.orcaRisk !== "none");
+  const airportIcaos = useMemo(() => {
+    const a = nearestAirport(wps[0].lat, wps[0].lon);
+    const b = nearestAirport(wps[wps.length - 1].lat, wps[wps.length - 1].lon);
+    return a.icao === b.icao ? [a.icao] : [a.icao, b.icao];
+  }, [wps]);
 
   return (
     <div className="container" style={{ paddingTop: 24, paddingBottom: 80 }}>
@@ -202,6 +227,23 @@ export default function PassageCockpit(props: {
                 {err ? "offline — no live forecast" : "loading forecast…"}
               </div>
             )}
+            {timeline.length > 0 && (
+              <div className="flex gap-16 wrap" style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--glass-border)", fontSize: 12 }}>
+                <span className="center gap-6 dim">
+                  <Sunrise size={13} style={{ color: "var(--caution)" }} /> {fmtHM(startSun.sunrise)}–{fmtHM(startSun.sunset)} <span className="faint">daylight</span>
+                </span>
+                {moonNow && (
+                  <span className="center gap-6 dim">
+                    <span style={{ fontFamily: "system-ui" }}>{moonNow.emoji}</span> {Math.round(moonNow.illum * 100)}% <span className="faint">{moonNow.name.toLowerCase()}</span>
+                  </span>
+                )}
+                {consensus && (
+                  <span className="center gap-6 dim" title="Spread across weather models at the chosen hour — wider = less certain">
+                    <Satellite size={13} style={{ color: "var(--cyan)" }} /> {consensus.models.join("/")} · spread ±{depSpread}kt
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* passage summary */}
@@ -231,11 +273,21 @@ export default function PassageCockpit(props: {
                           {w.type === "CAPE" && <span className="pill" style={{ fontSize: 9.5, color: "var(--caution)" }}>cape</span>}
                         </div>
                       </td>
-                      <td className="num dim">{w.eta}</td>
+                      <td className="num dim">
+                        <span className="center gap-6" style={{ whiteSpace: "nowrap" }}>
+                          {w.eta}
+                          {w.daylight
+                            ? <Sun size={11} style={{ color: "var(--caution)" }} aria-label="daylight" />
+                            : <Moon size={11} style={{ color: "var(--sky)" }} aria-label="after dark" />}
+                        </span>
+                      </td>
                       <td><WindCell kt={w.wind} bf={w.bf} /></td>
                       <td className="num hide-mobile" style={{ color: windColor(w.gust) }}>{w.gust}</td>
                       <td className="num dim hide-mobile">{w.wave}</td>
-                      <td className="num dim hide-mobile">{w.swell}</td>
+                      <td className="num dim hide-mobile">
+                        {w.swell}
+                        {w.cur != null && w.cur >= 0.3 && <span style={{ color: "var(--sky)" }}> · ↝{w.cur}kn</span>}
+                      </td>
                       <td><PowerBar v={w.power} /></td>
                       <td><Verdict v={w.verdict} /></td>
                     </tr>
@@ -263,6 +315,8 @@ export default function PassageCockpit(props: {
             </div>
             {fcRows.length ? <ForecastChart rows={fcRows} /> : <div className="faint mono" style={{ padding: 20 }}>—</div>}
           </div>
+
+          <MetarCard icaos={airportIcaos} />
 
           <div className="disclaimer">
             <ShieldAlert size={14} />

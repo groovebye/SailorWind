@@ -11,7 +11,7 @@ import {
   buildLegs, fetchSeries, nearestIdx, fmtMS, verdictFor, powerFor, type WP, type LocSeries,
 } from "../_cockpit/forecast";
 
-type Cond = { wind: number; gust: number; wave: string; swell: string; power: number; verdict: VerdictV; eta: string };
+type Cond = { wind: number; gust: number; wave: string; swell: string; power: number; verdict: VerdictV; eta: string; current: string };
 
 export default function ChartView(props: {
   passageId: string; from: string; to: string; nm: number; wps: WP[];
@@ -41,10 +41,13 @@ export default function ChartView(props: {
       const wind = idx >= 0 ? s.wind[idx] ?? 0 : 0;
       const gust = idx >= 0 ? s.gust[idx] ?? wind + 4 : wind + 4;
       const wave = idx >= 0 ? s.wave[idx] : null;
+      const cur = idx >= 0 ? s.current[idx] : null;
+      const curDir = idx >= 0 ? s.currentDir[idx] : null;
       return {
         wind, gust, power: powerFor(wind, gust, wave), verdict: verdictFor(wind, gust, wave),
         wave: fmtMS(wave, idx >= 0 ? s.period[idx] : null),
         swell: fmtMS(idx >= 0 ? s.swell[idx] : null, idx >= 0 ? s.swellPeriod[idx] : null),
+        current: cur != null && cur >= 0.2 ? `${cur}kn${curDir != null ? ` ${Math.round(curDir)}°` : ""}` : "slack",
         eta: new Date(eta).toLocaleString("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: false }),
       };
     });
@@ -212,6 +215,7 @@ export default function ChartView(props: {
             <RO icon={<Gauge size={11} />} label="Gust" v={active ? `${active.gust} kt` : "—"} />
             <RO icon={<Waves size={11} />} label="Waves" v={active?.wave ?? "—"} />
             <RO icon={<Waves size={11} />} label="Swell" v={active?.swell ?? "—"} />
+            <RO icon={<Waves size={11} />} label="Current" v={active?.current ?? "—"} />
             <RO icon={<Zap size={11} />} label="Power" v={active ? String(active.power) : "—"} />
           </div>
           {active && <div className="faint mono" style={{ fontSize: 9.5, marginTop: 8 }}>B{beaufort(active.wind)} · sampled at ETA</div>}

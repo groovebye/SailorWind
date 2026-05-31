@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Sparkles, AlertTriangle, Shield, Radio, Sunrise, Sun, Sunset, Moon, Wind, Waves, Clock, Gauge, TrendingUp } from "lucide-react";
+import { Sparkles, AlertTriangle, Shield, Radio, Sunrise, Sun, Sunset, Moon, Wind, Waves, Clock, Gauge, TrendingUp, Activity } from "lucide-react";
 import { Verdict } from "@/components/design/Primitives";
 import type { VerdictV } from "@/components/design/helpers";
 import { bestWindow, type TimelineHour, type WP } from "./forecast";
@@ -9,14 +9,21 @@ import { bestWindow, type TimelineHour, type WP } from "./forecast";
 const ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   "alert-triangle": AlertTriangle, shield: Shield, radio: Radio, sunrise: Sunrise,
   sun: Sun, sunset: Sunset, moon: Moon, wind: Wind, waves: Waves, clock: Clock,
-  gauge: Gauge, "trending-up": TrendingUp,
+  gauge: Gauge, "trending-up": TrendingUp, activity: Activity,
 };
 
 type Ctx = {
   timeline: TimelineHour[];
   wps: WP[];
-  capeEtas: { name: string; eta: string }[];
+  capeEtas: { name: string; eta: string; daylight: boolean }[];
   arrival: string | null;
+  arrivalDaylight: boolean;
+  sunsetLabel: string;
+  sunriseLabel: string;
+  moonIllum: number | null;
+  moonName: string | null;
+  consensusModels: string[];
+  depSpread: number;
   modelShort: string;
 };
 type Answer = { verdict: VerdictV; title: string; body: string; chips: [string, string][] };
@@ -46,19 +53,22 @@ function answerFor(q: string, ctx: Ctx): Answer {
     if (!ctx.capeEtas.length) {
       return { verdict: "GO", title: "No capes on this leg", body: "This passage doesn't round any flagged headland — no daylight-rounding constraint to plan around.", chips: [["sun", "No capes"]] };
     }
+    const afterDark = ctx.capeEtas.filter((c) => !c.daylight);
+    const allDay = afterDark.length === 0;
     return {
-      verdict: "GO",
-      title: "Cape rounding times",
-      body: `At your planned speed you round ${ctx.capeEtas.map((c) => `${c.name} ${c.eta}`).join(", ")}. Aim to be past every headland in daylight — rounding a cape after dark adds sea-state and orca risk for little gain.`,
-      chips: ctx.capeEtas.slice(0, 3).map((c) => ["sun", `${c.name} ${c.eta}`] as [string, string]),
+      verdict: allDay ? "GO" : "CAUTION",
+      title: allDay ? "Every cape rounded in daylight" : `${afterDark.length} cape${afterDark.length > 1 ? "s" : ""} after dark`,
+      body: `Sunset ${ctx.sunsetLabel}, sunrise ${ctx.sunriseLabel} (UTC). At your planned speed you round ${ctx.capeEtas.map((c) => `${c.name} ${c.eta}${c.daylight ? "" : " (dark)"}`).join(", ")}. ${allDay ? "All headlands fall in daylight." : `Bring departure earlier so ${afterDark.map((c) => c.name).join(", ")} clear before dusk — rounding a cape in the dark adds sea-state and orca risk for little gain.`}`,
+      chips: [["sunset", `Sunset ${ctx.sunsetLabel}`], ...ctx.capeEtas.slice(0, 2).map((c) => [c.daylight ? "sun" : "moon", `${c.name} ${c.eta}`] as [string, string])],
     };
   }
-  if (lower.includes("overnight") || lower.includes("night") || lower.includes("ноч")) {
+  if (lower.includes("overnight") || lower.includes("night") || lower.includes("ноч") || lower.includes("moon") || lower.includes("луна")) {
+    const moonChip: [string, string] = ctx.moonIllum != null ? ["moon", `Moon ${ctx.moonIllum}% ${ctx.moonName ?? ""}`.trim()] : ["moon", "Moon n/a"];
     return {
-      verdict: ctx.arrival ? "GO" : "CAUTION",
-      title: ctx.arrival ? `Arrival around ${ctx.arrival}` : "Check the arrival window",
-      body: `Plan the arrival in daylight or into a well-lit, all-tide harbour. If slipping departure pushes a cape rounding or a tricky entrance past dusk, hold for the next morning window instead.`,
-      chips: [["moon", ctx.arrival ? `Arrive ${ctx.arrival}` : "Arrival TBD"]],
+      verdict: ctx.arrivalDaylight ? "GO" : "CAUTION",
+      title: ctx.arrival ? (ctx.arrivalDaylight ? `Daylight arrival ~${ctx.arrival}` : `Arrival after dark ~${ctx.arrival}`) : "Check the arrival window",
+      body: `Sunset is ${ctx.sunsetLabel}, sunrise ${ctx.sunriseLabel} (UTC). ${ctx.arrivalDaylight ? "Your arrival lands in daylight." : "Your arrival is after dark — make sure the entrance is lit and all-tide, or hold for first light."}${ctx.moonIllum != null ? ` The moon is ${ctx.moonIllum}% illuminated (${ctx.moonName?.toLowerCase()}), so any night legs are ${ctx.moonIllum > 60 ? "well lit" : ctx.moonIllum > 25 ? "partly lit" : "dark"}.` : ""}`,
+      chips: [["moon", ctx.arrival ? `Arrive ${ctx.arrival}` : "Arrival TBD"], moonChip],
     };
   }
   // default: best window
@@ -66,11 +76,14 @@ function answerFor(q: string, ctx: Ctx): Answer {
     return { verdict: "NOGO", title: "No clean window in the next 48 h", body: "Every hour in the next two days scores NO-GO on the current model — too much wind/gust. Re-check after the next model run or widen the horizon.", chips: [["trending-up", "Re-check later"]] };
   }
   const maxGust = Math.round(Math.max(...ctx.timeline.slice(bw.start, bw.end + 1).map((t) => t.gust)));
+  const agree = ctx.consensusModels.length > 1
+    ? ` ${ctx.consensusModels.join(", ")} ${ctx.depSpread <= 4 ? "agree closely" : ctx.depSpread <= 8 ? "broadly agree" : "diverge"} (spread ±${ctx.depSpread} kt) at that hour.`
+    : "";
   return {
     verdict: "GO",
     title: `Depart ${ctx.timeline[bw.start].label} for the cleanest run`,
-    body: `I scanned the next 48 h on ${ctx.modelShort}. The strongest window opens ${ctx.timeline[bw.start].label} and holds ${bw.len} h at a mean confidence of ${bw.mean.toFixed(1)}/10, with gusts under ${maxGust} kt. Drag the timeline to line your departure up inside it.`,
-    chips: [["clock", `Window ${bw.len}h`], ["gauge", `Conf ${bw.mean.toFixed(1)}/10`], ["trending-up", `Gust < ${maxGust} kt`]],
+    body: `I scanned the next 48 h on ${ctx.modelShort}. The strongest window opens ${ctx.timeline[bw.start].label} and holds ${bw.len} h at a mean confidence of ${bw.mean.toFixed(1)}/10, gusts under ${maxGust} kt.${agree} Drag the timeline to line your departure up inside it.`,
+    chips: [["clock", `Window ${bw.len}h`], ["gauge", `Conf ${bw.mean.toFixed(1)}/10`], ...(ctx.consensusModels.length > 1 ? [["activity", `±${ctx.depSpread}kt spread`] as [string, string]] : [])],
   };
 }
 
