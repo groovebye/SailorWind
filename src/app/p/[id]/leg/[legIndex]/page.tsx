@@ -715,10 +715,10 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const verification = parseJsonObject<SourceVerification>(dest.sourceVerification);
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-4" style={{ background: "var(--bg-primary)", minHeight: "100vh" }}>
+    <div className="container" style={{ maxWidth: 1200, paddingTop: 10, paddingBottom: 48 }}>
       {/* Sticky compact bar */}
-      <div className="sticky top-0 z-40 -mx-6 px-6 py-2 flex items-center justify-between text-xs backdrop-blur-md" style={{ background: "var(--bg-primary)ee", borderBottom: `1px solid var(--border-light)` }}>
-        <button onClick={() => router.back()} className="hover:opacity-80" style={{ color: "var(--text-secondary)", background: "none", border: "none", cursor: "pointer", font: "inherit" }}>← Back</button>
+      <div className="sticky top-0 z-40 px-4 py-2 flex items-center justify-between text-xs" style={{ background: "rgba(5,13,24,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: `1px solid var(--glass-border)`, borderRadius: 12, marginBottom: 12 }}>
+        <button onClick={() => router.back()} className="btn btn-sm btn-ghost">← Back</button>
         <div className="flex items-center gap-3">
           <span className="font-bold" style={{ color: "var(--text-heading)" }}>{fromPort?.name} → {dest?.name}</span>
           <span className="font-black px-2 py-0.5 rounded" style={{ color: verdictColor, background: verdict === "GO" ? "var(--accent-go)" : verdict === "CAUTION" ? "var(--accent-caution)" : "var(--accent-nogo)" }}>{verdict}</span>

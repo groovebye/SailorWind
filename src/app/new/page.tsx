@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowRight, ArrowLeft } from "lucide-react";
 
 interface Port {
   id: string;
@@ -152,81 +153,51 @@ export default function NewPassage() {
   const totalNm = legs.reduce((s, l) => s + l.nm, 0);
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-12">
-      <h1 className="text-2xl font-bold text-blue-400 mb-8">New Passage</h1>
+    <div className="container fade-up" style={{ maxWidth: 860, paddingTop: 32, paddingBottom: 80 }}>
+      <h1 className="display" style={{ fontSize: 34, margin: "0 0 6px" }}>New passage</h1>
+      <p className="dim" style={{ fontSize: 14, margin: "0 0 24px" }}>Pick your endpoints, then fine-tune the waypoints.</p>
 
       {/* Step indicator */}
-      <div className="flex gap-4 mb-8">
-        <div className={`px-4 py-2 rounded-lg text-sm font-semibold ${step === 1 ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
-          1. Route
-        </div>
-        <div className={`px-4 py-2 rounded-lg text-sm font-semibold ${step === 2 ? "bg-blue-600 text-white" : "bg-slate-800 text-slate-400"}`}>
-          2. Waypoints
-        </div>
+      <div className="seg" style={{ marginBottom: 24 }}>
+        <span className={`seg-opt${step === 1 ? " active" : ""}`}>1 · Route</span>
+        <span className={`seg-opt${step === 2 ? " active" : ""}`}>2 · Waypoints</span>
       </div>
 
       {step === 1 && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="glass col gap-20" style={{ padding: 24 }}>
+          <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">From</label>
-              <select
-                value={fromPort}
-                onChange={(e) => setFromPort(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              >
-                <option value="">Select port...</option>
+              <label className="field-label">From</label>
+              <select className="select" value={fromPort} onChange={(e) => setFromPort(e.target.value)}>
+                <option value="">Select port…</option>
                 {allPorts.filter((p) => p.type !== "cape").map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.type})
-                  </option>
+                  <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">To</label>
-              <select
-                value={toPort}
-                onChange={(e) => setToPort(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              >
-                <option value="">Select port...</option>
+              <label className="field-label">To</label>
+              <select className="select" value={toPort} onChange={(e) => setToPort(e.target.value)}>
+                <option value="">Select port…</option>
                 {allPorts.filter((p) => p.type !== "cape").map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.type})
-                  </option>
+                  <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
                 ))}
               </select>
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm text-slate-400 mb-1">Departure</label>
-              <input
-                type="datetime-local"
-                value={departure}
-                onChange={(e) => setDeparture(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              />
+          <div className="grid" style={{ gridTemplateColumns: "2fr 1fr 1fr", gap: 16 }}>
+            <div>
+              <label className="field-label">Departure</label>
+              <input className="input" type="datetime-local" value={departure} onChange={(e) => setDeparture(e.target.value)} />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Speed (kt)</label>
-              <input
-                type="number"
-                value={speed}
-                onChange={(e) => setSpeed(parseFloat(e.target.value) || 5)}
-                min={1} max={15} step={0.5}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              />
+              <label className="field-label">Speed (kt)</label>
+              <input className="input" type="number" value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value) || 5)} min={1} max={15} step={0.5} />
             </div>
             <div>
-              <label className="block text-sm text-slate-400 mb-1">Mode</label>
-              <select
-                value={mode}
-                onChange={(e) => setMode(e.target.value as "daily" | "nonstop")}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-              >
+              <label className="field-label">Mode</label>
+              <select className="select" value={mode} onChange={(e) => setMode(e.target.value as "daily" | "nonstop")}>
                 <option value="daily">Daily stops</option>
                 <option value="nonstop">Non-stop</option>
               </select>
@@ -234,12 +205,8 @@ export default function NewPassage() {
           </div>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">Weather Model</label>
-            <select
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:outline-none max-w-xs"
-            >
+            <label className="field-label">Weather model</label>
+            <select className="select" style={{ maxWidth: 320 }} value={model} onChange={(e) => setModel(e.target.value)}>
               <option value="ecmwf_ifs025">ECMWF IFS 0.25°</option>
               <option value="icon_eu">ICON-EU</option>
               <option value="gfs_seamless">GFS</option>
@@ -247,102 +214,69 @@ export default function NewPassage() {
             </select>
           </div>
 
-          <button
-            onClick={handleStep1Next}
-            disabled={!fromPort || !toPort || !departure}
-            className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-          >
-            Next: Select Waypoints →
+          <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} onClick={handleStep1Next} disabled={!fromPort || !toPort || !departure}>
+            Next: select waypoints <ArrowRight size={16} />
           </button>
         </div>
       )}
 
       {step === 2 && (
-        <div className="space-y-6">
-          <button
-            onClick={() => setStep(1)}
-            className="text-slate-400 hover:text-blue-400 text-sm mb-4"
-          >
-            ← Back to Route
+        <div className="col gap-16">
+          <button className="btn btn-sm btn-ghost" style={{ alignSelf: "flex-start" }} onClick={() => setStep(1)}>
+            <ArrowLeft size={15} /> Back to route
           </button>
 
-          {/* Legs summary */}
           {legs.length > 0 && (
-            <div className="bg-slate-800 border border-slate-800 rounded-lg p-4 mb-4">
-              <h3 className="text-sm font-semibold text-slate-300 mb-3">
-                Legs ({totalNm} NM total, {legs.length} legs)
+            <div className="glass" style={{ padding: 18 }}>
+              <h3 className="mono faint" style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase", margin: "0 0 12px" }}>
+                Legs · {totalNm} NM total · {legs.length} legs
               </h3>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-8 wrap">
                 {legs.map((l, i) => (
-                  <div
-                    key={i}
-                    className={`text-xs px-3 py-2 rounded border ${l.warning ? "border-yellow-500 text-yellow-400" : "border-slate-700 text-slate-300"}`}
-                  >
-                    <div className="font-semibold">{l.from} → {l.to}</div>
-                    <div>{l.nm} NM, ~{l.hours}h</div>
+                  <div key={i} className="pill" style={{ flexDirection: "column", alignItems: "flex-start", gap: 2, padding: "8px 12px", textTransform: "none", letterSpacing: 0, color: l.warning ? "var(--caution)" : "var(--fg-dim)", borderColor: l.warning ? "rgba(255,194,75,0.4)" : "var(--glass-border)" }}>
+                    <span style={{ fontWeight: 600 }}>{l.from} → {l.to}</span>
+                    <span>{l.nm} NM · ~{l.hours}h</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Port checklist */}
-          <div className="space-y-1">
+          <div className="glass col" style={{ padding: 10, gap: 2 }}>
             {routePorts.map((p, i) => {
               const isStartEnd = i === 0 || i === routePorts.length - 1;
               const prevChecked = routePorts.slice(0, i).reverse().find((pp) => pp.checked && pp.type !== "cape");
               const distFromPrev = prevChecked ? p.coastlineNm - prevChecked.coastlineNm : 0;
-
+              const nameColor = p.type === "cape" ? "var(--caution)" : p.type === "marina" ? "var(--go)" : "var(--fg)";
               return (
                 <div
                   key={p.id}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg border transition-colors cursor-pointer ${
-                    p.checked
-                      ? p.type === "cape"
-                        ? "border-yellow-500/30 bg-yellow-500/5"
-                        : "border-blue-500/30 bg-blue-500/5"
-                      : "border-slate-800 bg-slate-800/50 opacity-60"
-                  }`}
                   onClick={() => !isStartEnd && togglePort(i)}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderRadius: 11,
+                    cursor: isStartEnd ? "default" : "pointer", opacity: p.checked ? 1 : 0.5,
+                    background: p.checked ? (p.type === "cape" ? "rgba(255,194,75,0.07)" : "rgba(52,224,255,0.06)") : "transparent",
+                    boxShadow: p.checked ? `inset 2px 0 0 ${p.type === "cape" ? "var(--caution)" : "var(--cyan)"}` : "none",
+                  }}
                 >
-                  <input
-                    type="checkbox"
-                    checked={p.checked}
-                    disabled={isStartEnd}
-                    onChange={() => togglePort(i)}
-                    className="accent-blue-500"
-                  />
-                  <div className="flex-1">
-                    <span className={`font-semibold text-sm ${
-                      p.type === "cape" ? "text-yellow-400" :
-                      p.type === "marina" ? "text-green-400" : "text-slate-300"
-                    }`}>
-                      {p.name}
-                    </span>
-                    <span className="text-xs text-slate-500 ml-2">
-                      {p.type.toUpperCase()}
-                    </span>
-                    {p.fuel && <span className="text-xs text-slate-500 ml-1">⛽</span>}
-                    {p.water && <span className="text-xs text-slate-500 ml-1">💧</span>}
-                    {p.repairs && <span className="text-xs text-slate-500 ml-1">🔧</span>}
+                  <input type="checkbox" checked={p.checked} disabled={isStartEnd} onChange={() => togglePort(i)} style={{ accentColor: "var(--cyan)" }} />
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontWeight: 600, fontSize: 14, color: nameColor }}>{p.name}</span>
+                    <span className="faint mono" style={{ fontSize: 11, marginLeft: 8 }}>{p.type.toUpperCase()}</span>
+                    {p.fuel && <span className="faint" style={{ fontSize: 11, marginLeft: 6 }}>⛽</span>}
+                    {p.repairs && <span className="faint" style={{ fontSize: 11, marginLeft: 4 }}>🔧</span>}
                   </div>
-                  <span className="text-xs text-slate-500">{p.coastlineNm} NM</span>
+                  <span className="faint mono" style={{ fontSize: 11 }}>{p.coastlineNm} NM</span>
                   {distFromPrev > 0 && (
-                    <span className={`text-xs ${distFromPrev > 50 ? "text-red-400" : "text-slate-500"}`}>
-                      +{distFromPrev} NM
-                    </span>
+                    <span className="mono" style={{ fontSize: 11, color: distFromPrev > 50 ? "var(--nogo)" : "var(--fg-faint)" }}>+{distFromPrev} NM</span>
                   )}
                 </div>
               );
             })}
           </div>
 
-          <button
-            onClick={handleSave}
-            disabled={saving || legs.length === 0}
-            className="bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-          >
-            {saving ? "Saving..." : "Create Passage & View Forecast"}
+          <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} onClick={handleSave} disabled={saving || legs.length === 0}>
+            {saving ? "Saving…" : "Create passage & view forecast"}
           </button>
         </div>
       )}
