@@ -1,0 +1,87 @@
+{
+  "_source": "Reeds Nautical Almanac §9.23.30 Ría de Corme y Laxe, §9.23.31 Ría de Camariñas (user export). Coords/WPTs/facilities transcribed from the page; tide differences are vs Standard Port La Coruña.",
+  "areas": [
+    {
+      "slug": "club-nautico-de-camarinas",
+      "match": "update",
+      "lat": 43.1263,
+      "lon": -9.1823,
+      "approachLat": 43.1212,
+      "approachLon": -9.2108,
+      "approachNote": "From ría-entrance WPT 43°07'·27N 09°12'·65W: track 108°/1.1M then 039°/0.7M to Camariñas bkwtr (Reeds). Beware El Bufardo rk (awash) 4ca NW of C. Villano; pass E of Las Quebrantas shoal from N.",
+      "accessNote": "Good shelter; anchor N/NW of hbr except in E/NE'lies. Approach on 081°/108° leading lines (Reeds).",
+      "marina": {
+        "name": "Club Náutico de Camariñas (CNC)",
+        "maxLength": 18,
+        "berthCount": 60,
+        "vhfCh": "09",
+        "website": "https://www.cncamarinas.com",
+        "email": "cncamarinas@cncamarinas.com",
+        "phone": "+34 981 737130",
+        "notes": "Reeds: 60 berths + visitor on 3 YC pontoons, max 18m LOA, €1·82/m (fore & aft), Wi-Fi (limited range). VHF Ch 09. Buses to La Coruña; airport Santiago.",
+        "perMeter": 1.82,
+        "daily9_5": 17
+      }
+    },
+    {
+      "slug": "marina-muxia",
+      "match": "update",
+      "lat": 43.1060,
+      "lon": -9.2122,
+      "approachLat": 43.1212,
+      "approachLon": -9.2108,
+      "approachNote": "From ría-entrance WPT 43°07'·27N 09°12'·65W: 180°/0.9M to Muxía (Mugia) bkwtr (Reeds). Well sheltered except strong E/SE'lies; else anchor outside in lee of bkwtr.",
+      "accessNote": "Marina or anchor outside hbr in lee of bkwtr; exposed to strong E/SE'lies (Reeds).",
+      "marina": {
+        "name": "Marina Cataventos",
+        "maxLength": 22,
+        "berthCount": 232,
+        "vhfCh": "09",
+        "website": "https://www.marinamuxia.com",
+        "email": "info@marinamuxia.com",
+        "phone": "+34 673 168199",
+        "notes": "Reeds: 232 berths inc visitor, max 22m LOA, €2·00/m (multihulls +50%), Wi-Fi. VHF Ch 09. mob +34 673168199 / 666369324. Buses to La Coruña; airport Santiago.",
+        "perMeter": 2.00,
+        "daily9_5": 19
+      }
+    },
+    {
+      "slug": "corme",
+      "match": "create",
+      "name": "Corme",
+      "type": "anchorage",
+      "country": "Spain",
+      "region": "Galicia / Costa da Morte",
+      "coastOrder": 172,
+      "lat": 43.2605,
+      "lon": -8.9638,
+      "approachLat": 43.2552,
+      "approachLon": -9.0105,
+      "approachNote": "From WPT 43°15'·31N 09°00'·63W: 081°/2.1M to Corme pierhead (Reeds). Beware rocks off Pta del Roncudo; avoid Bajo de La Avería (5·6m). Ría >2M wide.",
+      "draftAccess": "all-tide",
+      "controllingDepthM": 5,
+      "accessNote": "Fishing-harbour refuge; well sheltered from N & E. Raft on FVs / anchor N of bkwtr in 5m, good holding. Can be bad in W–N swell.",
+      "description": "Small fishing village on the N side of the Ría de Corme y Laxe (Costa da Morte). Bolt-hole between Malpica and Camariñas. Fisherman Cofradía ☎ +34 981 738043, ~4t crane. Shops, fuel, water; buses to La Coruña.",
+      "orcaRisk": "medium"
+    },
+    {
+      "slug": "laxe",
+      "match": "create",
+      "name": "Laxe",
+      "type": "anchorage",
+      "country": "Spain",
+      "region": "Galicia / Costa da Morte",
+      "coastOrder": 178,
+      "lat": 43.2225,
+      "lon": -8.9992,
+      "approachLat": 43.2552,
+      "approachLon": -9.0105,
+      "approachNote": "From WPT 43°15'·31N 09°00'·63W: 166°/2.0M to Laxe pierhead (Reeds). Beware rocks off Pta de Laxe; avoid Bajo de La Avería (5·6m).",
+      "draftAccess": "all-tide",
+      "controllingDepthM": 5,
+      "accessNote": "Anchor N of hbr bkwtr in 5m, good holding on sand. Well sheltered from W & S. Can be bad in W–N swell.",
+      "description": "Fishing village on the S side of the Ría de Corme y Laxe (Costa da Morte). Anchorage refuge. Fisherman Cofradía ☎ +34 981 728255, ~16t crane. Shops, fuel, water; buses to La Coruña.",
+      "orcaRisk": "medium"
+    }
+  ]
+}

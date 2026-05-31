@@ -45,6 +45,7 @@ interface PortArea {
   provisioningSummary: string | null;
   restaurants: unknown; yachtShops: unknown; groceryStores: unknown; extras: unknown;
   orcaRisk: string | null; orcaNotes: string | null;
+  approachNote?: string | null;
   marinas: MarinaOption[];
   nearbyPlaces: NearbyPlace[];
 }
@@ -131,6 +132,9 @@ export default function PortAreaPage({ params }: { params: Promise<{ slug: strin
         {area.description && <p className="dim" style={{ fontSize: 14, marginTop: 10, maxWidth: 760 }}>{area.description}</p>}
         {area.orcaRisk && area.orcaRisk !== "none" && (
           <div className="mono" style={{ fontSize: 12, marginTop: 8, color: "var(--caution)" }}>🐋 Orca risk: {area.orcaRisk.toUpperCase()}</div>
+        )}
+        {area.approachNote && (
+          <div className="mono" style={{ fontSize: 12, marginTop: 8, color: "var(--sky)" }}>▽ Approach (Reeds): {area.approachNote}</div>
         )}
       </div>
 

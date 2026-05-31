@@ -363,6 +363,12 @@ model PortArea {
   controllingDepthM Float?
   accessNote        String?  // short skipper-facing reason incl. tide window if gated
 
+  // Reeds approach waypoint (seaward entrance point) — used to thread route lines
+  // safely into harbour instead of straight port-to-port. Source: Reeds Almanac.
+  approachLat       Float?
+  approachLon       Float?
+  approachNote      String?  // e.g. "track 108°/1.1M then 039°/0.7M to bkwtr (Reeds)"
+
   description         String?
   arrivalSummary      String?
   shoreSummary        String?

@@ -12,6 +12,8 @@ import { isDaylight } from "@/lib/astro";
 export type WP = {
   name: string; slug: string; lat: number; lon: number;
   isStop: boolean; isCape: boolean; orcaRisk: string | null;
+  /** Reeds seaward approach waypoint, if known (used to thread route into harbour). */
+  approach?: { lat: number; lon: number; note: string | null } | null;
 };
 
 export type LocSeries = {

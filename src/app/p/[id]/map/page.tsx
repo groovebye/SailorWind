@@ -13,9 +13,28 @@ export default async function ChartPage({ params }: { params: Promise<{ id: stri
   });
   if (!passage) notFound();
 
+  // Reeds approach waypoints (seaward entrance points) — attach to each passage
+  // waypoint by nearest catalogued PortArea so the route threads in safely.
+  const approaches = await prisma.portArea.findMany({
+    where: { approachLat: { not: null }, approachLon: { not: null } },
+    select: { lat: true, lon: true, approachLat: true, approachLon: true, approachNote: true },
+  });
+  const approachFor = (lat: number, lon: number) => {
+    let best: (typeof approaches)[number] | null = null;
+    let bestNm = 3; // only match within 3 nm
+    for (const a of approaches) {
+      const d = haversineNm([lat, lon], [a.lat, a.lon]);
+      if (d < bestNm) { bestNm = d; best = a; }
+    }
+    return best && best.approachLat != null && best.approachLon != null
+      ? { lat: best.approachLat, lon: best.approachLon, note: best.approachNote }
+      : null;
+  };
+
   const wps = passage.waypoints.map((w) => ({
     name: w.port.name, slug: w.port.slug, lat: w.port.lat, lon: w.port.lon,
     isStop: w.isStop, isCape: w.isCape, orcaRisk: w.port.orcaRisk,
+    approach: approachFor(w.port.lat, w.port.lon),
   }));
   const stops = passage.waypoints.filter((w) => w.isStop);
   const from = (stops[0] ?? passage.waypoints[0])?.port.name ?? "?";

@@ -68,7 +68,13 @@ export default function ChartView(props: {
     (async () => {
       const L = (await import("leaflet")).default;
       if (cancelled || !mapEl.current) return;
-      const pts = wps.map((w) => [w.lat, w.lon] as [number, number]);
+      // Thread the route through each port's Reeds approach waypoint (seaward
+      // entrance) so the line clears land/hazards instead of cutting in straight.
+      const pts: [number, number][] = [];
+      wps.forEach((w) => {
+        if (w.approach) pts.push([w.approach.lat, w.approach.lon]);
+        pts.push([w.lat, w.lon]);
+      });
       map = L.map(mapEl.current, { zoomControl: false, center: [43.62, -8.0], zoom: 9, scrollWheelZoom: true });
       mapObj.current = map;
       L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -91,6 +97,18 @@ export default function ChartView(props: {
           .addTo(map!)
           .on("click", () => { setActiveIdx(i); map!.panTo([w.lat, w.lon]); })
           .bindTooltip(w.name, { direction: "top", className: "lf-tip", offset: [0, -8] });
+      });
+
+      // Reeds approach waypoints (seaward entrance gates)
+      wps.forEach((w) => {
+        if (!w.approach) return;
+        const icon = L.divIcon({
+          className: "", iconSize: [12, 12], iconAnchor: [6, 6],
+          html: `<div class="lf-wpt"></div>`,
+        });
+        L.marker([w.approach.lat, w.approach.lon], { icon })
+          .addTo(map!)
+          .bindTooltip(`▽ Approach WPT — ${w.name}${w.approach.note ? `\n${w.approach.note}` : ""}`, { className: "lf-tip", direction: "top" });
       });
 
       const og = L.layerGroup();
