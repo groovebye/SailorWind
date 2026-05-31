@@ -117,6 +117,7 @@ export default async function Home() {
               recommended: (area.nearbyPlaces || []).length,
               orcaRisk: area.orcaRisk,
               toNextNm,
+              isMajor: area.isMajor,
             };
           })}
         />

@@ -20,6 +20,8 @@ export type PortCard = {
   orcaRisk: string | null;
   /** Great-circle distance to the next port down the coast (nm); null for the last. */
   toNextNm: number | null;
+  /** Curated principal hub — good for an overnight / 1-2 day rest & provisioning. */
+  isMajor: boolean;
 };
 
 /** A Monsun 31 daysails comfortably to ~55 nm; longer hops imply a night passage. */
@@ -48,18 +50,21 @@ function Tag({ children, tone }: { children: React.ReactNode; tone?: "warn" }) {
 export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
   const router = useRouter();
   const [q, setQ] = useState("");
+  const [majorOnly, setMajorOnly] = useState(false);
   const query = q.trim().toLowerCase();
+  const majorCount = useMemo(() => areas.filter((a) => a.isMajor).length, [areas]);
 
   // Number rows by their coast position before filtering, so "#" = sailing order.
   const indexed = useMemo(() => areas.map((a, i) => ({ ...a, order: i + 1 })), [areas]);
   const filtered = useMemo(() => {
-    if (!query) return indexed;
     return indexed.filter(
       (a) =>
-        a.name.toLowerCase().includes(query) ||
-        (a.region ?? "").toLowerCase().includes(query),
+        (!majorOnly || a.isMajor) &&
+        (!query ||
+          a.name.toLowerCase().includes(query) ||
+          (a.region ?? "").toLowerCase().includes(query)),
     );
-  }, [indexed, query]);
+  }, [indexed, query, majorOnly]);
 
   const th = "px-3 py-2 text-[11px] font-medium uppercase tracking-wide";
   const td = "px-3 py-2 align-middle";
@@ -69,23 +74,45 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
       <div className="flex items-baseline justify-between gap-3 mb-3">
         <h2 className="text-lg font-semibold text-slate-300">⚓ Ports &amp; Marinas</h2>
         <span className="text-xs tabular-nums" style={{ color: "var(--text-muted)" }}>
-          {query ? `${filtered.length} of ${areas.length}` : `${areas.length} along the route`}
+          {query || majorOnly ? `${filtered.length} of ${areas.length}` : `${areas.length} along the route`}
         </span>
       </div>
 
-      <input
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search ports — e.g. Vigo, Cascais, Cádiz, Algarve…"
-        aria-label="Search ports by name"
-        className="w-full mb-4 px-3 py-2 rounded-lg text-sm outline-none focus:ring-1 focus:ring-blue-500"
-        style={{
-          background: "var(--bg-card)",
-          border: "1px solid var(--border-light)",
-          color: "var(--text-heading)",
-        }}
-      />
+      <div className="flex items-center gap-2 mb-3">
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search ports — e.g. Vigo, Cascais, Cádiz, Algarve…"
+          aria-label="Search ports by name"
+          className="flex-1 px-3 py-2 rounded-lg text-sm outline-none focus:ring-1 focus:ring-blue-500"
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border-light)",
+            color: "var(--text-heading)",
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setMajorOnly((v) => !v)}
+          aria-pressed={majorOnly}
+          title="Show only the principal hubs — good for an overnight / 1-2 day rest"
+          className="px-3 py-2 rounded-lg text-sm whitespace-nowrap transition-colors"
+          style={{
+            background: majorOnly ? "var(--text-yellow)" : "var(--bg-card)",
+            border: "1px solid var(--border-light)",
+            color: majorOnly ? "#0f172a" : "var(--text-secondary)",
+            fontWeight: majorOnly ? 600 : 400,
+          }}
+        >
+          ★ Major hubs{majorOnly ? "" : ` (${majorCount})`}
+        </button>
+      </div>
+
+      <p className="text-[11px] mb-4" style={{ color: "var(--text-muted)" }}>
+        <span style={{ color: "var(--text-yellow)" }}>★</span> highlighted = principal hub: secure marina,
+        provisioning &amp; transport ashore — good for an overnight or 1–2 day rest.
+      </p>
 
       {filtered.length === 0 ? (
         <p className="text-sm py-8 text-center" style={{ color: "var(--text-muted)" }}>
@@ -116,12 +143,21 @@ export default function PortsCatalog({ areas }: { areas: PortCard[] }) {
                   key={a.id}
                   onClick={() => router.push(`/port/${a.slug}`)}
                   className="cursor-pointer border-t hover:bg-slate-800/50 transition-colors"
-                  style={{ borderColor: "var(--border-light)" }}
+                  style={{
+                    borderColor: "var(--border-light)",
+                    background: a.isMajor ? "rgba(250, 204, 21, 0.07)" : undefined,
+                    boxShadow: a.isMajor ? "inset 3px 0 0 var(--text-yellow)" : undefined,
+                  }}
                 >
                   <td className={`${td} text-right tabular-nums text-xs`} style={{ color: "var(--text-muted)" }}>
                     {a.order}
                   </td>
-                  <td className={`${td} font-semibold whitespace-nowrap`}>
+                  <td className={`${td} whitespace-nowrap ${a.isMajor ? "font-bold" : "font-semibold"}`}>
+                    {a.isMajor && (
+                      <span aria-hidden className="mr-1" style={{ color: "var(--text-yellow)" }}>
+                        ★
+                      </span>
+                    )}
                     <Link
                       href={`/port/${a.slug}`}
                       onClick={(e) => e.stopPropagation()}

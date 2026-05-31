@@ -355,6 +355,7 @@ model PortArea {
   lon             Float
   type            String   // "major_stopover" | "medium_stopover" | "minor_stopover" | "cape_area" | "marina" | "port" | "anchorage" | "cape"
   coastOrder      Float?   // ordering key along the cruising route (Gijón=0 … La Coruña=160 … Gibraltar). Sort the catalog by this.
+  isMajor         Boolean  @default(false) // curated: a principal harbour-city hub — secure marina + provisioning + transport, good for an overnight / 1-2 day rest. Highlighted in the catalog.
 
   description         String?
   arrivalSummary      String?
