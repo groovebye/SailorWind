@@ -1,0 +1,37 @@
+{
+  "_source": "Reeds Almanac §9.23.33 Ría de Arosa marina list + masmar (Pedras Negras coords) — the additional Arousa marinas Reeds lists that weren't yet distinct entries.",
+  "areas": [
+    {
+      "slug": "puerto-cabo-de-cruz", "match": "create", "name": "Cabo de Cruz",
+      "type": "marina", "country": "Spain", "region": "Galicia / Rías Baixas", "coastOrder": 250.5,
+      "lat": 42.61, "lon": -8.8883,
+      "accessNote": "Marina on the N shore of Ría de Arousa (Boiro). Depth unverified — check chart.",
+      "description": "Puerto Deportivo de Cabo de Cruz (Boiro), Ría de Arousa N shore. Reeds §9.23.33.",
+      "marina": { "name": "Puerto Deportivo Cabo de Cruz", "perMeter": 2.1, "daily9_5": 20, "notes": "Reeds: Ría de Arousa N shore (Boiro); €2.10/m." }
+    },
+    {
+      "slug": "rianxo", "match": "create", "name": "Rianxo",
+      "type": "marina", "country": "Spain", "region": "Galicia / Rías Baixas", "coastOrder": 257,
+      "lat": 42.65, "lon": -8.8252,
+      "accessNote": "Marina on the E/SE shore of Ría de Arousa, near Vilagarcía. Depth unverified — check chart.",
+      "description": "Marina de Rianxo, Ría de Arousa. Reeds §9.23.33.",
+      "marina": { "name": "Marina de Rianxo", "notes": "Reeds: Ría de Arousa marina (Rianxo)." }
+    },
+    {
+      "slug": "pedras-negras", "match": "create", "name": "Pedras Negras (San Vicente do Mar)",
+      "type": "marina", "country": "Spain", "region": "Galicia / Rías Baixas", "coastOrder": 270,
+      "lat": 42.4583, "lon": -8.9183, "draftAccess": "all-tide",
+      "accessNote": "At the SW mouth of Ría de Arousa (O Grove / San Vicente do Mar) — deep entrance.",
+      "description": "Club Náutico San Vicente do Mar — Porto Pedras Negras, at the transition between Ría de Arousa and Ría de Pontevedra. Reeds §9.23.33.",
+      "marina": { "name": "CN San Vicente do Mar — Porto Pedras Negras", "phone": "+34 986 738325", "email": "administracion@cnsvicente.org", "notes": "Reeds/masmar: O Grove peninsula, SW entrance of Ría de Arousa." }
+    },
+    {
+      "slug": "parque-das-nacoes", "match": "create", "name": "Marina Parque das Nações",
+      "type": "marina", "country": "Portugal", "region": "Portugal / Lisbon (Tejo)", "coastOrder": 580.5,
+      "lat": 38.7562, "lon": -9.0987,
+      "accessNote": "Up the Tejo at the former Expo site; inner channel ~2.5 m — enter near HW for deeper draught.",
+      "description": "Marina Parque das Nações, upper Tejo (Lisbon). Reeds §9.24.",
+      "marina": { "name": "Marina Parque das Nações", "perMeter": 2.5, "daily9_5": 24, "notes": "Reeds: upper Tejo (Expo); inner channel ~2.5 m." }
+    }
+  ]
+}

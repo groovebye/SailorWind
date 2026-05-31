@@ -55,7 +55,7 @@ async function main() {
     const doc = JSON.parse(readFileSync(join(DATA_DIR, f), "utf8"));
     for (const a of doc.areas as Area[]) {
       if (a.match === "create") {
-        await prisma.portArea.upsert({
+        const areaRow = await prisma.portArea.upsert({
           where: { slug: a.slug },
           create: {
             slug: a.slug, name: a.name, country: a.country, region: a.region, type: a.type,
@@ -73,6 +73,29 @@ async function main() {
             orcaRisk: a.orcaRisk ?? undefined,
           },
         });
+        if (a.marina) {
+          const exists = await prisma.marinaOption.findFirst({ where: { portAreaId: areaRow.id } });
+          if (!exists) {
+            const marina = await prisma.marinaOption.create({
+              data: {
+                portAreaId: areaRow.id, slug: `${a.slug}-marina`, name: a.marina.name ?? a.name, kind: "marina",
+                lat: a.lat, lon: a.lon, maxLength: a.marina.maxLength ?? null, berthCount: a.marina.berthCount ?? null,
+                vhfCh: a.marina.vhfCh ?? null, phone: a.marina.phone ?? null, website: a.marina.website ?? null,
+                email: a.marina.email ?? null, notes: a.marina.notes ?? null,
+              },
+            });
+            if (a.marina.daily9_5 != null) {
+              await prisma.marinaPrice.create({
+                data: {
+                  marinaOptionId: marina.id, loaMeters: 9.5, season: "low", billingPeriod: "daily",
+                  price: a.marina.daily9_5, currency: "EUR", taxIncluded: true,
+                  pricingNote: `Reeds €${a.marina.perMeter}/m (estimated daily for ~9.5 m LOA)`,
+                  sourceName: "Reeds Almanac", confidence: "estimated",
+                },
+              });
+            }
+          }
+        }
         created++;
         console.log(`  + ${a.name} (${a.slug})`);
       } else {
