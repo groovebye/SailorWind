@@ -1,0 +1,446 @@
+{
+ "_source": "Reeds Almanac full export (26pp), reconciled to catalog by nearest position",
+ "areas": [
+  {
+   "slug": "corme",
+   "match": "update",
+   "approachLat": 43.2552,
+   "approachLon": -9.0105,
+   "approachNote": "WPT 43°15'·31N 09°00'·63W: track 081°/2·1M to Corme pierhd; 166°/2·0M to Lage pierhd. Appr straightforward but beware rocks off Pta del Roncudo and Pta de Laxe. In bad weather follow the ldg lines to Corme to avoid Bajo de La Averia (5-6m).",
+   "accessNote": "Corme: well sheltered from E and N winds, pier extended. Laxe (Lage): well sheltered from W and S; good holding/protection N of hbr bkwtr. Both hbrs may be affected by swell in winds from W–N."
+  },
+  {
+   "slug": "club-nautico-de-camarinas",
+   "match": "update",
+   "approachLat": 43.1212,
+   "approachLon": -9.2108,
+   "approachNote": "WPT 43°07'·27N 09°12'·65W (intersection of 108° and 081° ldg lines). Thence track 108°/1·1M, then 039°/0·7M to Camariñas bkwtr hd. For Mugia bkwtr 180°/0·9M. El Bufardo (43°10'·00N 09°13'·28W) a dangerous pinnacle rk awash at CD, 4ca NW of ",
+   "accessNote": "Good in Camariñas, or ⊥ to N or NW of hbr except in E/NE'lies. Mugia (43°06'·36N 09°12'·73W) well sheltered in all but strong E/SE'lies either in Muxia Marina Cataventos, or ⊥ outside hbr in lee of bk",
+   "marina": {
+    "maxLength": 18,
+    "vhfCh": "09",
+    "perMeter": 1.82,
+    "daily9_5": 17,
+    "notes": "Reeds: 60 + visitor berths on 3 YC pontoons, F&A on 2 pontoons; max 18m LOA; wi-fi has limited range, best near block; €1.82/m, max 18m LOA, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "marina-muxia",
+   "match": "update",
+   "approachLat": 43.1212,
+   "approachLon": -9.2108,
+   "approachNote": "From WPT for Camariñas, take Mugia bkwtr track 180°/0·9M. Beware El Bufardo pinnacle rk awash at CD, 4ca NW of C. Villano.",
+   "accessNote": "Well sheltered in all but strong E/SE'lies in Muxia Marina Cataventos, or ⊥ outside hbr in lee of bkwtr.",
+   "marina": {
+    "maxLength": 22,
+    "vhfCh": null,
+    "perMeter": 2,
+    "daily9_5": 19,
+    "notes": "Reeds: 232 inc ⊕; €2·00, multihulls +50%; max 22m LOA; wi-fi; Town; €2/m, max 22m LOA."
+   }
+  },
+  {
+   "slug": "porto-de-fisterra-finisterre",
+   "match": "update",
+   "accessNote": "Hbr is usually full of small FVs, but in settled weather it is safe to ⊥ outside in 5-10m, either close S of the bkwtr or to the N off the Playa de Langosteira."
+  },
+  {
+   "slug": "corcubion-cee-ria-de-corcubion-anchorage",
+   "match": "update",
+   "accessNote": "Although Corcubión offers little shelter in S'lies there are several good anchorages towards head of ría: ⊥ in Playa de Quenje clear of local moorings; further N SE of Corcubión Quay in 5-8m (both wel",
+   "lat": 42.9462,
+   "lon": -9.188
+  },
+  {
+   "slug": "marina-muros-muport",
+   "match": "update",
+   "approachLat": 42.7267,
+   "approachLon": -9.056,
+   "approachNote": "WPT 42°43'·60N 09°03'·36W: 1·25M SE of Punta Queixal lt and 2·0M NW of Punta Focha lt (off chartlet). From N, Canal de los Meixidos (between mainland and Bajo de los Meixidos and Los Bruyos, least width 1·1M) is usable with care. From S avo",
+   "accessNote": "Excellent in Marina Muros. ⊥ off harbour (beware poor holding in weed and fishing debris, trip line advised) or in Ensenada de San Francisco to SSW, dinghy to marina. Noya at head of ría, shoal draft ",
+   "marina": {
+    "maxLength": 20,
+    "vhfCh": "09",
+    "perMeter": 3,
+    "daily9_5": 29,
+    "notes": "Reeds: Outer hbr 212 berths (inc ⊕ €3·00); inner hbr for locals/FVs only, 3x1m; H24; E quay (not near LW or Sat/Sun); wi-fi; ✉ ⊠ (100t); at Santiago de Compostela (40km by bus); €3/m, max 20m LOA, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "real-club-nautico-portosin",
+   "match": "update",
+   "accessNote": "CN Portosin on the E shore is sheltered, efficient and welcoming.",
+   "lat": 42.7657,
+   "lon": -8.9487,
+   "marina": {
+    "maxLength": 32,
+    "vhfCh": "09",
+    "perMeter": 2.72,
+    "daily9_5": 26,
+    "notes": "Reeds: 220 inc ⊕ €2·72 F&A; fingers in 3·5-8m; (32t)(3t); mob 618609061; HM Ch 09, H24; €2.72/m, max 32m LOA, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "club-nautico-do-caraminal-a-pobra-do-caraminal",
+   "match": "update",
+   "approachLat": 42.45,
+   "approachLon": -8.9917,
+   "approachNote": "WPT 42°27'·00N 08°59'·50W: 025°/6·6M to 5ca E of Isla Rúa (It); 42°32'·32N (It) usually left to port; inshore passage to NW between Isla Sagres and Pta Falcoeiro, Canal de Sagres, viable in daylight/good weather and AC 1734 or SC 4152/3. Es",
+   "accessNote": "Shelter can be found from most winds. Use large scale charts and a Pilot book. ML 2·05.",
+   "marina": {
+    "maxLength": null,
+    "vhfCh": "09",
+    "perMeter": 3,
+    "daily9_5": 29,
+    "notes": "Reeds: 305 berths; inc ⊕ €3·00 inc ✭; in 3·5m; 30 inc ⊕; by taxi; €3/m, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "marina-vilagarcia-de-arousa",
+   "match": "update",
+   "marina": {
+    "maxLength": 70,
+    "vhfCh": "09",
+    "perMeter": 2,
+    "daily9_5": 19,
+    "notes": "Reeds: 450 inc ⊕; €2·00 as directed or on 1st pontoon to stbd in 3-5m; (70t)(50t); YC; ✭ ⊠ ✪ ⊕ nearby (unmanned, Spanish cr/cards); Vigo, Santiago, La Coruna; €2/m, max 70m LOA, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "marina-arousa-vilanova-de-arousa",
+   "match": "update",
+   "approachLat": 42.5848,
+   "approachLon": -8.8478,
+   "approachNote": "WPT at 42°35'·09N 08°50'·87W; thence 179°/1·2M to 0·5M abm Vilanova. Fl(3)G 10s; thence appr from N: WPT at 42°35'·09N 08°50'·87W. FV basin to the S.",
+   "marina": {
+    "maxLength": 35,
+    "vhfCh": null,
+    "perMeter": 2.32,
+    "daily9_5": 22,
+    "notes": "Reeds: mob 24H 670623084; €2·32/m; Many viveros, only appr from N; (35t); FV basin to the S; €2.32/m, max 35m LOA."
+   }
+  },
+  {
+   "slug": "sanxenxo",
+   "match": "update",
+   "approachLat": 42.3,
+   "approachLon": -8.9527,
+   "approachNote": "WPT 42°18'·00N 08°57'·16W, track 053° to enter via main chan Boca del Sudoeste into centre of ria between Cabo de Udra and Pta Cabicastro",
+   "accessNote": "Good shelter from any wind; Islas Ons and Onza across mouth offer barrier to wind and swell",
+   "marina": {
+    "maxLength": 45,
+    "vhfCh": "09",
+    "perMeter": 3.25,
+    "daily9_5": 31,
+    "notes": "Reeds: Max LOA 45m. Wi-fi, max 80t (5t). SHM lt bcn marks drying rocks on N side entrance. Avoid busy ferry pier.; €3.25/m, max 45m LOA, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "puerto-deportivo-de-combarro-marina-combarro",
+   "match": "update",
+   "approachLat": 42.3,
+   "approachLon": -8.9527,
+   "approachNote": "WPT 42°18'·00N 08°57'·16W, track 053° into ria. AC 1733. 287 + 45 <12m and 2 max 20m LOA, €2.80/m. Good depths in marina and channel but do not pass right of Isla Tambo; leave mussel rafts to port in final approach.",
+   "accessNote": "Good shelter from any wind",
+   "marina": {
+    "maxLength": 20,
+    "vhfCh": null,
+    "perMeter": 2.8,
+    "daily9_5": 27,
+    "notes": "Reeds: 287 + 45 berths (<12m) and 2 berths max 20m LOA. Max 50t (6t).; €2.8/m, max 20m LOA."
+   }
+  },
+  {
+   "slug": "porto-deportivo-de-cangas-rcn-rodeira",
+   "match": "update",
+   "approachLat": 42.2682,
+   "approachLon": -8.899,
+   "approachNote": "N Chan WPT 42°16'·09N 08°53'·94W, thence 160°/2M via northern TSS to intersect 095° ldg line. Cangas small friendly YC marina in NW corner of Ensenada de Cangas. Approx €2.50; 64t (8t). If full anchor SE of marina, clear of ferries and FVs.",
+   "accessNote": "Good security, 24hrs guard",
+   "lat": 42.261,
+   "lon": -8.7828,
+   "marina": {
+    "maxLength": null,
+    "vhfCh": "14",
+    "perMeter": 2.5,
+    "daily9_5": 24,
+    "notes": "Reeds: Approx €2.50; 64t (8t). YC with English spoken. Ferry to Vigo ½ hourly.; €2.5/m, VHF Ch 14."
+   }
+  },
+  {
+   "slug": "puerto-deportivo-moana-mar",
+   "match": "update",
+   "approachLat": 42.2682,
+   "approachLon": -8.899,
+   "approachNote": "N Chan WPT 42°16'·09N 08°53'·94W. Approach from S, passing El Con hbr. Avoid viveros to NE and E. Fingers too short – telephone before arrival.",
+   "accessNote": "Sheltered",
+   "marina": {
+    "maxLength": null,
+    "vhfCh": null,
+    "perMeter": 1.37,
+    "daily9_5": 13,
+    "notes": "Reeds: Limited berths on fingers at N end of 1st pontoon (other fingers too short). €1.37.; €1.37/m."
+   }
+  },
+  {
+   "slug": "vigo",
+   "match": "update",
+   "approachLat": 42.157,
+   "approachLon": -8.9143,
+   "approachNote": "S Chan WPT 42°09'·42N 08°54'·86W, thence via southern TSS to intersect 041° ldg line. Darsena de Bouzas, staff speak good English and French.",
+   "accessNote": "Sheltered",
+   "marina": {
+    "maxLength": 35,
+    "vhfCh": "09",
+    "perMeter": 2.65,
+    "daily9_5": 25,
+    "notes": "Reeds: F&A berths, in west basin (Darsena de A Laxe) max 10m LOA; east basin (Darsena de AS Avenidas) >10m to max 35m LOA. Wi-fi security H24, key card access. 32t (3t). RCN clubhouse 433588.; €2.65/m, max 35m LOA, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "baiona",
+   "match": "update",
+   "approachLat": 42.1297,
+   "approachLon": -8.9177,
+   "approachNote": "WPT 42°07'·78N 08°55'·06W (see Ria de Vigo chartlet) 084°/2·8M to SPM buoy QY. From S keep 1M off Cabo Silleiro to clear reefs marked by NCM buoy. Las Serralleiras, rocks/islets N of ldg line are marked by SCM & WCM lt buoys and by a lt bcn",
+   "accessNote": "Excellent in both marinas; wavebreak at Bayona Marina 20m NE of pontoons, now has low level Q.Fl.Y lts at each end"
+  },
+  {
+   "slug": "marina-de-viana-do-castelo",
+   "match": "update",
+   "approachLat": 41.6697,
+   "approachLon": -8.8228,
+   "approachNote": "WPT 41°40'·18N 08°49'·37W; Oc WRG 4s to abeam No 3 SHM Lt buoy; track 012·5° on ldg line (which applies solely to shipyard/FV area). Outer mole head (Fl R 3s) should be given wide clearance; best water lies E of No 2 buoy. Flood reaches 2kn",
+   "accessNote": "Excellent in marina; possible strong current across its entrance. No anchoring in river. Night entry not advised if any swell.",
+   "marina": {
+    "maxLength": 12,
+    "vhfCh": "09",
+    "perMeter": 2.6,
+    "daily9_5": 25,
+    "notes": "Reeds: 200 inc berths; €2.60 up to 12m LOA; berths abeam Nos 13 and 14 buoys, 200m short of low (4.6m) and noisy road/rail bridge. Small pedestrian bridge across marina entrance lifts on request; if shut berth on waiting pontoon, bridge remains open 0000–0800. Limited berths F&A on W side of first p"
+   }
+  },
+  {
+   "slug": "marina-da-povoa-de-varzim",
+   "match": "update",
+   "approachLat": 41.358,
+   "approachLon": -8.7788,
+   "approachNote": "WPT 41°21'·48N 08°46'·73W, 030°/1M to hbr ent. Follow SHM buoys (marking a shoal near the S bkwtr) round to the marina. Tidal streams are weak but there is an appreciable current, mainly S-going, along the coast.",
+   "accessNote": "Good in all winds, but ent is rough in heavy swell and becomes impracticable when wave height >3m. In particular give a wide berth to the head of the N mole where there may be broken water. Reports of",
+   "marina": {
+    "maxLength": 18,
+    "vhfCh": "09",
+    "perMeter": 1.65,
+    "daily9_5": 16,
+    "notes": "Reeds: 241 inc some €1-65; 18m max LOA. Good facilities, many yachts lay up here. M-F 0900-1200, 1400-1700. At the FV hbr. HM Ch 09.; €1.65/m, max 18m LOA, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "marina-porto-atlantico-leixoes",
+   "match": "update",
+   "approachLat": 41.1682,
+   "approachLon": -8.7043,
+   "approachNote": "WPT 41°10'·09N 08°42'·26W, to inner mole hds. Leça lt ho, 1·7M N of hbr ent, on a brg of 350·5° leads into inner hbr; thence track 015° to marina. Ent is usually simple. Keep at least 200m off the N mole hd (Quebra-mar) due to a sunken bkwt",
+   "accessNote": "Good in marina, but scend enters in gales. The port may be closed occas in strong W'lies and/or swell, as shown by tfc sigs on a mast at the Hbr Office close NE of marina. There have been reports of l",
+   "lat": 41.1847,
+   "lon": -8.704,
+   "marina": {
+    "maxLength": null,
+    "vhfCh": "09",
+    "perMeter": 1.64,
+    "daily9_5": 16,
+    "notes": "Reeds: 200 F&A + 40 €1·64; reception W quay. 2-9·1·5m. Rather oily with limited facilities onsite. HM 0900-1230; 1400-1800. MRCC (21) 4401919; Met 484527 (Porto airport); Police 383649; 951476; Brit Consul 808 203 537; Fire 380018; 391000; HM 953000. Clube de Vela Atlântico 963547. Clube Naval de Le"
+   }
+  },
+  {
+   "slug": "douro-marina-marina-da-afurada",
+   "match": "update",
+   "accessNote": "Excellent at Douro marina. Also possible at small quay by Cantareira, or at Cais de Estiva between the first and second bridges. A road recce of the Rio Douro is advised.",
+   "marina": {
+    "maxLength": 50,
+    "vhfCh": "09",
+    "perMeter": 4.3,
+    "daily9_5": 41,
+    "notes": "Reeds: 240 + 60 €4·30 inc; max LOA <50m. 1M from the ent to the Rio Douro, beware strong current inside marina, particularly on ebb. Friendly staff, English, French & Spanish spoken. Free shuttle bus to large shopping complex; buses to centre of Porto, car/cycle hire available. Many good reports rec"
+   }
+  },
+  {
+   "slug": "marina-clube-da-gafanha-aveiro-barra",
+   "match": "update",
+   "approachLat": 40.631,
+   "approachLon": -8.783,
+   "approachNote": "WPT (off chartlet) Boia Aveiro buoy, 40°37'·86N 08°46'·98W, 056°/1·1M to hbr ent. Caution: tidal streams. From abeam the lt ho the ent to B de San Jacinto is about 9 ca NE. Do not proceed further E. The 060·6° ldg line (marks hard to see) l",
+   "accessNote": "Good, but the bar (Rptd 10m LWN 2015) becomes impassable in strong onshore winds and the port is often one of the first on this coast to be closed by bad weather or swell, even if there is no wind. Tw",
+   "lat": 40.6418,
+   "lon": -8.7643
+  },
+  {
+   "slug": "marina-da-figueira-da-foz",
+   "match": "update",
+   "approachLat": 40.1435,
+   "approachLon": -8.8853,
+   "approachNote": "WPT 40°08'·61N 08°53'·12W (off chartlet) 081°/5ca to hbr ent. The bar in bad weather is the only offshore danger. Cabo Mondego lt ho is 3M NW of hbr ent. Buarcos light is on the beach 1·1M N of hbr ent. Ldg lts lead 081·5° past marina ent. ",
+   "accessNote": "Excellent in marina on N bank, 0·75M from hbr ent. Bar at ent has charted depth of 4·1m, but this cannot be relied upon. It shifts/shoals constantly and can be highly dangerous in swell, especially No",
+   "lat": 40.1447,
+   "lon": -8.8747,
+   "marina": {
+    "maxLength": null,
+    "vhfCh": "08",
+    "perMeter": 2.65,
+    "daily9_5": 25,
+    "notes": "Reeds: 2-8m. 200 inc €2·65, plus possible surcharge for beam, multihulls +50%. Strong ebb tide can affect pontoons nearest marina ent. Reception/fuel berth is dead ahead of ent. Call Capmarfoz. Maritime Police 916 352629; Port VHF Ch 11, 422955.; €2.65/m, VHF Ch 08."
+   }
+  },
+  {
+   "slug": "nucleo-de-recreio-do-porto-da-nazare",
+   "match": "update",
+   "approachLat": 39.5948,
+   "approachLon": -9.0992,
+   "approachNote": "WPT 39°35'·69N 09°05'·95W, 106°/1M to hbr ent. Due to an underwater canyon there are depths of 452m and 152m 5M and 7ca offshore respectively. Pontal da Nazaré lt is 1M NNW of hbr ent on a low headland; keep at least 2ca off. Here a conspic",
+   "accessNote": "Good with all-weather access. No anchorage in outer harbour.",
+   "marina": {
+    "maxLength": 15,
+    "vhfCh": "09",
+    "perMeter": 2.45,
+    "daily9_5": 23,
+    "notes": "Reeds: 968074254 is in the SW corner of the inner hbr, call (VHF) on appr; berth on the hammerheads or outer pontoons, <15m and 3-5m draft. 40+14 €2·45. H24 in NE corner. (80t). Clube Naval de Nazaré 560422. Their pontoons in the NE corner are private but 5 berths are kept for visitors, with more of"
+   }
+  },
+  {
+   "slug": "marina-de-peniche-ribeira",
+   "match": "update",
+   "approachLat": 39.3403,
+   "approachLon": -9.3755,
+   "approachNote": "WPT 39°20'·42N 09°22'·53W, 000°/5ca to W mole hd. 3kn speed limit in hbr. The coastal route, a 5M wide chan between Cabo Carvoeiro and Ilha da Berlenga, is often rough. Peniche and the offshore islands are in an 'Area to be avoided', only b",
+   "accessNote": "Good all-weather hbr, but uncomfortable if SW swell works in; also noisy and prone to heavy FV wash. Possible moorings or anchorage in SE part of hbr; holding is good, but ground is foul in places, tr",
+   "lat": 39.347,
+   "lon": -9.3747
+  },
+  {
+   "slug": "marina-de-cascais",
+   "match": "update",
+   "approachLat": 38.688,
+   "approachLon": -9.4095,
+   "approachNote": "WPT 38°41'·28N 09°24'·57W, 334°/4ca to CC2 buoy and on the 285° ldg line. Beware shoal, least depth 1.4m extending approx 45m NW from the bkwtr head into the hbr ent.",
+   "accessNote": "Good in marina or on outer pontoons. North of marina in designated area 3-5m, good except in E winds/strong SW'lies.",
+   "marina": {
+    "maxLength": null,
+    "vhfCh": "09",
+    "perMeter": 1.6,
+    "daily9_5": 15,
+    "notes": "Reeds: 650 inc 125 visitors €3·00 (inc V) +50%. Multihulls +50%. 0900-2000. Mail pickup: Casa de S. Bernardo. Town all amenities; rail to Lisboa (½hr) every ¼hr 0530-0230.; €1.6/m, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "lisboa",
+   "match": "update",
+   "approachLat": 38.615,
+   "approachLon": -9.3817,
+   "approachNote": "WPT 38°36'·90N 09°22'·90W (5ca SE of No 2 buoy) 047°/5·4M to abeam No 5 buoy. Main DW chan Barra Sul into R Tejo proper; shoals lie on either side in strong onshore winds. Tidal streams reach 5kn in the river; ebb sets S of Forte de Bugio. ",
+   "accessNote": "Good in the marinas along the N bank of R Tejo.",
+   "lat": 38.6958,
+   "lon": -9.1785
+  },
+  {
+   "slug": "seixal-bay-tagus-south-bank-anchorage",
+   "match": "update",
+   "accessNote": "Good in marina."
+  },
+  {
+   "slug": "alvor-anchorage-tidal-lagoon",
+   "match": "update",
+   "accessNote": "A peaceful but shallow lagoon. Not for strong onshore winds or at night."
+  },
+  {
+   "slug": "marina-de-portimao",
+   "match": "update",
+   "approachLat": 37.1007,
+   "approachLon": -8.5323,
+   "approachNote": "WPT 37°06'·04N 08°31'·94W, 021°/5ca to hbr ent. Beware artificial reef W of Portimão, approx 1M SSW of Ponta do Faco (marked by four Y lit bys). Seaplane operating area approx 1·5M SW of hbr ent. Beyond W molhe stay on ldg line until past N",
+   "accessNote": "Good in marina on W bank. Good anchorage off Ferragudo. Anchor inside E molhe in about 4m, prone to swell and FV wash.",
+   "lat": 37.1085,
+   "lon": -8.5285,
+   "marina": {
+    "maxLength": 50,
+    "vhfCh": "09",
+    "perMeter": 3.75,
+    "daily9_5": 36,
+    "notes": "Reeds: 620 inc visitors €3·75; max LOA 50m, draft 4.5m, multihulls +50%. Root N bkwtr. Fishing Hbr 300t/9m beam. Town 20 mins walk, bus every 10 mins summer, taxis/car hire at marina. Wide choice of shops/restaurants. Bus/rail to Faro (65km).; €3.75/m, max 50m LOA, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "marina-de-albufeira",
+   "match": "update",
+   "approachLat": 37.0647,
+   "approachLon": -8.2503,
+   "approachNote": "WPT 37°03'·88N 08°15'·02W, approx 338°/1M to hbr ent. No offshore dangers. In strong E'lies the outer ent may be difficult.",
+   "accessNote": "Good, in 2·5–4·0m. In strong E'lies the outer ent may be difficult. No space to anchor in outer hbr due to local moorings.",
+   "marina": {
+    "maxLength": null,
+    "vhfCh": "09",
+    "perMeter": 4.28,
+    "daily9_5": 41,
+    "notes": "Reeds: mob 964249596; 475 berths; ☎ also mob 962079546; (70t)(6t); YC. Town Most facilities; Faro 30km. Open 1/6–15/9: 0900–2100. Brit Consul 808 203 537 (Portimão); Taxi 583230.; €4.28/m, VHF Ch 09."
+   }
+  },
+  {
+   "slug": "marina-de-vilamoura",
+   "match": "update",
+   "approachLat": 37.06,
+   "approachLon": -8.1233,
+   "approachNote": "WPT 37°03'·60N 08°07'·40W, 007°/5ca to hbr ent. No offshore dangers, but groynes to the E. Hbr speed limit 3kn. Fairway through outer hbr dredged 4m.",
+   "accessNote": "Very good, except in strong S'lies when the 100m wide ent can be dangerous. No anchor in the outer hbr.",
+   "lat": 37.0683,
+   "lon": -8.1225,
+   "marina": {
+    "maxLength": 40,
+    "vhfCh": "09",
+    "perMeter": 3.78,
+    "daily9_5": 36,
+    "notes": "Reeds: €3·78 Jul/Aug inc electricity and water (but approved cables/hoses must be hired, each €1·00 p/day). Max LOA 40m. Dredged 3·3m, reducing to 2·0m in NE corner near pontoon A. Reception pontoon, port side of access chan. M–F 0830–1445 plus diesel. Free water by sludge boat. Mail pick-up address"
+   }
+  },
+  {
+   "slug": "ria-formosa-barra-do-farol-entrance",
+   "match": "update",
+   "approachLat": 36.9507,
+   "approachLon": -7.8687,
+   "approachNote": "WPT 36°57'·04N 07°52'·12W, 352°/7ca to narrow ent (dangerous in strong S'lies); extensive shoals to W. Enter near HW between moles, Fl R 4s and G 4s, and training walls. Abeam Cabo de Santa Maria lt ho, chan forks into salt marshes: WNW to ",
+   "accessNote": "Generally good in lee of coastal dunes. Popular anchorages in 3–5m inside Ilha da Culatra, abeam lt Fl 5s or off jetty Oc G 4s."
+  },
+  {
+   "slug": "marina-de-vila-real-de-santo-antonio-porto-de-recreio-do-guadiana",
+   "match": "update",
+   "approachLat": 37.15,
+   "approachLon": -7.3892,
+   "approachNote": "WPT 37°09'·00N 07°23'·35W (No 1 SHM buoy), 340°/9ca to hd of W trng wall. Caution: extensive drying areas E of ent; trng walls stretch 2M east. The bar (1·0m) is marked by Nos 3/4 P/SHM lt buoys. Hug W bank between trng walls (E partly cove",
+   "accessNote": "Good in marina, but river ent difficult in strong S'lies.",
+   "lat": 37.18,
+   "lon": -7.4082,
+   "marina": {
+    "maxLength": null,
+    "vhfCh": "09",
+    "perMeter": 2.6,
+    "daily9_5": 25,
+    "notes": "Reeds: €2·60 p/m; electricity+water €2·50 p/d; 25% surcharge for reception pontoon. Berth on pontoon just N of marina (cards not accepted). ☎1NM downstream ✆542069, marinaguadiana@sapo.pt; (70t). YC ✆511306. Porto de Vila Real VHF Ch 11, 16; Marina VHF Ch 09. MRCC (281) 4401919; Brit Consul 808 203 "
+   }
+  },
+  {
+   "slug": "parque-das-nacoes",
+   "match": "create",
+   "name": "Marina Parque das Nações",
+   "type": "marina",
+   "country": "Portugal",
+   "region": "Estremadura",
+   "coastOrder": 581.5,
+   "lat": 38.7562,
+   "lon": -9.0987,
+   "approachLat": null,
+   "approachLon": null,
+   "approachNote": "S of Vasco de Gama bridge. Some parts of marina rptd silted (2018) — call Ch 09 for berthing guidance.",
+   "accessNote": "Good in marina along N bank of R Tejo.",
+   "draftAccess": null,
+   "description": "400 (inc V) €2·50, multihulls +50%. Some parts silted (2018); call Ch 09 for berthing guidance.. Reeds 9.24.15."
+  }
+ ]
+}

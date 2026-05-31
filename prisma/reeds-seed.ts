@@ -49,7 +49,7 @@ async function applyMarina(portAreaId: string, areaSlug: string, m: Area) {
 }
 
 async function main() {
-  const files = readdirSync(DATA_DIR).filter((f) => f.endsWith(".json")).sort();
+  const files = readdirSync(DATA_DIR).filter((f) => f.endsWith(".json") && !f.startsWith("_")).sort();
   let updated = 0, created = 0;
   for (const f of files) {
     const doc = JSON.parse(readFileSync(join(DATA_DIR, f), "utf8"));

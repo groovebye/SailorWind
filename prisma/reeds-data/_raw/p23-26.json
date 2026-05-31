@@ -1,0 +1,110 @@
+[
+  {
+    "name": "Albufeira",
+    "reedsSection": "9.24.21",
+    "country": "Portugal",
+    "region": "Algarve",
+    "type": "marina",
+    "lat": 37.0817,
+    "lon": -8.2587,
+    "approachLat": 37.0647,
+    "approachLon": -8.2503,
+    "approachNote": "WPT 37°03'·88N 08°15'·02W, approx 338°/1M to hbr ent. No offshore dangers. In strong E'lies the outer ent may be difficult.",
+    "shelter": "Good, in 2·5–4·0m. In strong E'lies the outer ent may be difficult. No space to anchor in outer hbr due to local moorings.",
+    "marina": {
+      "name": "Marina de Albufeira",
+      "berthCount": 70,
+      "maxLength": null,
+      "vhfCh": "09",
+      "phone": "+351289514282",
+      "website": "www.marinadealbufeira.com",
+      "email": "info@marinadealbufeira.com",
+      "perMeterEur": 4.28,
+      "notes": "mob 964249596; 475 berths; ☎ also mob 962079546; (70t)(6t); YC. Town Most facilities; Faro 30km. Open 1/6–15/9: 0900–2100. Brit Consul 808 203 537 (Portimão); Taxi 583230."
+    },
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "name": "Vilamoura",
+    "reedsSection": "9.24.22",
+    "country": "Portugal",
+    "region": "Algarve",
+    "type": "marina",
+    "lat": 37.0683,
+    "lon": -8.1225,
+    "approachLat": 37.0600,
+    "approachLon": -8.1233,
+    "approachNote": "WPT 37°03'·60N 08°07'·40W, 007°/5ca to hbr ent. No offshore dangers, but groynes to the E. Hbr speed limit 3kn. Fairway through outer hbr dredged 4m.",
+    "shelter": "Very good, except in strong S'lies when the 100m wide ent can be dangerous. No anchor in the outer hbr.",
+    "marina": {
+      "name": "Marina Vilamoura",
+      "berthCount": 1000,
+      "maxLength": 40,
+      "vhfCh": "09",
+      "phone": "+351310560",
+      "website": "www.marinadevilamoura.com",
+      "email": "marinavilamoura@lusort.pt",
+      "perMeterEur": 3.78,
+      "notes": "€3·78 Jul/Aug inc electricity and water (but approved cables/hoses must be hired, each €1·00 p/day). Max LOA 40m. Dredged 3·3m, reducing to 2·0m in NE corner near pontoon A. Reception pontoon, port side of access chan. M–F 0830–1445 plus diesel. Free water by sludge boat. Mail pick-up addressed to: Marina de Vilamoura, 8125-409 Quarteira, Portugal. Clube Náutico welcomes visitors lounge. Faro (20km) has most facilities inc airport; ☎800800. (601)(6t,2t). Local (B) M–F. MRCC (21) 4401919; Maritime Police 310575; Brit Consul 808 203 537; ☎891100 (Faro); Medic 314243. VHF Ch 09, 16 (0830–2130 Jul/Aug; 0830–1800 off season) outside these hrs expect only 1M reception range."
+    },
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "name": "Faro and Olhão",
+    "reedsSection": "9.24.23",
+    "country": "Portugal",
+    "region": "Algarve",
+    "type": "port",
+    "lat": 36.9635,
+    "lon": -7.8698,
+    "approachLat": 36.9507,
+    "approachLon": -7.8687,
+    "approachNote": "WPT 36°57'·04N 07°52'·12W, 352°/7ca to narrow ent (dangerous in strong S'lies); extensive shoals to W. Enter near HW between moles, Fl R 4s and G 4s, and training walls. Abeam Cabo de Santa Maria lt ho, chan forks into salt marshes: WNW to Faro or NE to Olhão. Faro chan carries 5·4m to Commercial quay (not for yachts); beyond depths vary. Olhão buoyed/lit chan (5M) narrower, carries 2·1m least depth; from N of No 5 buoy enter marina by E–W chan, depth approx 2m, marked by 3 PHM buoys.",
+    "shelter": "Generally good in lee of coastal dunes. Popular anchorages in 3–5m inside Ilha da Culatra, abeam lt Fl 5s or off jetty Oc G 4s.",
+    "marina": {
+      "name": "Olhão Marina",
+      "berthCount": null,
+      "maxLength": 17,
+      "vhfCh": "11",
+      "phone": "+351703160",
+      "website": null,
+      "email": null,
+      "perMeterEur": null,
+      "notes": "Olhão HM ☎703160. Marina, W end; max LOA 17m, draft 3m, rarely V space; call if available; keep N of PHM bys; berth on wavebreak. No anchor or pontoon berth in fairways; poss berth E of wavebreak in 2–3m, good holding mud; poss outer wall Puerto deportivo. Upstream, Marina Formosa ☎702162, ✆(20t, 2m draft). Faro HM ☎822025; anchor in 3m, 3ca SW of Doca de Recreio; small craft only; low bridge across ent clearance 0·5m W sp; 0·5m depth LW sp. Some noise from airport, not after 2100LT. Towns: both sizeable, all amenities inc airport. VHF Ch 11, 09. IPTM (Olhão) 715912; Brit Consul 808 203 537; Faro H24, M–F office hrs."
+    },
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "name": "Vila Real de Santo António",
+    "reedsSection": "9.24.24",
+    "country": "Portugal",
+    "region": "Algarve",
+    "type": "marina",
+    "lat": 37.1800,
+    "lon": -7.4082,
+    "approachLat": 37.1500,
+    "approachLon": -7.3892,
+    "approachNote": "WPT 37°09'·00N 07°23'·35W (No 1 SHM buoy), 340°/9ca to hd of W trng wall. Caution: extensive drying areas E of ent; trng walls stretch 2M east. The bar (1·0m) is marked by Nos 3/4 P/SHM lt buoys. Hug W bank between trng walls (E partly covers) and up to marina. Access best at slack water as streams and current are very strong: 2½kn (up to 6kn in winter). River ent difficult in strong S'lies.",
+    "shelter": "Good in marina, but river ent difficult in strong S'lies.",
+    "marina": {
+      "name": "Marina Guadiana (Anguadiana)",
+      "berthCount": 70,
+      "maxLength": null,
+      "vhfCh": "09",
+      "phone": "+351513769",
+      "website": null,
+      "email": "anguadiana@mail.telepac.pt",
+      "perMeterEur": 2.60,
+      "notes": "€2·60 p/m; electricity+water €2·50 p/d; 25% surcharge for reception pontoon. Berth on pontoon just N of marina (cards not accepted). ☎1NM downstream ✆542069, marinaguadiana@sapo.pt; (70t). YC ✆511306. Porto de Vila Real VHF Ch 11, 16; Marina VHF Ch 09. MRCC (281) 4401919; Brit Consul 808 203 537. High bldgs FR lts 3M WNW of ent; Vila Real lt ho W twr/B bands conspic; white suspension bridge (18m cl'nce MSL) visible from seaward. Upriver: better water off Spanish bank and Ayamonte; R Guadiana navigable for about 20M to anchor off Alcoutim (pontoons €7·50/day for 1st week) and Pomerão (27M). Minor Port 11M W: TAVIRA 37°06'·69N 07°37'·01W (AC 89, 93; PC 24206, 27503; SC 44A/B); narrow ent about 70m; Fl G and R lts 2·5s and ldg lts 325·9° over bar; front Fl R 3s, rear Fl R 3s between I and II. Anchor in about 3m on sand SW of ent in Rio Formosa and SE of small community of Quatro Aguas (planned marina on hold). Town 1M NW (20 mins walk or dinghy); small craft BY and diesel supply; essentially working FV port; not accessible for masted boats. Facilities: YC ☎281326858."
+    },
+    "confidence": "high",
+    "verifyNeeded": false
+  },
+  {
+    "passageNotes": "Page 26 is a 'Lights, etc – Special notes' reference table covering the Spanish coast from Cabo Villano to the Portuguese border, organised by Ría: Ría de Camarinas and Punta Insua, Seno de Corcubión, Ría de Muros, Ría de Arosa, Ría de Pontevedra, Ría de Vigo, Peninsula del Grove, and Bayona to the Portuguese border. Lists light characteristics, Racon codes, VTS towers, leading lines and waypoint coordinates for major headlands, breakwaters, marina entrances and channel buoys throughout this stretch of Galician coast. No individual harbour position entries in standard format — this page is a lights and waypoints reference only.",
+    "region": "Galicia, Spain (Cabo Villano to Portuguese border)"
+  }
+]

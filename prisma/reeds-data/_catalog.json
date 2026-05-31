@@ -1,0 +1,1505 @@
+[
+ {
+  "slug": "gijon",
+  "name": "Gijón",
+  "lat": 43.5453,
+  "lon": -5.6621,
+  "type": "major_stopover",
+  "coastOrder": 0,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Gijón",
+    "maxLength": 24,
+    "berthCount": 728,
+    "prices": 4
+   }
+  ]
+ },
+ {
+  "slug": "candas",
+  "name": "Candás",
+  "lat": 43.5883,
+  "lon": -5.7617,
+  "type": "minor_stopover",
+  "coastOrder": 8,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de Candás",
+    "maxLength": null,
+    "berthCount": 50,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "luanco",
+  "name": "Luanco",
+  "lat": 43.6117,
+  "lon": -5.7917,
+  "type": "minor_stopover",
+  "coastOrder": 18,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de Luanco",
+    "maxLength": null,
+    "berthCount": 40,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "aviles",
+  "name": "Avilés",
+  "lat": 43.5917,
+  "lon": -5.925,
+  "type": "medium_stopover",
+  "coastOrder": 25,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Avilés",
+    "maxLength": 20,
+    "berthCount": 200,
+    "prices": 2
+   }
+  ]
+ },
+ {
+  "slug": "cudillero",
+  "name": "Cudillero",
+  "lat": 43.5633,
+  "lon": -6.15,
+  "type": "minor_stopover",
+  "coastOrder": 35,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de Cudillero",
+    "maxLength": null,
+    "berthCount": 30,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "luarca",
+  "name": "Luarca",
+  "lat": 43.5417,
+  "lon": -6.5333,
+  "type": "medium_stopover",
+  "coastOrder": 45,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Luarca",
+    "maxLength": 15,
+    "berthCount": 100,
+    "prices": 2
+   }
+  ]
+ },
+ {
+  "slug": "navia",
+  "name": "Navia",
+  "lat": 43.55,
+  "lon": -6.7283,
+  "type": "minor_stopover",
+  "coastOrder": 60,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de Navia",
+    "maxLength": null,
+    "berthCount": 40,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "ribadeo",
+  "name": "Ribadeo",
+  "lat": 43.535,
+  "lon": -7.0417,
+  "type": "medium_stopover",
+  "coastOrder": 80,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Ribadeo",
+    "maxLength": 15,
+    "berthCount": 150,
+    "prices": 2
+   }
+  ]
+ },
+ {
+  "slug": "foz",
+  "name": "Foz",
+  "lat": 43.5717,
+  "lon": -7.255,
+  "type": "minor_stopover",
+  "coastOrder": 92,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de Foz",
+    "maxLength": null,
+    "berthCount": 30,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "burela",
+  "name": "Burela",
+  "lat": 43.6617,
+  "lon": -7.3583,
+  "type": "minor_stopover",
+  "coastOrder": 100,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de Burela",
+    "maxLength": null,
+    "berthCount": 60,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "viveiro",
+  "name": "Viveiro",
+  "lat": 43.6617,
+  "lon": -7.595,
+  "type": "medium_stopover",
+  "coastOrder": 110,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Viveiro (Celeiro)",
+    "maxLength": 16,
+    "berthCount": 235,
+    "prices": 4
+   }
+  ]
+ },
+ {
+  "slug": "carino",
+  "name": "Cariño",
+  "lat": 43.7367,
+  "lon": -7.8667,
+  "type": "minor_stopover",
+  "coastOrder": 133,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de Cariño",
+    "maxLength": null,
+    "berthCount": 50,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "cedeira",
+  "name": "Cedeira",
+  "lat": 43.66,
+  "lon": -8.0567,
+  "type": "medium_stopover",
+  "coastOrder": 140,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Cedeira",
+    "maxLength": 14,
+    "berthCount": 100,
+    "prices": 2
+   }
+  ]
+ },
+ {
+  "slug": "ferrol",
+  "name": "Ferrol",
+  "lat": 43.4833,
+  "lon": -8.2333,
+  "type": "medium_stopover",
+  "coastOrder": 150,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Ferrol",
+    "maxLength": 25,
+    "berthCount": 300,
+    "prices": 3
+   }
+  ]
+ },
+ {
+  "slug": "sada",
+  "name": "Sada",
+  "lat": 43.355,
+  "lon": -8.255,
+  "type": "medium_stopover",
+  "coastOrder": 155,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Club Náutico de Sada",
+    "maxLength": 18,
+    "berthCount": 200,
+    "prices": 3
+   }
+  ]
+ },
+ {
+  "slug": "la-coruna",
+  "name": "La Coruña",
+  "lat": 43.37,
+  "lon": -8.4,
+  "type": "major_stopover",
+  "coastOrder": 160,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Coruña",
+    "maxLength": 50,
+    "berthCount": 700,
+    "prices": 4
+   },
+   {
+    "name": "Real Club Náutico",
+    "maxLength": 30,
+    "berthCount": 353,
+    "prices": 3
+   }
+  ]
+ },
+ {
+  "slug": "corme",
+  "name": "Corme",
+  "lat": 43.2605,
+  "lon": -8.9638,
+  "type": "anchorage",
+  "coastOrder": 172,
+  "hasApproach": true,
+  "marinas": []
+ },
+ {
+  "slug": "laxe",
+  "name": "Laxe",
+  "lat": 43.2225,
+  "lon": -8.9992,
+  "type": "anchorage",
+  "coastOrder": 178,
+  "hasApproach": true,
+  "marinas": []
+ },
+ {
+  "slug": "club-nautico-de-camarinas",
+  "name": "Camarinas",
+  "lat": 43.1263,
+  "lon": -9.1823,
+  "type": "marina",
+  "coastOrder": 196.9,
+  "hasApproach": true,
+  "marinas": [
+   {
+    "name": "Club Náutico de Camariñas (CNC)",
+    "maxLength": 18,
+    "berthCount": 60,
+    "prices": 1
+   }
+  ]
+ },
+ {
+  "slug": "marina-muxia",
+  "name": "Muxia",
+  "lat": 43.106,
+  "lon": -9.2122,
+  "type": "marina",
+  "coastOrder": 198.9,
+  "hasApproach": true,
+  "marinas": [
+   {
+    "name": "Marina Cataventos",
+    "maxLength": 22,
+    "berthCount": 232,
+    "prices": 1
+   }
+  ]
+ },
+ {
+  "slug": "porto-de-fisterra-finisterre",
+  "name": "Fisterra",
+  "lat": 42.9049,
+  "lon": -9.2629,
+  "type": "marina",
+  "coastOrder": 211.2,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Porto de Fisterra (Finisterre)",
+    "maxLength": null,
+    "berthCount": 30,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "corcubion-cee-ria-de-corcubion-anchorage",
+  "name": "Corcubion",
+  "lat": 42.9367,
+  "lon": -9.1883,
+  "type": "anchorage",
+  "coastOrder": 215,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "marina-muros-muport",
+  "name": "Muros",
+  "lat": 42.775,
+  "lon": -9.056,
+  "type": "marina",
+  "coastOrder": 226.4,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Muros (Muport)",
+    "maxLength": 20,
+    "berthCount": 210,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "real-club-nautico-portosin",
+  "name": "Portosin",
+  "lat": 42.753,
+  "lon": -8.935,
+  "type": "marina",
+  "coastOrder": 231.9,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Real Club Nautico Portosin",
+    "maxLength": 30,
+    "berthCount": 262,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "club-nautico-deportivo-de-ribeira",
+  "name": "Ribeira",
+  "lat": 42.5618,
+  "lon": -8.9895,
+  "type": "marina",
+  "coastOrder": 243.6,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Club Nautico Deportivo de Ribeira",
+    "maxLength": 14,
+    "berthCount": 263,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-de-aguino",
+  "name": "Aguino",
+  "lat": 42.5166,
+  "lon": -9.0014,
+  "type": "marina",
+  "coastOrder": 246.3,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de Aguino",
+    "maxLength": null,
+    "berthCount": null,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "club-nautico-do-caraminal-a-pobra-do-caraminal",
+  "name": "A Pobra do Caraminal",
+  "lat": 42.6047,
+  "lon": -8.9346,
+  "type": "marina",
+  "coastOrder": 252.4,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Club Nautico do Caraminal (A Pobra do Caraminal)",
+    "maxLength": 24,
+    "berthCount": 298,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-vilagarcia-de-arousa",
+  "name": "Vilagarcia de Arousa",
+  "lat": 42.5994,
+  "lon": -8.7692,
+  "type": "marina",
+  "coastOrder": 259.7,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Vilagarcia de Arousa",
+    "maxLength": 30,
+    "berthCount": 495,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-arousa-vilanova-de-arousa",
+  "name": "Vilanova de Arousa",
+  "lat": 42.5638,
+  "lon": -8.8315,
+  "type": "marina",
+  "coastOrder": 263.2,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Arousa (Vilanova de Arousa)",
+    "maxLength": 20,
+    "berthCount": 248,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "cambados-anchorage-fishing-port",
+  "name": "Cambados",
+  "lat": 42.5133,
+  "lon": -8.8133,
+  "type": "anchorage",
+  "coastOrder": 266.3,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "club-nautico-san-vicente-do-mar-o-grove",
+  "name": "O Grove",
+  "lat": 42.4574,
+  "lon": -8.9198,
+  "type": "marina",
+  "coastOrder": 272.1,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Club Nautico San Vicente do Mar (O Grove)",
+    "maxLength": 14,
+    "berthCount": 148,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "sanxenxo",
+  "name": "Sanxenxo / Portonovo",
+  "lat": 42.3976,
+  "lon": -8.8036,
+  "type": "marina",
+  "coastOrder": 278.4,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Nauta Sanxenxo (Puerto Deportivo Juan Carlos I)",
+    "maxLength": 45,
+    "berthCount": 435,
+    "prices": 0
+   },
+   {
+    "name": "Club Nautico de Portonovo",
+    "maxLength": 10,
+    "berthCount": 241,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "illa-de-ons-anchorage",
+  "name": "Illa de Ons",
+  "lat": 42.39,
+  "lon": -8.925,
+  "type": "anchorage",
+  "coastOrder": 283.8,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "puerto-deportivo-de-combarro-marina-combarro",
+  "name": "Combarro",
+  "lat": 42.4285,
+  "lon": -8.705,
+  "type": "marina",
+  "coastOrder": 293.8,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Combarro (Marina Combarro)",
+    "maxLength": 26,
+    "berthCount": 334,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "pontevedra-club-naval-de-pontevedra",
+  "name": "Pontevedra",
+  "lat": 42.4267,
+  "lon": -8.64,
+  "type": "marina",
+  "coastOrder": 296.7,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Pontevedra / Club Naval de Pontevedra",
+    "maxLength": 12,
+    "berthCount": 142,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marin-port-of-marin",
+  "name": "Marin",
+  "lat": 42.3928,
+  "lon": -8.7,
+  "type": "marina",
+  "coastOrder": 300.1,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marin - Port of Marin",
+    "maxLength": null,
+    "berthCount": null,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-pesquero-y-deportivo-de-bueu",
+  "name": "Bueu",
+  "lat": 42.3233,
+  "lon": -8.7783,
+  "type": "marina",
+  "coastOrder": 305.5,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Pesquero y Deportivo de Bueu",
+    "maxLength": 32,
+    "berthCount": 100,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "ria-de-aldan-anchorage",
+  "name": "Ria de Aldan",
+  "lat": 42.3283,
+  "lon": -8.8033,
+  "type": "anchorage",
+  "coastOrder": 306.7,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "porto-deportivo-de-cangas-rcn-rodeira",
+  "name": "Cangas",
+  "lat": 42.2669,
+  "lon": -8.7922,
+  "type": "marina",
+  "coastOrder": 310.4,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Porto Deportivo de Cangas (RCN Rodeira)",
+    "maxLength": 20,
+    "berthCount": 293,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-deportivo-moana-mar",
+  "name": "Moana Mar",
+  "lat": 42.2767,
+  "lon": -8.7347,
+  "type": "marina",
+  "coastOrder": 313,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo Moana Mar",
+    "maxLength": 12,
+    "berthCount": null,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "ensenada-de-barra-anchorage",
+  "name": "Ensenada de Barra",
+  "lat": 42.2783,
+  "lon": -8.7567,
+  "type": "anchorage",
+  "coastOrder": 314,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "islas-cies-anchorage-ensenada-de-rodas",
+  "name": "Islas Cies",
+  "lat": 42.2233,
+  "lon": -8.9017,
+  "type": "anchorage",
+  "coastOrder": 321.2,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "vigo",
+  "name": "Vigo",
+  "lat": 42.2414,
+  "lon": -8.7236,
+  "type": "marina",
+  "coastOrder": 329.2,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Liceo Maritimo de Bouzas (Vigo)",
+    "maxLength": 12,
+    "berthCount": 348,
+    "prices": 0
+   },
+   {
+    "name": "Real Club Nautico de Vigo",
+    "maxLength": 22,
+    "berthCount": 344,
+    "prices": 0
+   },
+   {
+    "name": "Marina Punta Lagoa (Vigo / Teis)",
+    "maxLength": 36,
+    "berthCount": 342,
+    "prices": 0
+   },
+   {
+    "name": "Marina Davila Sport (Vigo / Bouzas)",
+    "maxLength": 250,
+    "berthCount": 264,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "baiona",
+  "name": "Baiona",
+  "lat": 42.1222,
+  "lon": -8.8444,
+  "type": "marina",
+  "coastOrder": 342.6,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Baiona",
+    "maxLength": 40,
+    "berthCount": 262,
+    "prices": 0
+   },
+   {
+    "name": "Monte Real Club de Yates de Baiona (MRCYB)",
+    "maxLength": 40,
+    "berthCount": 222,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-de-a-guarda",
+  "name": "A Guarda",
+  "lat": 41.9017,
+  "lon": -8.88,
+  "type": "marina",
+  "coastOrder": 355.9,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de A Guarda",
+    "maxLength": null,
+    "berthCount": null,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "caminha-porto-de-recreio-de-seixas",
+  "name": "Caminha",
+  "lat": 41.9012,
+  "lon": -8.8157,
+  "type": "marina",
+  "coastOrder": 358.8,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Caminha / Porto de Recreio de Seixas",
+    "maxLength": null,
+    "berthCount": 12,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-de-viana-do-castelo",
+  "name": "Viana do Castelo",
+  "lat": 41.693,
+  "lon": -8.822,
+  "type": "marina",
+  "coastOrder": 371.3,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Viana do Castelo",
+    "maxLength": 20,
+    "berthCount": 307,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-da-povoa-de-varzim",
+  "name": "Povoa de Varzim",
+  "lat": 41.3683,
+  "lon": -8.7667,
+  "type": "marina",
+  "coastOrder": 391,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina da Povoa de Varzim",
+    "maxLength": 18,
+    "berthCount": 241,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-porto-atlantico-leixoes",
+  "name": "Leixoes",
+  "lat": 41.1707,
+  "lon": -8.7055,
+  "type": "marina",
+  "coastOrder": 403.2,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Porto Atlantico (Leixoes)",
+    "maxLength": 30,
+    "berthCount": 248,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "douro-marina-marina-da-afurada",
+  "name": "Vila Nova de Gaia",
+  "lat": 41.1421,
+  "lon": -8.6513,
+  "type": "marina",
+  "coastOrder": 406.1,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Douro Marina (Marina da Afurada)",
+    "maxLength": 50,
+    "berthCount": 300,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-clube-da-gafanha-aveiro-barra",
+  "name": "Aveiro",
+  "lat": 40.6275,
+  "lon": -8.7345,
+  "type": "marina",
+  "coastOrder": 437.3,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Clube da Gafanha (Aveiro / Barra)",
+    "maxLength": null,
+    "berthCount": null,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-da-figueira-da-foz",
+  "name": "Figueira da Foz",
+  "lat": 40.1476,
+  "lon": -8.864,
+  "type": "marina",
+  "coastOrder": 466.7,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina da Figueira da Foz",
+    "maxLength": 20,
+    "berthCount": 350,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "nucleo-de-recreio-do-porto-da-nazare",
+  "name": "Nazare",
+  "lat": 39.5871,
+  "lon": -9.0745,
+  "type": "marina",
+  "coastOrder": 501.7,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Nucleo de Recreio do Porto da Nazare",
+    "maxLength": 30,
+    "berthCount": 52,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-de-peniche-ribeira",
+  "name": "Peniche",
+  "lat": 39.3556,
+  "lon": -9.3794,
+  "type": "marina",
+  "coastOrder": 521.5,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Peniche (Ribeira)",
+    "maxLength": 15,
+    "berthCount": 140,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "berlengas-carreiro-do-mosteiro-anchorage",
+  "name": "Berlengas",
+  "lat": 39.41,
+  "lon": -9.51,
+  "type": "anchorage",
+  "coastOrder": 528.4,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "marina-de-cascais",
+  "name": "Cascais",
+  "lat": 38.6958,
+  "lon": -9.418,
+  "type": "marina",
+  "coastOrder": 571.5,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Cascais",
+    "maxLength": 50,
+    "berthCount": 650,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "porto-de-recreio-de-oeiras",
+  "name": "Oeiras",
+  "lat": 38.676,
+  "lon": -9.3167,
+  "type": "marina",
+  "coastOrder": 576.4,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Porto de Recreio de Oeiras",
+    "maxLength": 25,
+    "berthCount": 284,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "lisboa",
+  "name": "Lisboa (Tejo)",
+  "lat": 38.695,
+  "lon": -9.21,
+  "type": "marina",
+  "coastOrder": 581.5,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Parque das Nacoes (Lisbon East)",
+    "maxLength": 25,
+    "berthCount": 600,
+    "prices": 0
+   },
+   {
+    "name": "Doca de Alcantara (Porto de Lisboa)",
+    "maxLength": 20,
+    "berthCount": 440,
+    "prices": 0
+   },
+   {
+    "name": "Doca de Belem (Porto de Lisboa)",
+    "maxLength": 15,
+    "berthCount": 186,
+    "prices": 0
+   },
+   {
+    "name": "Doca do Bom Sucesso (Belem)",
+    "maxLength": 15,
+    "berthCount": 160,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "seixal-bay-tagus-south-bank-anchorage",
+  "name": "Seixal Bay",
+  "lat": 38.635,
+  "lon": -9.1,
+  "type": "anchorage",
+  "coastOrder": 595.5,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "marina-clube-naval-de-sesimbra",
+  "name": "Sesimbra",
+  "lat": 38.4339,
+  "lon": -9.1117,
+  "type": "marina",
+  "coastOrder": 607.6,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Clube Naval de Sesimbra",
+    "maxLength": 15,
+    "berthCount": 207,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "doca-de-recreio-das-fontainhas-setubal",
+  "name": "Setubal",
+  "lat": 38.502,
+  "lon": -8.918,
+  "type": "marina",
+  "coastOrder": 617.5,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Doca de Recreio das Fontainhas (Setubal)",
+    "maxLength": 15,
+    "berthCount": 320,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-de-sines",
+  "name": "Sines",
+  "lat": 37.9514,
+  "lon": -8.8667,
+  "type": "marina",
+  "coastOrder": 650.7,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Sines",
+    "maxLength": 25,
+    "berthCount": 230,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "enseada-de-sagres-anchorage",
+  "name": "Enseada de Sagres",
+  "lat": 36.9989,
+  "lon": -8.9369,
+  "type": "anchorage",
+  "coastOrder": 708,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "porto-de-baleeira-sagres-fishing-harbour",
+  "name": "Sagres (Baleeira)",
+  "lat": 37.0117,
+  "lon": -8.9266,
+  "type": "marina",
+  "coastOrder": 708.9,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Porto de Baleeira (Sagres fishing harbour)",
+    "maxLength": null,
+    "berthCount": null,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-de-lagos",
+  "name": "Lagos",
+  "lat": 37.1087,
+  "lon": -8.6739,
+  "type": "marina",
+  "coastOrder": 722.3,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Lagos",
+    "maxLength": 30,
+    "berthCount": 474,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "alvor-anchorage-tidal-lagoon",
+  "name": "Alvor",
+  "lat": 37.118,
+  "lon": -8.6191,
+  "type": "anchorage",
+  "coastOrder": 725,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "marina-de-portimao",
+  "name": "Portimao",
+  "lat": 37.1202,
+  "lon": -8.5279,
+  "type": "marina",
+  "coastOrder": 729.4,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Portimao",
+    "maxLength": 50,
+    "berthCount": 620,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-de-albufeira",
+  "name": "Albufeira",
+  "lat": 37.0808,
+  "lon": -8.2578,
+  "type": "marina",
+  "coastOrder": 742.5,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Albufeira",
+    "maxLength": 32,
+    "berthCount": 475,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-de-vilamoura",
+  "name": "Vilamoura",
+  "lat": 37.0773,
+  "lon": -8.1253,
+  "type": "marina",
+  "coastOrder": 748.9,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Vilamoura",
+    "maxLength": 60,
+    "berthCount": 825,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "ria-formosa-barra-do-farol-entrance",
+  "name": "Ria Formosa",
+  "lat": 36.995,
+  "lon": -7.8717,
+  "type": "anchorage",
+  "coastOrder": 762,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "ilha-da-culatra-anchorage-ria-formosa",
+  "name": "Ilha da Culatra",
+  "lat": 36.9983,
+  "lon": -7.845,
+  "type": "anchorage",
+  "coastOrder": 763.3,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "porto-de-recreio-de-faro-doca-de-recreio",
+  "name": "Faro",
+  "lat": 37.0132,
+  "lon": -7.9363,
+  "type": "marina",
+  "coastOrder": 767.8,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Porto de Recreio de Faro (Doca de Recreio)",
+    "maxLength": null,
+    "berthCount": null,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "porto-de-recreio-de-olhao-marina-de-olhao",
+  "name": "Olhao",
+  "lat": 37.0226,
+  "lon": -7.8453,
+  "type": "marina",
+  "coastOrder": 772.2,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Porto de Recreio de Olhao (Marina de Olhao)",
+    "maxLength": 17,
+    "berthCount": 250,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "tavira-anchorage-ria-de-tavira",
+  "name": "Tavira",
+  "lat": 37.1118,
+  "lon": -7.6155,
+  "type": "anchorage",
+  "coastOrder": 784.4,
+  "hasApproach": false,
+  "marinas": []
+ },
+ {
+  "slug": "marina-de-vila-real-de-santo-antonio-porto-de-recreio-do-guadiana",
+  "name": "Vila Real de Santo Antonio",
+  "lat": 37.1941,
+  "lon": -7.4124,
+  "type": "marina",
+  "coastOrder": 795.3,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina de Vila Real de Santo Antonio (Porto de Recreio do Guadiana)",
+    "maxLength": 20,
+    "berthCount": 360,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-deportivo-de-ayamonte",
+  "name": "Ayamonte",
+  "lat": 37.2097,
+  "lon": -7.4097,
+  "type": "marina",
+  "coastOrder": 796.2,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Ayamonte",
+    "maxLength": null,
+    "berthCount": 316,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-isla-canela",
+  "name": "Isla Canela",
+  "lat": 37.187,
+  "lon": -7.3403,
+  "type": "marina",
+  "coastOrder": 799.8,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Isla Canela",
+    "maxLength": null,
+    "berthCount": 231,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-deportivo-de-isla-cristina",
+  "name": "Isla Cristina",
+  "lat": 37.1808,
+  "lon": -7.3276,
+  "type": "marina",
+  "coastOrder": 800.6,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Isla Cristina",
+    "maxLength": 12,
+    "berthCount": 204,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "marina-el-rompido-rio-piedras",
+  "name": "El Rompido",
+  "lat": 37.2183,
+  "lon": -7.1272,
+  "type": "marina",
+  "coastOrder": 810.4,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina El Rompido (Rio Piedras)",
+    "maxLength": 30,
+    "berthCount": 331,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-de-punta-umbria-marina-umbria-rcmt",
+  "name": "Punta Umbria",
+  "lat": 37.1796,
+  "lon": -6.9566,
+  "type": "marina",
+  "coastOrder": 818.9,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de Punta Umbria (Marina Umbria / RCMT)",
+    "maxLength": null,
+    "berthCount": 998,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-deportivo-de-mazagon",
+  "name": "Mazagon",
+  "lat": 37.1311,
+  "lon": -6.833,
+  "type": "marina",
+  "coastOrder": 825.5,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Mazagon",
+    "maxLength": 30,
+    "berthCount": 500,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-deportivo-de-chipiona",
+  "name": "Chipiona",
+  "lat": 36.7493,
+  "lon": -6.4285,
+  "type": "marina",
+  "coastOrder": 855.5,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Chipiona",
+    "maxLength": 25,
+    "berthCount": 453,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-deportivo-de-rota",
+  "name": "Rota",
+  "lat": 36.6155,
+  "lon": -6.3528,
+  "type": "marina",
+  "coastOrder": 864.3,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Rota",
+    "maxLength": 32,
+    "berthCount": 508,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "el-puerto-de-santa-maria",
+  "name": "El Puerto de Santa Maria",
+  "lat": 36.5772,
+  "lon": -6.2542,
+  "type": "marina",
+  "coastOrder": 869.6,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Sherry",
+    "maxLength": 70,
+    "berthCount": 842,
+    "prices": 0
+   },
+   {
+    "name": "Real Club Nautico El Puerto de Santa Maria",
+    "maxLength": null,
+    "berthCount": 175,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "cadiz",
+  "name": "Cadiz",
+  "lat": 36.5361,
+  "lon": -6.2897,
+  "type": "marina",
+  "coastOrder": 875.3,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Marina Puerto America (Cadiz)",
+    "maxLength": 15,
+    "berthCount": 322,
+    "prices": 0
+   },
+   {
+    "name": "Real Club Nautico de Cadiz",
+    "maxLength": null,
+    "berthCount": 160,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-deportivo-sancti-petri",
+  "name": "Sancti Petri",
+  "lat": 36.3683,
+  "lon": -6.2172,
+  "type": "marina",
+  "coastOrder": 886.2,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo Sancti Petri",
+    "maxLength": null,
+    "berthCount": 200,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-deportivo-de-barbate",
+  "name": "Barbate",
+  "lat": 36.1808,
+  "lon": -5.9242,
+  "type": "marina",
+  "coastOrder": 904.3,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto Deportivo de Barbate",
+    "maxLength": 32,
+    "berthCount": 314,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "puerto-de-tarifa",
+  "name": "Tarifa",
+  "lat": 36.0017,
+  "lon": -5.6083,
+  "type": "marina",
+  "coastOrder": 923,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Puerto de Tarifa",
+    "maxLength": null,
+    "berthCount": 118,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "alcaidesa-marina-la-linea",
+  "name": "La Linea",
+  "lat": 36.1553,
+  "lon": -5.3597,
+  "type": "marina",
+  "coastOrder": 938.2,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Alcaidesa Marina (La Linea)",
+    "maxLength": 90,
+    "berthCount": 624,
+    "prices": 0
+   }
+  ]
+ },
+ {
+  "slug": "gibraltar",
+  "name": "Gibraltar",
+  "lat": 36.135,
+  "lon": -5.355,
+  "type": "marina",
+  "coastOrder": 939.5,
+  "hasApproach": false,
+  "marinas": [
+   {
+    "name": "Ocean Village Marina, Gibraltar",
+    "maxLength": 90,
+    "berthCount": 209,
+    "prices": 0
+   },
+   {
+    "name": "Marina Bay, Gibraltar",
+    "maxLength": 90,
+    "berthCount": 209,
+    "prices": 0
+   },
+   {
+    "name": "Queensway Quay Marina, Gibraltar",
+    "maxLength": 100,
+    "berthCount": 156,
+    "prices": 0
+   }
+  ]
+ }
+]
