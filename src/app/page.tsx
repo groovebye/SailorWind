@@ -80,6 +80,7 @@ export default async function Home() {
       recommended: (area.nearbyPlaces || []).length,
       orcaRisk: area.orcaRisk,
       isMajor: area.isMajor,
+      inReeds: area.inReeds,
       draftAccess: area.draftAccess,
       controllingDepthM: area.controllingDepthM,
       accessNote: area.accessNote,

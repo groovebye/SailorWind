@@ -63,14 +63,14 @@ async function main() {
             description: a.description ?? null, accessNote: a.accessNote ?? null,
             draftAccess: a.draftAccess ?? null, controllingDepthM: a.controllingDepthM ?? null,
             approachLat: a.approachLat ?? null, approachLon: a.approachLon ?? null, approachNote: a.approachNote ?? null,
-            orcaRisk: a.orcaRisk ?? null,
+            orcaRisk: a.orcaRisk ?? null, inReeds: true,
           },
           update: {
             name: a.name, lat: a.lat, lon: a.lon, coastOrder: a.coastOrder, type: a.type,
             description: a.description ?? undefined, accessNote: a.accessNote ?? undefined,
             draftAccess: a.draftAccess ?? undefined, controllingDepthM: a.controllingDepthM ?? undefined,
             approachLat: a.approachLat ?? undefined, approachLon: a.approachLon ?? undefined, approachNote: a.approachNote ?? undefined,
-            orcaRisk: a.orcaRisk ?? undefined,
+            orcaRisk: a.orcaRisk ?? undefined, inReeds: true,
           },
         });
         if (a.marina) {
@@ -107,6 +107,7 @@ async function main() {
             lat: a.lat ?? undefined, lon: a.lon ?? undefined,
             accessNote: a.accessNote ?? undefined,
             approachLat: a.approachLat ?? undefined, approachLon: a.approachLon ?? undefined, approachNote: a.approachNote ?? undefined,
+            inReeds: true,
           },
         });
         if (a.marina) await applyMarina(area.id, a.slug, a.marina);

@@ -12,9 +12,11 @@ export type PortRow = {
   id: string; name: string; slug: string; lat: number; lon: number; region: string | null; type: string;
   marinaCount: number; berths: number; cheapest: number | null;
   fuel: boolean; repairs: boolean; recommended: number; orcaRisk: string | null;
-  isMajor: boolean; draftAccess: string | null; controllingDepthM: number | null; accessNote: string | null;
+  isMajor: boolean; inReeds: boolean; draftAccess: string | null; controllingDepthM: number | null; accessNote: string | null;
   toNextNm: number | null;
 };
+
+type ViewMode = "reeds" | "major" | "all";
 
 const DRAFT_M = 2.0;
 const ACCESS_META: Record<string, { chip: string; label: string; color: string }> = {
@@ -37,28 +39,33 @@ export default function PortsExplorer({ ports }: { ports: PortRow[] }) {
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<string>("all");
   const [draftSafe, setDraftSafe] = useState(false);
-  const [majorOnly, setMajorOnly] = useState(true); // default: principal ports only (clean view)
+  const [view, setView] = useState<ViewMode>("reeds"); // default: almanac (Reeds) ports
   const query = q.trim().toLowerCase();
 
-  const majorCount = useMemo(() => ports.filter((p) => p.isMajor).length, [ports]);
+  const counts = useMemo(() => ({
+    major: ports.filter((p) => p.isMajor).length,
+    reeds: ports.filter((p) => p.inReeds || p.isMajor).length,
+    all: ports.length,
+  }), [ports]);
   const indexed = useMemo(() => ports.map((p, i) => ({ ...p, order: i + 1 })), [ports]);
 
   const filtered = useMemo(() => {
-    // Default shows every port/marina/anchorage along the route (coast order).
-    // The segmented filter + Draft + Major toggles are opt-in narrowing.
+    // View = Reeds (almanac ports, default) / Major (principal hubs) / All.
+    // The facility segmented + Draft toggle narrow further.
     return indexed.filter((p) => {
+      if (view === "major" && !p.isMajor) return false;
+      if (view === "reeds" && !(p.inReeds || p.isMajor)) return false;
       const anchorage = p.marinaCount === 0;
       if (filter === "anchor" && !anchorage) return false;
       if (filter === "fuel" && !p.fuel) return false;
       if (filter === "repair" && !p.repairs) return false;
       if (filter === "orca" && (!p.orcaRisk || p.orcaRisk === "none")) return false;
       if (draftSafe && p.draftAccess !== "all-tide") return false;
-      if (majorOnly && !p.isMajor) return false;
       if (query && !(p.name.toLowerCase().includes(query) || (p.region ?? "").toLowerCase().includes(query)))
         return false;
       return true;
     });
-  }, [indexed, filter, draftSafe, majorOnly, query]);
+  }, [indexed, view, filter, draftSafe, query]);
 
   const hiddenByDraft = useMemo(
     () => indexed.filter((p) => p.marinaCount > 0 && p.berths > 0 && p.draftAccess !== "all-tide").length,
@@ -92,14 +99,13 @@ export default function PortsExplorer({ ports }: { ports: PortRow[] }) {
         >
           ⚓ Draft {DRAFT_M} m{draftSafe ? ` · ${hiddenByDraft} hidden` : ""}
         </button>
-        <button
-          className={`toggle-chip${majorOnly ? " on-amber" : ""}`}
-          aria-pressed={majorOnly}
-          onClick={() => setMajorOnly((v) => !v)}
-          title="Principal hubs — provisioning, overnight, 1–2 day rest"
-        >
-          ★ Major{majorOnly ? "" : ` (${majorCount})`}
-        </button>
+        <div className="seg" title="Which ports to list">
+          {([["reeds", "Reeds"], ["major", "Major"], ["all", "All"]] as [ViewMode, string][]).map(([k, label]) => (
+            <button key={k} className={`seg-opt${view === k ? " active" : ""}`} onClick={() => setView(k)}>
+              {label} <span className="faint" style={{ fontSize: 11 }}>{counts[k]}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="ports-table-wrap">
@@ -145,8 +151,8 @@ export default function PortsExplorer({ ports }: { ports: PortRow[] }) {
                     </div>
                   </td>
                   <td className="num dim hide-mobile"
-                      title={leg == null ? undefined : alm != null ? "Reeds route distance (clears capes/TSS)" : "approx straight-line (great-circle)"}>
-                    {leg == null ? "—" : alm != null ? `${Math.round(leg)} nm` : `≈${Math.round(leg)} nm`}
+                      title={leg == null ? undefined : alm != null ? "Reeds route distance (clears capes/TSS)" : "route distance to next port"}>
+                    {leg == null ? "—" : `${Math.round(leg)} nm`}
                   </td>
                   <td className="dim" style={{ fontSize: 12.5 }}>{p.region}</td>
                   <td className="num">
