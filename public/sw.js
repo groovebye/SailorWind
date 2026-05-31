@@ -7,7 +7,7 @@
  *  POSTs are never cached — live-fetch features degrade; cached GETs + the
  *  forecast pre-warm cron are the offline data path.
  */
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL = `sw-shell-${VERSION}`;
 const RUNTIME = `sw-runtime-${VERSION}`;
 const TILES = `sw-tiles-${VERSION}`;

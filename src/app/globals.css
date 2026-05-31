@@ -324,6 +324,13 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .passage-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .passage-card { position: relative; overflow: hidden; display: block; text-decoration: none; color: inherit; }
 .passage-card-glow { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(400px 120px at 80% -20%, rgba(52,224,255,0.10), transparent 70%); }
+.passage-del { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 9px; background: rgba(7,19,34,0.55); border: 1px solid var(--glass-border); color: var(--fg-faint); opacity: 0; transition: opacity .15s, color .15s, border-color .15s, background .15s; cursor: pointer; }
+.passage-card:hover .passage-del, .passage-del:focus-visible { opacity: 1; }
+.passage-del:hover { color: var(--nogo); border-color: rgba(255,107,138,0.5); background: rgba(255,107,138,0.12); }
+@media (hover: none) { .passage-del { opacity: 0.6; } }
+.passage-confirm { position: absolute; inset: 0; z-index: 3; border-radius: inherit; background: rgba(6,14,22,0.88); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 16px; }
+.btn-danger { background: var(--nogo); border-color: transparent; color: #1a0a10; font-weight: 600; }
+.btn-danger:hover { filter: brightness(1.08); }
 .route-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .route-port { font-family: var(--serif); font-size: 22px; font-weight: 600; }
 .route-arrow { color: var(--cyan); display: flex; }

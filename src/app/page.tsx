@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { Plus, Map as MapIcon, Route, Navigation, Clock, MapPin, Triangle, Anchor } from "lucide-react";
+import { Plus, Map as MapIcon, Route, Anchor } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { haversineNm } from "@/lib/geo";
+import { routeDistanceNm } from "@/lib/searoute";
 import HeroStats from "./_dashboard/HeroStats";
 import LiveConditions from "./_dashboard/LiveConditions";
 import PortsExplorer from "./_dashboard/PortsExplorer";
+import RecentPassages from "./_dashboard/RecentPassages";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +35,8 @@ export default async function Home() {
     const stops = wps.filter((w) => w.isStop);
     const from = (stops[0] ?? wps[0])?.port.name ?? "?";
     const to = (stops[stops.length - 1] ?? wps[wps.length - 1])?.port.name ?? "?";
-    let nm = 0;
-    for (let i = 1; i < wps.length; i++) {
-      nm += haversineNm([wps[i - 1].port.lat, wps[i - 1].port.lon], [wps[i].port.lat, wps[i].port.lon]);
-    }
+    // Corridor-aware (A* navigable water), matching the chart and cockpit.
+    const nm = routeDistanceNm(wps.map((w) => ({ lat: w.port.lat, lon: w.port.lon })));
     const hours = p.speed > 0 ? nm / p.speed : 0;
     return {
       id: p.shortId,
@@ -135,33 +135,7 @@ export default async function Home() {
             </div>
             <Link href="/new" className="btn btn-sm btn-ghost"><Plus size={15} /> New</Link>
           </div>
-          <div className="passage-grid stagger">
-            {cards.map((p, i) => (
-              <Link
-                key={p.id}
-                href={`/p/${p.id}`}
-                className="glass glass-hover passage-card"
-                style={{ animationDelay: i * 0.05 + "s", padding: 20 }}
-              >
-                <div className="between" style={{ marginBottom: 16 }}>
-                  <span className="mono faint" style={{ fontSize: 12 }}>{p.date}</span>
-                  <span className="pill">{p.mode}</span>
-                </div>
-                <div className="route-line">
-                  <span className="route-port">{p.from}</span>
-                  <span className="route-arrow"><Navigation size={16} style={{ transform: "rotate(90deg)" }} /></span>
-                  <span className="route-port">{p.to}</span>
-                </div>
-                <div className="flex gap-16 wrap" style={{ marginTop: 16 }}>
-                  <Metric icon={<Navigation size={14} />} v={`${p.nm} NM`} />
-                  <Metric icon={<Clock size={14} />} v={`~${p.hours}h`} />
-                  <Metric icon={<MapPin size={14} />} v={`${p.wp} wp`} />
-                  {p.capes > 0 && <Metric icon={<Triangle size={14} />} v={`${p.capes} cape${p.capes > 1 ? "s" : ""}`} />}
-                </div>
-                <div className="passage-card-glow" />
-              </Link>
-            ))}
-          </div>
+          <RecentPassages cards={cards} />
         </section>
       )}
 
@@ -181,13 +155,5 @@ export default async function Home() {
         </section>
       )}
     </div>
-  );
-}
-
-function Metric({ icon, v }: { icon: React.ReactNode; v: string }) {
-  return (
-    <span className="center gap-6 dim" style={{ fontSize: 13 }}>
-      <span style={{ opacity: 0.7, display: "flex" }}>{icon}</span> <span className="mono">{v}</span>
-    </span>
   );
 }
