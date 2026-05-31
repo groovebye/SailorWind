@@ -10,7 +10,7 @@ import { windColor, beaufort, type VerdictV } from "@/components/design/helpers"
 import {
   buildLegs, fetchSeries, nearestIdx, fmtMS, verdictFor, powerFor, type WP, type LocSeries,
 } from "../_cockpit/forecast";
-import { corridorBetween, corridorNodesForRoute } from "@/lib/corridor";
+import { routePolyline } from "@/lib/searoute";
 
 type Cond = { wind: number; gust: number; wave: string; swell: string; power: number; verdict: VerdictV; eta: string; current: string };
 
@@ -70,16 +70,9 @@ export default function ChartView(props: {
     (async () => {
       const L = (await import("leaflet")).default;
       if (cancelled || !mapEl.current) return;
-      // Build the drawn track: between consecutive waypoints, splice in the
-      // deep-water corridor (offshore Reeds clearance points) so the line rounds
-      // the headlands and stays in navigable water instead of cutting across
-      // land; at each port also thread its Reeds approach (seaward entrance).
-      const pts: [number, number][] = [];
-      wps.forEach((w, i) => {
-        if (i > 0) corridorBetween(wps[i - 1], w).forEach((p) => pts.push([p[0], p[1]]));
-        if (w.approach) pts.push([w.approach.lat, w.approach.lon]);
-        pts.push([w.lat, w.lon]);
-      });
+      // Build the drawn track by A* over the navigable-water grid: the line
+      // rounds every headland and ría in >= 20 m water and can't cross land.
+      const pts: [number, number][] = routePolyline(wps).map((p) => [p[0], p[1]]);
       map = L.map(mapEl.current, { zoomControl: false, center: [43.62, -8.0], zoom: 9, scrollWheelZoom: true });
       mapObj.current = map;
       L.control.zoom({ position: "bottomright" }).addTo(map);
@@ -123,14 +116,6 @@ export default function ChartView(props: {
         L.marker([w.approach.lat, w.approach.lon], { icon })
           .addTo(map!)
           .bindTooltip(`▽ Approach WPT — ${w.name}${w.approach.note ? `\n${w.approach.note}` : ""}`, { className: "lf-tip", direction: "top" });
-      });
-
-      // Deep-water corridor marks the route rounds (offshore Reeds clearance pts)
-      corridorNodesForRoute(wps).forEach((n) => {
-        const icon = L.divIcon({ className: "", iconSize: [9, 9], iconAnchor: [4.5, 4.5], html: `<div class="lf-corr"></div>` });
-        L.marker([n.lat, n.lon], { icon })
-          .addTo(map!)
-          .bindTooltip(`◇ ${n.name}`, { className: "lf-tip", direction: "top" });
       });
 
       const og = L.layerGroup();

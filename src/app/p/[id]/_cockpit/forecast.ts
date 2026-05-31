@@ -5,7 +5,7 @@
  * Planning-level verdict/power heuristics follow the design spec; the deep
  * per-leg analysis (polars, reefing, tides) stays on the leg pages.
  */
-import { routeDistanceNm } from "@/lib/corridor";
+import { routeDistanceNm } from "@/lib/searoute";
 import { beaufort, type VerdictV } from "@/components/design/helpers";
 import { isDaylight } from "@/lib/astro";
 

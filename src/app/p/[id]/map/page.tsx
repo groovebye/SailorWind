@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { haversineNm } from "@/lib/geo";
-import { routeDistanceNm } from "@/lib/corridor";
+import { routeDistanceNm } from "@/lib/searoute";
 import ChartView from "./ChartView";
 
 export const dynamic = "force-dynamic";
