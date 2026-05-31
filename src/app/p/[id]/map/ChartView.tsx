@@ -80,11 +80,11 @@ export default function ChartView(props: {
         attribution: "© OSM © CARTO", maxZoom: 19, subdomains: "abcd",
       }).addTo(map);
 
-      // EMODnet bathymetry depth contours (5/10/20/50 m) — toggled overlay so
-      // the skipper can confirm the track sits in the 20 m+ band.
+      // EMODnet bathymetry — colour-shaded depth zones (warm = shallow/danger,
+      // cool = deep), toggled overlay so the skipper can read depth at a glance.
       const depth = L.tileLayer.wms("https://ows.emodnet-bathymetry.eu/wms", {
-        layers: "emodnet:contours", format: "image/png", transparent: true,
-        version: "1.3.0", opacity: 0.8, attribution: "© EMODnet Bathymetry",
+        layers: "emodnet:mean", styles: "rainbowcolour", format: "image/png",
+        transparent: true, version: "1.3.0", opacity: 0.6, attribution: "© EMODnet Bathymetry",
       });
       depthLayer.current = depth;
       if (layersRef.current.depth) depth.addTo(map);
@@ -230,7 +230,16 @@ export default function ChartView(props: {
         <LayerToggle on={layers.wind} onClick={() => setLayers((s) => ({ ...s, wind: !s.wind }))} icon={<Wind size={15} />} label="Wind flow" c="var(--cyan)" />
         <LayerToggle on={layers.waves} onClick={() => setLayers((s) => ({ ...s, waves: !s.waves }))} icon={<Waves size={15} />} label="Wave heatmap" c="var(--caution)" />
         <LayerToggle on={layers.orca} onClick={() => setLayers((s) => ({ ...s, orca: !s.orca }))} icon={<AlertTriangle size={15} />} label="Orca zones" c="var(--orca)" />
-        <LayerToggle on={layers.depth} onClick={() => setLayers((s) => ({ ...s, depth: !s.depth }))} icon={<Waves size={15} />} label="Depth contours" c="var(--foam)" />
+        <LayerToggle on={layers.depth} onClick={() => setLayers((s) => ({ ...s, depth: !s.depth }))} icon={<Waves size={15} />} label="Depth zones" c="var(--foam)" />
+        {layers.depth && (
+          <div className="depth-legend">
+            <div className="depth-legend-bar" />
+            <div className="depth-legend-scale mono">
+              <span>0</span><span>20</span><span>50</span><span>200</span><span>1km+</span>
+            </div>
+            <div className="faint mono" style={{ fontSize: 9, marginTop: 2 }}>metres · EMODnet</div>
+          </div>
+        )}
       </div>
 
       {activeWp && (
