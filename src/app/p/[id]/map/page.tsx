@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { haversineNm } from "@/lib/geo";
+import { routeDistanceNm } from "@/lib/corridor";
 import ChartView from "./ChartView";
 
 export const dynamic = "force-dynamic";
@@ -39,11 +40,9 @@ export default async function ChartPage({ params }: { params: Promise<{ id: stri
   const stops = passage.waypoints.filter((w) => w.isStop);
   const from = (stops[0] ?? passage.waypoints[0])?.port.name ?? "?";
   const to = (stops[stops.length - 1] ?? passage.waypoints[passage.waypoints.length - 1])?.port.name ?? "?";
-  let nm = 0;
-  for (let i = 1; i < passage.waypoints.length; i++) {
-    const a = passage.waypoints[i - 1].port, b = passage.waypoints[i].port;
-    nm += haversineNm([a.lat, a.lon], [b.lat, b.lon]);
-  }
+  // Corridor-aware distance: rounds the headlands through the deep-water track
+  // (matches the drawn route) instead of summing land-crossing straight lines.
+  const nm = routeDistanceNm(passage.waypoints.map((w) => ({ lat: w.port.lat, lon: w.port.lon })));
 
   return <ChartView passageId={passage.shortId} from={from} to={to} nm={nm} wps={wps} />;
 }

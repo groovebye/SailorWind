@@ -42,11 +42,14 @@ export default function NewPassage() {
   const [routePorts, setRoutePorts] = useState<(Port & { checked: boolean })[]>([]);
   const [saving, setSaving] = useState(false);
 
-  // Set default departure to tomorrow 08:00
+  // Set default departure to tomorrow 08:00. Done in an effect (not a lazy
+  // initializer) on purpose: `new Date()` differs between server render and
+  // client, so deferring to the client avoids a hydration mismatch.
   useEffect(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
     d.setHours(8, 0, 0, 0);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only default, see above
     setDeparture(d.toISOString().slice(0, 16));
   }, []);
 
@@ -67,21 +70,19 @@ export default function NewPassage() {
     const minNm = Math.min(from.coastlineNm, to.coastlineNm);
     const maxNm = Math.max(from.coastlineNm, to.coastlineNm);
 
+    // Candidate stops between the endpoints. Capes are excluded entirely — the
+    // deep-water corridor rounds the headlands automatically, so they're never
+    // selectable stops.
     const between = allPorts
-      .filter((p) => p.coastlineNm >= minNm && p.coastlineNm <= maxNm)
+      .filter((p) => p.type !== "cape" && p.coastlineNm >= minNm && p.coastlineNm <= maxNm)
       .sort((a, b) => a.coastlineNm - b.coastlineNm);
 
-    // Auto-check: start, end, capes, and marinas that create legs ≤ 50 NM
-    const checked = between.map((p) => {
-      const isStart = p.id === fromPort;
-      const isEnd = p.id === toPort;
-      const isCape = p.type === "cape";
-      const isMarina = p.type === "marina";
-      return {
-        ...p,
-        checked: isStart || isEnd || isCape || isMarina,
-      };
-    });
+    // Default selection: ONLY start + end. No intermediate ports are pre-checked
+    // — the skipper adds stops deliberately; everything else is a clean passage.
+    const checked = between.map((p) => ({
+      ...p,
+      checked: p.id === fromPort || p.id === toPort,
+    }));
 
     setRoutePorts(checked);
   }, [fromPort, toPort, allPorts]);
@@ -95,7 +96,7 @@ export default function NewPassage() {
   function togglePort(idx: number) {
     setRoutePorts((prev) => {
       const next = [...prev];
-      // Can't uncheck start/end
+      // Endpoints are locked; everything between is an optional stop.
       if (idx === 0 || idx === prev.length - 1) return next;
       next[idx] = { ...next[idx], checked: !next[idx].checked };
       return next;
@@ -123,11 +124,12 @@ export default function NewPassage() {
   async function handleSave() {
     setSaving(true);
 
-    const waypoints = routePorts.map((p) => ({
-      portId: p.id,
-      isStop: p.checked && p.type !== "cape",
-      isCape: p.type === "cape",
-    }));
+    // Persist ONLY the selected stops. Unchecked ports must NOT be saved —
+    // otherwise the chart would thread the polyline through every one of them
+    // (the "into every ría" bug). Headland rounding is handled by the corridor.
+    const waypoints = routePorts
+      .filter((p) => p.checked)
+      .map((p) => ({ portId: p.id, isStop: true, isCape: false }));
 
     const from = allPorts.find((p) => p.id === fromPort);
     const to = allPorts.find((p) => p.id === toPort);
@@ -229,6 +231,10 @@ export default function NewPassage() {
           <button className="btn btn-sm btn-ghost" style={{ alignSelf: "flex-start" }} onClick={() => setStep(1)}>
             <ArrowLeft size={15} /> Back to route
           </button>
+
+          <p className="dim" style={{ fontSize: 13, margin: "-4px 0 0" }}>
+            Only your start and end are selected — a clean passage. The route rounds the headlands automatically through deep water. Tap any port to add it as a stop.
+          </p>
 
           {legs.length > 0 && (
             <div className="glass" style={{ padding: 18 }}>

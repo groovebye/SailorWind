@@ -414,6 +414,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .lf-wp { border-radius: 99px; border: 2px solid rgba(255,255,255,0.85); position: relative; }
 .lf-cape { border-radius: 3px; transform: rotate(45deg); }
 .lf-wpt { width: 12px; height: 12px; border: 1.5px solid var(--foam); background: rgba(140,232,255,0.18); transform: rotate(45deg); border-radius: 2px; }
+.lf-corr { width: 9px; height: 9px; border: 1px solid rgba(159,182,196,0.7); background: rgba(159,182,196,0.22); transform: rotate(45deg); border-radius: 1px; }
 .lf-ping { position: absolute; inset: -2px; border-radius: 99px; border: 2px solid; animation: pulseRing 2.4s infinite; }
 .lf-tip { background: rgba(7,19,34,0.92) !important; border: 1px solid var(--glass-border) !important; color: var(--fg) !important; font-family: var(--mono) !important; font-size: 11px !important; border-radius: 8px !important; box-shadow: var(--shadow-soft) !important; }
 .lf-tip::before { display: none !important; }

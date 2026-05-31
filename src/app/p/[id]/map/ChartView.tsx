@@ -10,6 +10,7 @@ import { windColor, beaufort, type VerdictV } from "@/components/design/helpers"
 import {
   buildLegs, fetchSeries, nearestIdx, fmtMS, verdictFor, powerFor, type WP, type LocSeries,
 } from "../_cockpit/forecast";
+import { corridorBetween, corridorNodesForRoute } from "@/lib/corridor";
 
 type Cond = { wind: number; gust: number; wave: string; swell: string; power: number; verdict: VerdictV; eta: string; current: string };
 
@@ -21,7 +22,8 @@ export default function ChartView(props: {
   const mapObj = useRef<LType.Map | null>(null);
   const orcaGroup = useRef<LType.LayerGroup | null>(null);
   const overlay = useRef<HTMLCanvasElement>(null);
-  const [layers, setLayers] = useState({ wind: true, waves: false, orca: true });
+  const [layers, setLayers] = useState({ wind: true, waves: false, orca: true, depth: false });
+  const depthLayer = useRef<LType.TileLayer | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const [series, setSeries] = useState<LocSeries[] | null>(null);
   const layersRef = useRef(layers);
@@ -68,10 +70,13 @@ export default function ChartView(props: {
     (async () => {
       const L = (await import("leaflet")).default;
       if (cancelled || !mapEl.current) return;
-      // Thread the route through each port's Reeds approach waypoint (seaward
-      // entrance) so the line clears land/hazards instead of cutting in straight.
+      // Build the drawn track: between consecutive waypoints, splice in the
+      // deep-water corridor (offshore Reeds clearance points) so the line rounds
+      // the headlands and stays in navigable water instead of cutting across
+      // land; at each port also thread its Reeds approach (seaward entrance).
       const pts: [number, number][] = [];
-      wps.forEach((w) => {
+      wps.forEach((w, i) => {
+        if (i > 0) corridorBetween(wps[i - 1], w).forEach((p) => pts.push([p[0], p[1]]));
         if (w.approach) pts.push([w.approach.lat, w.approach.lon]);
         pts.push([w.lat, w.lon]);
       });
@@ -81,6 +86,15 @@ export default function ChartView(props: {
       L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
         attribution: "© OSM © CARTO", maxZoom: 19, subdomains: "abcd",
       }).addTo(map);
+
+      // EMODnet bathymetry depth contours (5/10/20/50 m) — toggled overlay so
+      // the skipper can confirm the track sits in the 20 m+ band.
+      const depth = L.tileLayer.wms("https://ows.emodnet-bathymetry.eu/wms", {
+        layers: "emodnet:contours", format: "image/png", transparent: true,
+        version: "1.3.0", opacity: 0.8, attribution: "© EMODnet Bathymetry",
+      });
+      depthLayer.current = depth;
+      if (layersRef.current.depth) depth.addTo(map);
 
       L.polyline(pts, { color: "#34e0ff", weight: 7, opacity: 0.18 }).addTo(map);
       L.polyline(pts, { color: "#34e0ff", weight: 2.5, opacity: 0.95, dashArray: "1 8", lineCap: "round" }).addTo(map);
@@ -111,6 +125,14 @@ export default function ChartView(props: {
           .bindTooltip(`▽ Approach WPT — ${w.name}${w.approach.note ? `\n${w.approach.note}` : ""}`, { className: "lf-tip", direction: "top" });
       });
 
+      // Deep-water corridor marks the route rounds (offshore Reeds clearance pts)
+      corridorNodesForRoute(wps).forEach((n) => {
+        const icon = L.divIcon({ className: "", iconSize: [9, 9], iconAnchor: [4.5, 4.5], html: `<div class="lf-corr"></div>` });
+        L.marker([n.lat, n.lon], { icon })
+          .addTo(map!)
+          .bindTooltip(`◇ ${n.name}`, { className: "lf-tip", direction: "top" });
+      });
+
       const og = L.layerGroup();
       wps.filter((w) => w.orcaRisk && w.orcaRisk !== "none").forEach((w) => {
         const c = w.orcaRisk === "high" ? "#ff6b8a" : w.orcaRisk === "medium" ? "#b794ff" : "#4fb0ff";
@@ -134,6 +156,13 @@ export default function ChartView(props: {
     if (!m || !og) return;
     if (layers.orca) og.addTo(m); else m.removeLayer(og);
   }, [layers.orca]);
+
+  // depth-contour layer toggle
+  useEffect(() => {
+    const m = mapObj.current, dl = depthLayer.current;
+    if (!m || !dl) return;
+    if (layers.depth) dl.addTo(m); else m.removeLayer(dl);
+  }, [layers.depth]);
 
   function sizeOverlay() {
     const c = overlay.current;
@@ -216,6 +245,7 @@ export default function ChartView(props: {
         <LayerToggle on={layers.wind} onClick={() => setLayers((s) => ({ ...s, wind: !s.wind }))} icon={<Wind size={15} />} label="Wind flow" c="var(--cyan)" />
         <LayerToggle on={layers.waves} onClick={() => setLayers((s) => ({ ...s, waves: !s.waves }))} icon={<Waves size={15} />} label="Wave heatmap" c="var(--caution)" />
         <LayerToggle on={layers.orca} onClick={() => setLayers((s) => ({ ...s, orca: !s.orca }))} icon={<AlertTriangle size={15} />} label="Orca zones" c="var(--orca)" />
+        <LayerToggle on={layers.depth} onClick={() => setLayers((s) => ({ ...s, depth: !s.depth }))} icon={<Waves size={15} />} label="Depth contours" c="var(--foam)" />
       </div>
 
       {activeWp && (

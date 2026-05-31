@@ -5,7 +5,7 @@
  * Planning-level verdict/power heuristics follow the design spec; the deep
  * per-leg analysis (polars, reefing, tides) stays on the leg pages.
  */
-import { haversineNm } from "@/lib/geo";
+import { routeDistanceNm } from "@/lib/corridor";
 import { beaufort, type VerdictV } from "@/components/design/helpers";
 import { isDaylight } from "@/lib/astro";
 
@@ -37,11 +37,16 @@ export function modelParam(model: string): string | null {
   return null; // "ens" → best_match blend
 }
 
-/** Cumulative nm to each waypoint + total. */
+/** Cumulative nm to each waypoint + total — corridor-aware, so distances and
+ * ETAs match the deep-water track drawn on the chart (rounds headlands rather
+ * than summing land-crossing straight lines). */
 export function buildLegs(wps: WP[]): { cum: number[]; totalNm: number } {
   const cum = [0];
   for (let i = 1; i < wps.length; i++) {
-    cum[i] = cum[i - 1] + haversineNm([wps[i - 1].lat, wps[i - 1].lon], [wps[i].lat, wps[i].lon]);
+    cum[i] = cum[i - 1] + routeDistanceNm([
+      { lat: wps[i - 1].lat, lon: wps[i - 1].lon },
+      { lat: wps[i].lat, lon: wps[i].lon },
+    ]);
   }
   return { cum, totalNm: cum[cum.length - 1] ?? 0 };
 }
