@@ -10,6 +10,8 @@
  * appeared when we tried to over-simplify the geometry.
  */
 
+import { seaRoute } from "./searoute";
+
 export type LatLon = [number, number];
 
 export interface RoutePort {
@@ -319,6 +321,12 @@ function nearestPointId(target: RoutePort): PointId | null {
 }
 
 export function buildSeaRoute(from: RoutePort, to: RoutePort): LatLon[] {
+  // Primary: A* over the navigable-water grid (in-water, whole coast). Falls
+  // back to the hand-authored North-Spain graph only where the grid doesn't
+  // cover the leg (A* then returns just the two endpoints).
+  const sea = seaRoute({ lat: from.lat, lon: from.lon }, { lat: to.lat, lon: to.lon });
+  if (sea.length > 2) return sea;
+
   const handcrafted = manualRoute(from.name, to.name);
   if (handcrafted) {
     return dedupe(handcrafted);
