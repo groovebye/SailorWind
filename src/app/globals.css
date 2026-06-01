@@ -438,7 +438,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .ro-cell { display: flex; flex-direction: column; gap: 3px; }
 .depth-legend { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--glass-border); display: flex; flex-wrap: wrap; gap: 5px 12px; }
 .depth-legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 10px; color: var(--fg-dim); }
-.depth-legend-item i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
+.depth-legend-item i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex-shrink: 0; }
 .map-legend { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 500; padding: 8px 14px; display: flex; align-items: center; gap: 10px; }
 .legend-bar { width: 140px; height: 8px; border-radius: 99px; background: linear-gradient(90deg, #7fe9c4, #34e0ff, #4fb0ff, #ffc24b, #ff9b5a, #ff6b8a); }
 .legend-scale { display: flex; justify-content: space-between; width: 140px; font-size: 9px; color: var(--fg-faint); }

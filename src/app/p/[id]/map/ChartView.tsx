@@ -14,10 +14,17 @@ import { routePolyline } from "@/lib/searoute";
 
 type Cond = { wind: number; gust: number; wave: string; swell: string; power: number; verdict: VerdictV; eta: string; current: string };
 
-// Colour-blind-safe isobath palette: amber for the shallow danger line, then
-// light→dark blue by depth (distinguishable by hue and lightness for all CVD types).
-const DEPTH_LEVELS = [10, 20, 50, 100, 200];
-const DEPTH_COLOR: Record<number, string> = { 10: "#f4c95d", 20: "#9ad0ec", 50: "#5aa9e6", 100: "#3b6fb0", 200: "#274690" };
+// Depth bands: shallow/danger (red) → safe to 20 m (green) → blue deep. Matches
+// public/depth-bands.png (built by scripts/build-contours.py). [[S,W],[N,E]].
+const DEPTH_BBOX: [[number, number], [number, number]] = [[35.9, -10.2], [43.8, -5.2]];
+const DEPTH_BANDS = [
+  { c: "#e5484d", l: "0–5 m" },
+  { c: "#f0883e", l: "5–10" },
+  { c: "#46a758", l: "10–20" },
+  { c: "#3db9c3", l: "20–50" },
+  { c: "#4a90d9", l: "50–200" },
+  { c: "#2a4b8d", l: ">200 m" },
+];
 
 export default function ChartView(props: {
   passageId: string; from: string; to: string; nm: number; wps: WP[];
@@ -85,21 +92,22 @@ export default function ChartView(props: {
         attribution: "© OSM © CARTO", maxZoom: 19, subdomains: "abcd",
       }).addTo(map);
 
-      // Depth: subtle, per-depth-coloured isobath LINES (self-generated from
-      // EMODnet bathymetry, colour-blind-safe palette). Lines only — land keeps
-      // the normal chart look, no colour wash.
+      // Depth: semi-transparent colour bands (red shallow/danger → green safe to
+      // 20 m → blue deep) under thin isobath edge-lines. Rendered on a low pane
+      // so the route + markers stay on top; land/no-data are transparent, so the
+      // normal chart shows through (no colour wash on land).
+      if (!map.getPane("depth")) {
+        const p = map.createPane("depth");
+        p.style.zIndex = "250";
+        p.style.pointerEvents = "none";
+      }
       const depthGroup = L.layerGroup();
       depthLayer.current = depthGroup;
+      L.imageOverlay("/depth-bands.png", DEPTH_BBOX, { opacity: 0.5, pane: "depth", attribution: "© EMODnet Bathymetry" }).addTo(depthGroup);
       fetch("/depth-contours.geojson")
         .then((r) => r.json())
         .then((fc) => {
-          L.geoJSON(fc, {
-            attribution: "© EMODnet Bathymetry",
-            style: (f) => {
-              const d = f?.properties?.d as number;
-              return { color: DEPTH_COLOR[d] ?? "#5aa9e6", weight: d <= 10 ? 1.4 : 1, opacity: d <= 10 ? 0.7 : 0.5, lineJoin: "round" };
-            },
-          }).addTo(depthGroup);
+          L.geoJSON(fc, { pane: "depth", style: () => ({ color: "#dbeeff", weight: 0.7, opacity: 0.28, lineJoin: "round" }) }).addTo(depthGroup);
         })
         .catch(() => {});
       if (layersRef.current.depth) depthGroup.addTo(map);
@@ -248,9 +256,9 @@ export default function ChartView(props: {
         <LayerToggle on={layers.depth} onClick={() => setLayers((s) => ({ ...s, depth: !s.depth }))} icon={<Waves size={15} />} label="Depth zones" c="var(--foam)" />
         {layers.depth && (
           <div className="depth-legend">
-            {DEPTH_LEVELS.map((d) => (
-              <span key={d} className="depth-legend-item mono">
-                <i style={{ background: DEPTH_COLOR[d] }} />{d} m
+            {DEPTH_BANDS.map((b) => (
+              <span key={b.l} className="depth-legend-item mono">
+                <i style={{ background: b.c }} />{b.l}
               </span>
             ))}
           </div>

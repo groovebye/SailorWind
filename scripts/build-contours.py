@@ -75,3 +75,25 @@ out = os.path.join(os.path.dirname(__file__), "..", "public", "depth-contours.ge
 with open(out, "w") as f:
     json.dump(fc, f, separators=(",", ":"))
 print(f"wrote {out}: {len(features)} lines, {os.path.getsize(out)//1024} KB", flush=True)
+
+# ---- filled depth-band raster: semi-transparent zones, Web-Mercator-projected
+# so it aligns with the slippy map; land/no-data stay fully transparent. ----
+from PIL import Image
+def ymer(lat): return math.log(math.tan(math.pi / 4 + math.radians(lat) / 2))
+yt, yb = ymer(LATMAX), ymer(LATMIN)
+HPX = 1300
+rows_idx = np.empty(HPX, dtype=int)
+for i in range(HPX):
+    ym = yt + (yb - yt) * (i / (HPX - 1))
+    lat = math.degrees(2 * math.atan(math.exp(ym)) - math.pi / 2)
+    rows_idx[i] = min(max(int(round((LATMAX - lat) / RES - 0.5)), 0), ROWS - 1)
+depth = -elev[rows_idx, :]               # positive = sea depth; <=0 = land/no-data
+rgba = np.zeros((HPX, COLS, 4), dtype=np.uint8)
+BANDS = [((0, 5), (229, 72, 77)), ((5, 10), (240, 136, 62)), ((10, 20), (70, 167, 88)),
+         ((20, 50), (61, 185, 195)), ((50, 200), (74, 144, 217)), ((200, 1e9), (42, 75, 141))]
+for (lo, hi), (r, g, b) in BANDS:
+    m = (depth > lo) & (depth <= hi)
+    rgba[m, 0], rgba[m, 1], rgba[m, 2], rgba[m, 3] = r, g, b, 255
+png = os.path.join(os.path.dirname(__file__), "..", "public", "depth-bands.png")
+Image.fromarray(rgba, "RGBA").save(png)
+print(f"wrote {png}: {HPX}x{COLS}, {os.path.getsize(png)//1024} KB", flush=True)
