@@ -1,6 +1,6 @@
 "use client";
 
-import { MapContainer, TileLayer, CircleMarker, Tooltip, Popup, Polyline, Rectangle, useMap, useMapEvents, GeoJSON as GeoJSONLayer, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Tooltip, Popup, Polyline, Rectangle, useMap, useMapEvents, GeoJSON as GeoJSONLayer } from "react-leaflet";
 import { useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -22,13 +22,14 @@ const COLORS: Record<string, string> = {
   cape: "#facc15", marina: "#4ade80", port: "#60a5fa", anchorage: "#c084fc",
 };
 
+// Matches the Chart page palette: 5 m dark-red (danger) → 20 m yellow → cyan → blue.
 const CONTOUR_STYLES: Record<number, { color: string; weight: number; dash?: string }> = {
-  5:   { color: "#ef4444", weight: 1.5 },
-  10:  { color: "#f97316", weight: 1.2 },
-  20:  { color: "#eab308", weight: 1, dash: "4 2" },
-  50:  { color: "#94a3b8", weight: 0.8, dash: "4 2" },
-  100: { color: "#64748b", weight: 0.6, dash: "6 3" },
-  200: { color: "#475569", weight: 0.5, dash: "8 4" },
+  5:   { color: "#e11d2e", weight: 1.6 },
+  10:  { color: "#ff8a00", weight: 1.2 },
+  20:  { color: "#ffd400", weight: 1.1 },
+  50:  { color: "#2ec6e6", weight: 1 },
+  100: { color: "#2f7fe6", weight: 0.9 },
+  200: { color: "#1f3f9e", weight: 0.8 },
 };
 
 const ORCA_ZONES = [
@@ -92,7 +93,8 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
   const markerClickedRef = useRef(false);
 
   useEffect(() => {
-    fetch("/data/contours.json").then(r => r.json()).then(setContours).catch(() => {});
+    // Whole-coast isobaths (A Coruña → Gibraltar), same source as the Chart page.
+    fetch("/depth-contours.geojson").then(r => r.json()).then(setContours).catch(() => {});
   }, []);
 
   const positions = useMemo(
@@ -149,12 +151,12 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
           data={contours}
           interactive={!isEditing}
           style={(feature) => {
-            const depth = feature?.properties?.depth || 50;
+            const depth = feature?.properties?.d ?? 50;
             const style = CONTOUR_STYLES[depth] || CONTOUR_STYLES[50];
-            return { color: style.color, weight: style.weight, opacity: isEditing ? 0.4 : 0.7, dashArray: style.dash, interactive: !isEditing };
+            return { color: style.color, weight: style.weight, opacity: isEditing ? 0.4 : 0.85, dashArray: style.dash, interactive: !isEditing };
           }}
           onEachFeature={isEditing ? undefined : (feature, layer) => {
-            const depth = feature.properties?.depth;
+            const depth = feature.properties?.d;
             if (depth) {
               const isPrimary = depth <= 10;
               layer.bindTooltip(`${depth}m`, {
@@ -311,10 +313,12 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
       {/* Depth contour legend */}
       <div style={{ position: "absolute", bottom: 8, left: 8, zIndex: 1000, background: "rgba(0,0,0,0.8)", borderRadius: 6, padding: "6px 8px", fontSize: 10, lineHeight: 1.6, pointerEvents: "none" }}>
         <div style={{ color: "#94a3b8", fontWeight: 700, marginBottom: 2 }}>Depth</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 16, height: 2, background: "#ef4444", display: "inline-block" }} /> <span style={{ color: "#ef4444" }}>5m</span></div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 16, height: 2, background: "#f97316", display: "inline-block" }} /> <span style={{ color: "#f97316" }}>10m</span></div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 16, height: 2, background: "#eab308", display: "inline-block", borderTop: "1px dashed #eab308" }} /> <span style={{ color: "#eab308" }}>20m</span></div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}><span style={{ width: 16, height: 1, background: "#94a3b8", display: "inline-block", borderTop: "1px dashed #94a3b8" }} /> <span style={{ color: "#64748b" }}>50m+</span></div>
+        {[[5, "5m"], [10, "10m"], [20, "20m"], [50, "50m"], [100, "100m"], [200, "200m+"]].map(([d, label]) => (
+          <div key={d} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ width: 16, height: 2, borderRadius: 1, background: CONTOUR_STYLES[d as number].color, display: "inline-block" }} />
+            <span style={{ color: CONTOUR_STYLES[d as number].color }}>{label}</span>
+          </div>
+        ))}
       </div>
     </MapContainer>
   );
