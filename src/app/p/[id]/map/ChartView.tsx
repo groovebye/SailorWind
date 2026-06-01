@@ -14,17 +14,20 @@ import { routePolyline } from "@/lib/searoute";
 
 type Cond = { wind: number; gust: number; wave: string; swell: string; power: number; verdict: VerdictV; eta: string; current: string };
 
-// Depth bands: shallow/danger (red) → safe to 20 m (green) → blue deep. Matches
-// public/depth-bands.png (built by scripts/build-contours.py). [[S,W],[N,E]].
-const DEPTH_BBOX: [[number, number], [number, number]] = [[35.9, -10.2], [43.8, -5.2]];
+// Depth bands: shallow/danger (red) → safe to 20 m (green) → blue deep.
+// Vector zone polygons (public/depth-bands.geojson, band index `b` 1..6) with
+// graduated fill opacity — shallow stands out, deep stays faint.
 const DEPTH_BANDS = [
-  { c: "#e5484d", l: "0–5 m" },
-  { c: "#f0883e", l: "5–10" },
-  { c: "#46a758", l: "10–20" },
-  { c: "#3db9c3", l: "20–50" },
-  { c: "#4a90d9", l: "50–200" },
-  { c: "#2a4b8d", l: ">200 m" },
+  { b: 1, c: "#e5484d", o: 0.34, l: "0–5 m" },
+  { b: 2, c: "#f0883e", o: 0.30, l: "5–10" },
+  { b: 3, c: "#46a758", o: 0.26, l: "10–20" },
+  { b: 4, c: "#3db9c3", o: 0.20, l: "20–50" },
+  { b: 5, c: "#4a90d9", o: 0.13, l: "50–200" },
+  { b: 6, c: "#2a4b8d", o: 0.08, l: ">200 m" },
 ];
+const BAND_FILL: Record<number, { c: string; o: number }> = Object.fromEntries(
+  DEPTH_BANDS.map((b) => [b.b, { c: b.c, o: b.o }]),
+);
 
 export default function ChartView(props: {
   passageId: string; from: string; to: string; nm: number; wps: WP[];
@@ -36,6 +39,7 @@ export default function ChartView(props: {
   const overlay = useRef<HTMLCanvasElement>(null);
   const [layers, setLayers] = useState({ wind: true, waves: false, orca: true, depth: false });
   const depthLayer = useRef<LType.LayerGroup | null>(null);
+  const depthLabels = useRef<LType.LayerGroup | null>(null);
   const [activeIdx, setActiveIdx] = useState(0);
   const [series, setSeries] = useState<LocSeries[] | null>(null);
   const layersRef = useRef(layers);
@@ -92,22 +96,46 @@ export default function ChartView(props: {
         attribution: "© OSM © CARTO", maxZoom: 19, subdomains: "abcd",
       }).addTo(map);
 
-      // Depth: semi-transparent colour bands (red shallow/danger → green safe to
-      // 20 m → blue deep) under thin isobath edge-lines. Rendered on a low pane
-      // so the route + markers stay on top; land/no-data are transparent, so the
-      // normal chart shows through (no colour wash on land).
+      // Depth: crisp VECTOR zone polygons (red shallow/danger → green safe to
+      // 20 m → blue deep) with graduated, light fill, thin isobath edge-lines,
+      // and on-map depth labels (shown when zoomed in). Drawn on a low canvas
+      // pane so the route + markers stay on top; land is left untouched.
       if (!map.getPane("depth")) {
         const p = map.createPane("depth");
         p.style.zIndex = "250";
         p.style.pointerEvents = "none";
       }
+      const depthCanvas = L.canvas({ pane: "depth", padding: 0.5 });
       const depthGroup = L.layerGroup();
+      const labels = L.layerGroup();
       depthLayer.current = depthGroup;
-      L.imageOverlay("/depth-bands.png", DEPTH_BBOX, { opacity: 0.5, pane: "depth", attribution: "© EMODnet Bathymetry" }).addTo(depthGroup);
-      fetch("/depth-contours.geojson")
+      depthLabels.current = labels;
+      const syncLabels = () => {
+        if (layersRef.current.depth && map!.getZoom() >= 9) labels.addTo(map!);
+        else map!.removeLayer(labels);
+      };
+      map.on("zoomend", syncLabels);
+      fetch("/depth-bands.geojson")
         .then((r) => r.json())
         .then((fc) => {
-          L.geoJSON(fc, { pane: "depth", style: () => ({ color: "#dbeeff", weight: 0.7, opacity: 0.28, lineJoin: "round" }) }).addTo(depthGroup);
+          L.geoJSON(fc, {
+            renderer: depthCanvas, pane: "depth", attribution: "© EMODnet Bathymetry",
+            style: (f) => { const b = BAND_FILL[f?.properties?.b] ?? { c: "#4a90d9", o: 0.1 }; return { stroke: false, fillColor: b.c, fillOpacity: b.o }; },
+          } as LType.GeoJSONOptions & { renderer: LType.Renderer }).addTo(depthGroup);
+          return fetch("/depth-contours.geojson");
+        })
+        .then((r) => r.json())
+        .then((fc) => {
+          L.geoJSON(fc, { renderer: depthCanvas, pane: "depth", style: () => ({ color: "#cfe3f5", weight: 0.6, opacity: 0.3 }) } as LType.GeoJSONOptions & { renderer: LType.Renderer }).addTo(depthGroup);
+          for (const ft of fc.features as { properties: { d: number }; geometry: { coordinates: [number, number][] } }[]) {
+            const cs = ft.geometry.coordinates;
+            const mid = cs[Math.floor(cs.length / 2)];
+            labels.addLayer(L.marker([mid[1], mid[0]], {
+              interactive: false,
+              icon: L.divIcon({ className: "", iconSize: [0, 0], html: `<span class="lf-depth-label">${ft.properties.d} m</span>` }),
+            }));
+          }
+          syncLabels();
         })
         .catch(() => {});
       if (layersRef.current.depth) depthGroup.addTo(map);
@@ -165,11 +193,12 @@ export default function ChartView(props: {
     if (layers.orca) og.addTo(m); else m.removeLayer(og);
   }, [layers.orca]);
 
-  // depth-contour layer toggle
+  // depth layer toggle (zones + labels)
   useEffect(() => {
-    const m = mapObj.current, dl = depthLayer.current;
-    if (!m || !dl) return;
-    if (layers.depth) dl.addTo(m); else m.removeLayer(dl);
+    const m = mapObj.current, dl = depthLayer.current, lb = depthLabels.current;
+    if (!m) return;
+    if (dl) { if (layers.depth) dl.addTo(m); else m.removeLayer(dl); }
+    if (lb) { if (layers.depth && m.getZoom() >= 9) lb.addTo(m); else m.removeLayer(lb); }
   }, [layers.depth]);
 
   function sizeOverlay() {

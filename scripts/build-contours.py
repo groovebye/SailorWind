@@ -76,24 +76,31 @@ with open(out, "w") as f:
     json.dump(fc, f, separators=(",", ":"))
 print(f"wrote {out}: {len(features)} lines, {os.path.getsize(out)//1024} KB", flush=True)
 
-# ---- filled depth-band raster: semi-transparent zones, Web-Mercator-projected
-# so it aligns with the slippy map; land/no-data stay fully transparent. ----
-from PIL import Image
-def ymer(lat): return math.log(math.tan(math.pi / 4 + math.radians(lat) / 2))
-yt, yb = ymer(LATMAX), ymer(LATMIN)
-HPX = 1300
-rows_idx = np.empty(HPX, dtype=int)
-for i in range(HPX):
-    ym = yt + (yb - yt) * (i / (HPX - 1))
-    lat = math.degrees(2 * math.atan(math.exp(ym)) - math.pi / 2)
-    rows_idx[i] = min(max(int(round((LATMAX - lat) / RES - 0.5)), 0), ROWS - 1)
-depth = -elev[rows_idx, :]               # positive = sea depth; <=0 = land/no-data
-rgba = np.zeros((HPX, COLS, 4), dtype=np.uint8)
-BANDS = [((0, 5), (229, 72, 77)), ((5, 10), (240, 136, 62)), ((10, 20), (70, 167, 88)),
-         ((20, 50), (61, 185, 195)), ((50, 200), (74, 144, 217)), ((200, 1e9), (42, 75, 141))]
-for (lo, hi), (r, g, b) in BANDS:
-    m = (depth > lo) & (depth <= hi)
-    rgba[m, 0], rgba[m, 1], rgba[m, 2], rgba[m, 3] = r, g, b, 255
-png = os.path.join(os.path.dirname(__file__), "..", "public", "depth-bands.png")
-Image.fromarray(rgba, "RGBA").save(png)
-print(f"wrote {png}: {HPX}x{COLS}, {os.path.getsize(png)//1024} KB", flush=True)
+# ---- filled depth-band POLYGONS (vector → crisp at any zoom, exact zone
+# boundaries). Polygonise a banded raster; land/no-data left out. ----
+from rasterio.features import shapes
+from rasterio.transform import from_origin
+from shapely.geometry import shape as shp_shape, mapping
+
+depth = -elev                              # positive = sea depth; <=0 = land/no-data
+band = np.zeros((ROWS, COLS), np.uint8)
+for idx, (lo, hi) in enumerate([(0, 5), (5, 10), (10, 20), (20, 50), (50, 200), (200, 1e9)], start=1):
+    band[(depth > lo) & (depth <= hi)] = idx
+transform = from_origin(LONMIN, LATMAX, RES, RES)
+MINAREA = 4e-5                             # deg² — drop slivers (~a few km²)
+
+def rnd(o):
+    if isinstance(o, (list, tuple)): return [rnd(v) for v in o]
+    return round(o, 4) if isinstance(o, float) else o
+
+bfeat = []
+for geom, val in shapes(band, mask=(band > 0), transform=transform, connectivity=4):
+    poly = shp_shape(geom).simplify(SIMPLIFY)
+    if poly.is_empty or poly.area < MINAREA:
+        continue
+    g = mapping(poly); g["coordinates"] = rnd(g["coordinates"])
+    bfeat.append({"type": "Feature", "properties": {"b": int(val)}, "geometry": g})
+bout = os.path.join(os.path.dirname(__file__), "..", "public", "depth-bands.geojson")
+with open(bout, "w") as f:
+    json.dump({"type": "FeatureCollection", "features": bfeat}, f, separators=(",", ":"))
+print(f"wrote {bout}: {len(bfeat)} polygons, {os.path.getsize(bout)//1024} KB", flush=True)
