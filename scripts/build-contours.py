@@ -16,7 +16,7 @@ from shapely.geometry import LineString
 LATMIN, LATMAX = 35.9, 43.8
 LONMIN, LONMAX = -10.2, -5.2
 RES = 0.008                       # ~0.9 km — smooth, light contours
-LEVELS = [-10, -20, -50, -100, -200]
+LEVELS = [-5, -10, -20, -50, -100, -200]
 SIMPLIFY = 0.004                  # degrees (~0.25 km)
 MINLEN = 0.03                     # drop fragments shorter than ~1.8 km
 WCS = ("https://ows.emodnet-bathymetry.eu/wcs?service=WCS&version=2.0.1"
@@ -75,32 +75,3 @@ out = os.path.join(os.path.dirname(__file__), "..", "public", "depth-contours.ge
 with open(out, "w") as f:
     json.dump(fc, f, separators=(",", ":"))
 print(f"wrote {out}: {len(features)} lines, {os.path.getsize(out)//1024} KB", flush=True)
-
-# ---- filled depth-band POLYGONS (vector → crisp at any zoom, exact zone
-# boundaries). Polygonise a banded raster; land/no-data left out. ----
-from rasterio.features import shapes
-from rasterio.transform import from_origin
-from shapely.geometry import shape as shp_shape, mapping
-
-depth = -elev                              # positive = sea depth; <=0 = land/no-data
-band = np.zeros((ROWS, COLS), np.uint8)
-for idx, (lo, hi) in enumerate([(0, 5), (5, 10), (10, 20), (20, 50), (50, 200), (200, 1e9)], start=1):
-    band[(depth > lo) & (depth <= hi)] = idx
-transform = from_origin(LONMIN, LATMAX, RES, RES)
-MINAREA = 4e-5                             # deg² — drop slivers (~a few km²)
-
-def rnd(o):
-    if isinstance(o, (list, tuple)): return [rnd(v) for v in o]
-    return round(o, 4) if isinstance(o, float) else o
-
-bfeat = []
-for geom, val in shapes(band, mask=(band > 0), transform=transform, connectivity=4):
-    poly = shp_shape(geom).simplify(SIMPLIFY)
-    if poly.is_empty or poly.area < MINAREA:
-        continue
-    g = mapping(poly); g["coordinates"] = rnd(g["coordinates"])
-    bfeat.append({"type": "Feature", "properties": {"b": int(val)}, "geometry": g})
-bout = os.path.join(os.path.dirname(__file__), "..", "public", "depth-bands.geojson")
-with open(bout, "w") as f:
-    json.dump({"type": "FeatureCollection", "features": bfeat}, f, separators=(",", ":"))
-print(f"wrote {bout}: {len(bfeat)} polygons, {os.path.getsize(bout)//1024} KB", flush=True)

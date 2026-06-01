@@ -14,20 +14,17 @@ import { routePolyline } from "@/lib/searoute";
 
 type Cond = { wind: number; gust: number; wave: string; swell: string; power: number; verdict: VerdictV; eta: string; current: string };
 
-// Depth bands: shallow/danger (red) → safe to 20 m (green) → blue deep.
-// Vector zone polygons (public/depth-bands.geojson, band index `b` 1..6) with
-// graduated fill opacity — shallow stands out, deep stays faint.
-const DEPTH_BANDS = [
-  { b: 1, c: "#e5484d", o: 0.34, l: "0–5 m" },
-  { b: 2, c: "#f0883e", o: 0.30, l: "5–10" },
-  { b: 3, c: "#46a758", o: 0.26, l: "10–20" },
-  { b: 4, c: "#3db9c3", o: 0.20, l: "20–50" },
-  { b: 5, c: "#4a90d9", o: 0.13, l: "50–200" },
-  { b: 6, c: "#2a4b8d", o: 0.08, l: ">200 m" },
+// Bright isobath lines coloured by depth: 5 m dark-red (danger) → 20 m yellow
+// → cyan → blue. Self-generated (public/depth-contours.geojson, property `d`).
+const DEPTH_LINE = [
+  { d: 5, c: "#e11d2e", l: "5 m" },
+  { d: 10, c: "#ff8a00", l: "10" },
+  { d: 20, c: "#ffd400", l: "20" },
+  { d: 50, c: "#2ec6e6", l: "50" },
+  { d: 100, c: "#2f7fe6", l: "100" },
+  { d: 200, c: "#1f3f9e", l: "200 m" },
 ];
-const BAND_FILL: Record<number, { c: string; o: number }> = Object.fromEntries(
-  DEPTH_BANDS.map((b) => [b.b, { c: b.c, o: b.o }]),
-);
+const LINE_COLOR: Record<number, string> = Object.fromEntries(DEPTH_LINE.map((x) => [x.d, x.c]));
 
 export default function ChartView(props: {
   passageId: string; from: string; to: string; nm: number; wps: WP[];
@@ -96,16 +93,14 @@ export default function ChartView(props: {
         attribution: "© OSM © CARTO", maxZoom: 19, subdomains: "abcd",
       }).addTo(map);
 
-      // Depth: crisp VECTOR zone polygons (red shallow/danger → green safe to
-      // 20 m → blue deep) with graduated, light fill, thin isobath edge-lines,
-      // and on-map depth labels (shown when zoomed in). Drawn on a low canvas
-      // pane so the route + markers stay on top; land is left untouched.
+      // Depth: bright isobath lines coloured by depth (5 m dark-red danger →
+      // 20 m yellow → cyan → blue), with on-map labels (shown when zoomed in).
+      // On a low pane so the route + markers stay on top; land untouched.
       if (!map.getPane("depth")) {
         const p = map.createPane("depth");
         p.style.zIndex = "250";
         p.style.pointerEvents = "none";
       }
-      const depthCanvas = L.canvas({ pane: "depth", padding: 0.5 });
       const depthGroup = L.layerGroup();
       const labels = L.layerGroup();
       depthLayer.current = depthGroup;
@@ -115,18 +110,16 @@ export default function ChartView(props: {
         else map!.removeLayer(labels);
       };
       map.on("zoomend", syncLabels);
-      fetch("/depth-bands.geojson")
+      fetch("/depth-contours.geojson")
         .then((r) => r.json())
         .then((fc) => {
           L.geoJSON(fc, {
-            renderer: depthCanvas, pane: "depth", attribution: "© EMODnet Bathymetry",
-            style: (f) => { const b = BAND_FILL[f?.properties?.b] ?? { c: "#4a90d9", o: 0.1 }; return { stroke: false, fillColor: b.c, fillOpacity: b.o }; },
-          } as LType.GeoJSONOptions & { renderer: LType.Renderer }).addTo(depthGroup);
-          return fetch("/depth-contours.geojson");
-        })
-        .then((r) => r.json())
-        .then((fc) => {
-          L.geoJSON(fc, { renderer: depthCanvas, pane: "depth", style: () => ({ color: "#cfe3f5", weight: 0.6, opacity: 0.3 }) } as LType.GeoJSONOptions & { renderer: LType.Renderer }).addTo(depthGroup);
+            pane: "depth", attribution: "© EMODnet Bathymetry",
+            style: (f) => {
+              const d = f?.properties?.d as number;
+              return { color: LINE_COLOR[d] ?? "#2f7fe6", weight: d <= 5 ? 1.8 : d <= 20 ? 1.4 : 1.1, opacity: 0.9, lineJoin: "round" };
+            },
+          }).addTo(depthGroup);
           for (const ft of fc.features as { properties: { d: number }; geometry: { coordinates: [number, number][] } }[]) {
             const cs = ft.geometry.coordinates;
             const mid = cs[Math.floor(cs.length / 2)];
@@ -285,9 +278,9 @@ export default function ChartView(props: {
         <LayerToggle on={layers.depth} onClick={() => setLayers((s) => ({ ...s, depth: !s.depth }))} icon={<Waves size={15} />} label="Depth zones" c="var(--foam)" />
         {layers.depth && (
           <div className="depth-legend">
-            {DEPTH_BANDS.map((b) => (
-              <span key={b.l} className="depth-legend-item mono">
-                <i style={{ background: b.c }} />{b.l}
+            {DEPTH_LINE.map((x) => (
+              <span key={x.d} className="depth-legend-item mono">
+                <i style={{ background: x.c }} />{x.l}
               </span>
             ))}
           </div>
