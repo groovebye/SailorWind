@@ -40,6 +40,22 @@ interface Port {
   repairs: boolean;
   shelter: string | null;
   notes: string | null;
+  berthCount: number | null;
+  visitorBerths: number | null;
+  tier: string | null;
+  isMajor?: boolean;
+  inReeds?: boolean;
+  marinaFacilities?: { showers?: boolean; toilets?: boolean; laundry?: boolean; wifi?: boolean } | null;
+}
+
+// Marina quality/size rating (0–3 stars). Anchorages/bare points get none.
+// Weighted toward: is it a real marina, how big (berths), major hub, in Reeds.
+function marinaStars(p: Port): number {
+  if (p.type !== "marina") return 0;
+  const b = p.berthCount ?? 0;
+  if (p.isMajor || b >= 400) return 3;
+  if (b >= 120 || (p.inReeds && p.fuel && p.water)) return 2;
+  return 1;
 }
 
 type Step = 1 | 2;
@@ -263,6 +279,9 @@ export default function NewPassage() {
           <p className="dim" style={{ fontSize: 13, margin: "-4px 0 0" }}>
             Only your start and end are selected — a clean passage. The route rounds the headlands automatically through deep water. Tap any port to add it as a stop.
           </p>
+          <p className="faint mono" style={{ fontSize: 11, margin: "-8px 0 0", lineHeight: 1.5 }}>
+            <span style={{ color: "var(--caution)" }}>★</span> marina size / services (3★ = major hub) · <span style={{ color: "var(--foam)" }}>Reeds</span> = in the almanac · ⛽ fuel · 💧 water · 🔧 repairs · 🚿 showers
+          </p>
 
           {legs.length > 0 && (
             <div className="glass" style={{ padding: 18 }}>
@@ -286,6 +305,8 @@ export default function NewPassage() {
               const prevChecked = routePorts.slice(0, i).reverse().find((pp) => pp.checked && pp.type !== "cape");
               const distFromPrev = prevChecked ? Math.max(0, Math.round(p.dist - prevChecked.dist)) : 0;
               const nameColor = p.type === "cape" ? "var(--caution)" : p.type === "marina" ? "var(--go)" : "var(--fg)";
+              const stars = marinaStars(p);
+              const facilities = [p.fuel && "⛽", p.water && "💧", p.repairs && "🔧", p.marinaFacilities?.showers && "🚿"].filter(Boolean).join(" ");
               return (
                 <div
                   key={p.id}
@@ -298,16 +319,29 @@ export default function NewPassage() {
                   }}
                 >
                   <input type="checkbox" checked={p.checked} disabled={isStartEnd} onChange={() => togglePort(i)} style={{ accentColor: "var(--cyan)" }} />
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontWeight: 600, fontSize: 14, color: nameColor }}>{p.name}</span>
-                    <span className="faint mono" style={{ fontSize: 11, marginLeft: 8 }}>{p.type.toUpperCase()}</span>
-                    {p.fuel && <span className="faint" style={{ fontSize: 11, marginLeft: 6 }}>⛽</span>}
-                    {p.repairs && <span className="faint" style={{ fontSize: 11, marginLeft: 4 }}>🔧</span>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 600, fontSize: 14, color: nameColor }}>{p.name}</span>
+                      {stars > 0 && (
+                        <span style={{ fontSize: 11, letterSpacing: 0.5, whiteSpace: "nowrap" }} title={`Marina rating: ${stars}/3`}>
+                          <span style={{ color: "var(--caution)" }}>{"★".repeat(stars)}</span>
+                          <span style={{ color: "var(--fg-faint)", opacity: 0.35 }}>{"★".repeat(3 - stars)}</span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="faint mono" style={{ fontSize: 10.5, marginTop: 2, display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+                      <span>{p.type.toUpperCase()}</span>
+                      {p.berthCount ? <span>· {p.berthCount} berths</span> : null}
+                      {p.inReeds && <span style={{ color: "var(--foam)" }} title="Documented in the Reeds Almanac">· Reeds</span>}
+                      {facilities && <span style={{ letterSpacing: 1 }}>{facilities}</span>}
+                    </div>
                   </div>
-                  <span className="faint mono" style={{ fontSize: 11 }}>{Math.round(p.dist)} NM</span>
-                  {distFromPrev > 0 && (
-                    <span className="mono" style={{ fontSize: 11, color: distFromPrev > 50 ? "var(--nogo)" : "var(--fg-faint)" }}>+{distFromPrev} NM</span>
-                  )}
+                  <div className="mono" style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div className="faint" style={{ fontSize: 11 }}>{Math.round(p.dist)} NM</div>
+                    {distFromPrev > 0 && (
+                      <div style={{ fontSize: 10, color: distFromPrev > 50 ? "var(--nogo)" : "var(--fg-faint)" }}>+{distFromPrev}</div>
+                    )}
+                  </div>
                 </div>
               );
             })}
