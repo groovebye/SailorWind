@@ -3,6 +3,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowLeft } from "lucide-react";
+import { routePolyline } from "@/lib/searoute";
+import { haversineNm, type LatLon } from "@/lib/geo";
+
+// Along-track distance (nm) of a port on the departure→destination route:
+// project the port onto the routed polyline and read the cumulative distance.
+function alongTrackNm(p: { lat: number; lon: number }, line: LatLon[], cum: number[]): number {
+  let best = 0, bestD = Infinity;
+  for (let i = 0; i < line.length - 1; i++) {
+    const a = line[i], b = line[i + 1];
+    const k = Math.cos((((a[0] + b[0]) / 2) * Math.PI) / 180);
+    const ax = a[1] * k, ay = a[0], bx = b[1] * k, by = b[0], px = p.lon * k, py = p.lat;
+    const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
+    let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+    t = Math.max(0, Math.min(1, t));
+    const d = haversineNm([p.lat, p.lon], [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    if (d < bestD) { bestD = d; best = cum[i] + t * (cum[i + 1] - cum[i]); }
+  }
+  return best;
+}
 
 interface Port {
   id: string;
@@ -39,7 +58,7 @@ export default function NewPassage() {
   const [model, setModel] = useState("ecmwf_ifs025");
 
   // Step 2 state
-  const [routePorts, setRoutePorts] = useState<(Port & { checked: boolean })[]>([]);
+  const [routePorts, setRoutePorts] = useState<(Port & { checked: boolean; dist: number })[]>([]);
   const [saving, setSaving] = useState(false);
 
   // Set default departure to tomorrow 08:00. Done in an effect (not a lazy
@@ -77,11 +96,20 @@ export default function NewPassage() {
       .filter((p) => p.type !== "cape" && p.coastlineNm >= minNm && p.coastlineNm <= maxNm)
       .sort((a, b) => a.coastlineNm - b.coastlineNm);
 
+    // Real routed distances from the departure (not coastlineNm ordering): run
+    // the A* sea route once for from→to, then project each candidate onto it for
+    // its along-track distance. Departure = 0; destination = the true total.
+    const line = routePolyline([{ lat: from.lat, lon: from.lon }, { lat: to.lat, lon: to.lon }]);
+    const cum = [0];
+    for (let i = 1; i < line.length; i++) cum[i] = cum[i - 1] + haversineNm(line[i - 1], line[i]);
+    const total = cum[cum.length - 1] ?? 0;
+
     // Default selection: ONLY start + end. No intermediate ports are pre-checked
     // — the skipper adds stops deliberately; everything else is a clean passage.
     const checked = between.map((p) => ({
       ...p,
       checked: p.id === fromPort || p.id === toPort,
+      dist: p.id === fromPort ? 0 : p.id === toPort ? total : alongTrackNm(p, line, cum),
     }));
 
     setRoutePorts(checked);
@@ -108,7 +136,7 @@ export default function NewPassage() {
     const stops = routePorts.filter((p) => p.checked && p.type !== "cape");
     const legs = [];
     for (let i = 0; i < stops.length - 1; i++) {
-      const nm = stops[i + 1].coastlineNm - stops[i].coastlineNm;
+      const nm = Math.max(0, stops[i + 1].dist - stops[i].dist);
       const hours = nm / speed;
       legs.push({
         from: stops[i].name,
@@ -256,7 +284,7 @@ export default function NewPassage() {
             {routePorts.map((p, i) => {
               const isStartEnd = i === 0 || i === routePorts.length - 1;
               const prevChecked = routePorts.slice(0, i).reverse().find((pp) => pp.checked && pp.type !== "cape");
-              const distFromPrev = prevChecked ? p.coastlineNm - prevChecked.coastlineNm : 0;
+              const distFromPrev = prevChecked ? Math.max(0, Math.round(p.dist - prevChecked.dist)) : 0;
               const nameColor = p.type === "cape" ? "var(--caution)" : p.type === "marina" ? "var(--go)" : "var(--fg)";
               return (
                 <div
@@ -276,7 +304,7 @@ export default function NewPassage() {
                     {p.fuel && <span className="faint" style={{ fontSize: 11, marginLeft: 6 }}>⛽</span>}
                     {p.repairs && <span className="faint" style={{ fontSize: 11, marginLeft: 4 }}>🔧</span>}
                   </div>
-                  <span className="faint mono" style={{ fontSize: 11 }}>{p.coastlineNm} NM</span>
+                  <span className="faint mono" style={{ fontSize: 11 }}>{Math.round(p.dist)} NM</span>
                   {distFromPrev > 0 && (
                     <span className="mono" style={{ fontSize: 11, color: distFromPrev > 50 ? "var(--nogo)" : "var(--fg-faint)" }}>+{distFromPrev} NM</span>
                   )}
