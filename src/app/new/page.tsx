@@ -48,14 +48,16 @@ interface Port {
   marinaFacilities?: { showers?: boolean; toilets?: boolean; laundry?: boolean; wifi?: boolean } | null;
 }
 
-// Marina quality/size rating (0–3 stars). Anchorages/bare points get none.
-// Weighted toward: is it a real marina, how big (berths), major hub, in Reeds.
+// Marina size rating (0–3 stars) — driven by berth count so the big harbours
+// stand out from small ones. Anchorages/bare points get none. "In Reeds" and
+// facilities are shown separately (a Reeds mark + ⛽💧🔧🚿 icons), not folded
+// into the stars, so the three signals stay distinct.
 function marinaStars(p: Port): number {
   if (p.type !== "marina") return 0;
   const b = p.berthCount ?? 0;
-  if (p.isMajor || b >= 400) return 3;
-  if (b >= 120 || (p.inReeds && p.fuel && p.water)) return 2;
-  return 1;
+  if (p.isMajor || b >= 400) return 3; // major hub / large marina
+  if (b >= 150) return 2;              // solid marina (Muxía 232, Muros 210…)
+  return 1;                            // small / unknown-size marina
 }
 
 type Step = 1 | 2;
