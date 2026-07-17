@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { alongRouteNm } from "@/lib/searoute";
 import PassageCockpit from "./_cockpit/PassageCockpit";
 
 export const dynamic = "force-dynamic";
@@ -22,8 +23,44 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
     orcaRisk: w.port.orcaRisk,
   }));
   const stops = passage.waypoints.filter((w) => w.isStop);
-  const from = (stops[0] ?? passage.waypoints[0])?.port.name ?? "?";
-  const to = (stops[stops.length - 1] ?? passage.waypoints[passage.waypoints.length - 1])?.port.name ?? "?";
+  const fromWp = stops[0] ?? passage.waypoints[0];
+  const toWp = stops[stops.length - 1] ?? passage.waypoints[passage.waypoints.length - 1];
+  const from = fromWp?.port.name ?? "?";
+  const to = toWp?.port.name ?? "?";
+
+  // Bail-out ports: every catalogued shelter (marina/port/anchorage, not a cape)
+  // between the start and finish, with its along-track distance and shelter note.
+  let refuges: {
+    name: string; slug: string; type: string; dist: number;
+    berthCount: number | null; maxDraft: number | null;
+    fuel: boolean; water: boolean; repairs: boolean; showers: boolean;
+    inReeds: boolean; notes: string | null;
+  }[] = [];
+  if (fromWp && toWp) {
+    const fp = fromWp.port, tp = toWp.port;
+    const lo = Math.min(fp.coastlineNm, tp.coastlineNm);
+    const hi = Math.max(fp.coastlineNm, tp.coastlineNm);
+    const cand = await prisma.port.findMany({
+      where: { type: { not: "cape" }, coastlineNm: { gte: lo, lte: hi }, slug: { notIn: [fp.slug, tp.slug] } },
+      orderBy: { coastlineNm: "asc" },
+    });
+    const reeds = new Set(
+      (await prisma.portArea.findMany({ where: { inReeds: true }, select: { slug: true } })).map((a) => a.slug),
+    );
+    const dists = alongRouteNm(
+      { lat: fp.lat, lon: fp.lon }, { lat: tp.lat, lon: tp.lon },
+      cand.map((p) => ({ lat: p.lat, lon: p.lon })),
+    );
+    refuges = cand
+      .map((p, i) => ({
+        name: p.name, slug: p.slug, type: p.type, dist: Math.round(dists[i]),
+        berthCount: p.berthCount, maxDraft: p.maxDraft,
+        fuel: p.fuel, water: p.water, repairs: p.repairs,
+        showers: (p.marinaFacilities as { showers?: boolean } | null)?.showers ?? false,
+        inReeds: reeds.has(p.slug), notes: p.notes,
+      }))
+      .sort((a, b) => a.dist - b.dist);
+  }
 
   // Resolve the vessel name (defaults to Bossanova when unset).
   let boat = "Bossanova";
@@ -47,6 +84,7 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
       mode={passage.mode}
       model={passage.model}
       wps={wps}
+      refuges={refuges}
     />
   );
 }

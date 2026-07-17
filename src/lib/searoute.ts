@@ -189,3 +189,28 @@ export function routeDistanceNm(wps: LL[]): number {
   for (let i = 1; i < line.length; i++) total += haversineNm(line[i - 1], line[i]);
   return total;
 }
+
+/**
+ * Along-track distance (nm from `from`) of each point, projected onto the routed
+ * from→to polyline. One A* run, then cheap projection per point. Useful for
+ * "how far along the passage is this port" (bail-out ports, waypoint list).
+ */
+export function alongRouteNm(from: LL, to: LL, pts: LL[]): number[] {
+  const line = routePolyline([from, to]);
+  const cum: number[] = [0];
+  for (let i = 1; i < line.length; i++) cum[i] = cum[i - 1] + haversineNm(line[i - 1], line[i]);
+  return pts.map((p) => {
+    let best = 0, bestD = Infinity;
+    for (let i = 0; i < line.length - 1; i++) {
+      const a = line[i], b = line[i + 1];
+      const k = Math.cos((((a[0] + b[0]) / 2) * Math.PI) / 180);
+      const ax = a[1] * k, ay = a[0], bx = b[1] * k, by = b[0], px = p.lon * k, py = p.lat;
+      const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+      let t = l2 ? ((px - ax) * dx + (py - ay) * dy) / l2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      const d = haversineNm([p.lat, p.lon], [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+      if (d < bestD) { bestD = d; best = cum[i] + t * (cum[i + 1] - cum[i]); }
+    }
+    return best;
+  });
+}

@@ -8,7 +8,7 @@ import {
   AlertTriangle, MapPin, Radio, Triangle, Anchor, Clock, Sun, Moon, Sunrise, ChevronRight,
 } from "lucide-react";
 import { Verdict } from "@/components/design/Primitives";
-import { windColor, bfColor, beaufort, overallVerdict, type VerdictV } from "@/components/design/helpers";
+import { windColor, bfColor, beaufort, overallVerdict, marinaStars, type VerdictV } from "@/components/design/helpers";
 import AICoskipper from "./AICoskipper";
 import MetarCard from "./MetarCard";
 import { nearestAirport } from "./airports";
@@ -23,9 +23,16 @@ const VC_HEX: Record<VerdictV, string> = { GO: "#36d399", CAUTION: "#ffc24b", NO
 const fmtHM = (epoch: number | null): string =>
   epoch == null ? "—" : new Date(epoch).toLocaleString("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: false });
 
+type Refuge = {
+  name: string; slug: string; type: string; dist: number;
+  berthCount: number | null; maxDraft: number | null;
+  fuel: boolean; water: boolean; repairs: boolean; showers: boolean;
+  inReeds: boolean; notes: string | null;
+};
+
 export default function PassageCockpit(props: {
   passageId: string; from: string; to: string; boat: string; boatModel: string;
-  speed: number; mode: string; model: string; wps: WP[];
+  speed: number; mode: string; model: string; wps: WP[]; refuges?: Refuge[];
 }) {
   const { wps } = props;
   const [depIdx, setDepIdx] = useState(0);
@@ -361,6 +368,49 @@ export default function PassageCockpit(props: {
                     </div>
                   </Link>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* bail-out ports — every catalogued shelter along the route */}
+          {props.refuges && props.refuges.length > 0 && (
+            <div className="glass fade-up" style={{ padding: 22, animationDelay: ".24s" }}>
+              <div className="center gap-10" style={{ marginBottom: 14 }}>
+                <div className="sec-icon" style={{ width: 32, height: 32 }}><Anchor size={16} /></div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 16 }}>Bail-out ports · {props.refuges.length}</div>
+                  <div className="faint mono" style={{ fontSize: 11 }}>every catalogued shelter between {props.from} and {props.to} — where to duck in</div>
+                </div>
+              </div>
+              <div className="col gap-8">
+                {props.refuges.map((r) => {
+                  const st = marinaStars(r);
+                  const fac = [r.fuel && "⛽", r.water && "💧", r.repairs && "🔧", r.showers && "🚿"].filter(Boolean).join(" ");
+                  return (
+                    <div key={r.slug} style={{ padding: "10px 12px", borderRadius: 11, background: "rgba(255,255,255,0.03)", border: "1px solid var(--glass-border)" }}>
+                      <div className="between" style={{ gap: 8, flexWrap: "wrap" }}>
+                        <div className="center gap-8" style={{ flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 600, fontSize: 14, color: r.type === "marina" ? "var(--go)" : "var(--fg)" }}>{r.name}</span>
+                          {st > 0 && (
+                            <span style={{ fontSize: 11 }} title={`Marina size: ${st}/3`}>
+                              <span style={{ color: "var(--caution)" }}>{"★".repeat(st)}</span>
+                              <span style={{ color: "var(--fg-faint)", opacity: 0.35 }}>{"★".repeat(3 - st)}</span>
+                            </span>
+                          )}
+                          {r.inReeds && <span className="mono" style={{ fontSize: 10, color: "var(--foam)" }} title="Documented in the Reeds Almanac">Reeds</span>}
+                        </div>
+                        <span className="mono faint" style={{ fontSize: 12 }}>{r.dist} NM</span>
+                      </div>
+                      <div className="faint mono" style={{ fontSize: 10.5, marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <span>{r.type.toUpperCase()}</span>
+                        {r.berthCount ? <span>· {r.berthCount} berths</span> : null}
+                        {r.maxDraft ? <span>· {r.maxDraft} m</span> : null}
+                        {fac && <span style={{ letterSpacing: 1 }}>{fac}</span>}
+                      </div>
+                      {r.notes && <div className="dim" style={{ fontSize: 11.5, marginTop: 5, lineHeight: 1.45 }}>{r.notes}</div>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

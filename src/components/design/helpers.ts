@@ -41,3 +41,12 @@ export function overallVerdict(verdicts: VerdictV[]): VerdictV {
   if (verdicts.some((v) => v === "CAUTION")) return "CAUTION";
   return "GO";
 }
+
+/** Marina size rating (0–3 stars) by berth count. Non-marinas get none. */
+export function marinaStars(p: { type: string; berthCount?: number | null; isMajor?: boolean }): number {
+  if (p.type !== "marina") return 0;
+  const b = p.berthCount ?? 0;
+  if (p.isMajor || b >= 400) return 3; // major hub / large marina
+  if (b >= 150) return 2;              // solid marina
+  return 1;                            // small / unknown-size marina
+}
