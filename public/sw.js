@@ -2,7 +2,8 @@
  * Strategy:
  *  - app shell + Next static assets: cache-first
  *  - navigations: network-first, fall back to cached page, then /offline
- *  - same-origin GET /api/*: stale-while-revalidate (briefings/forecast/tides work offline)
+ *  - same-origin GET /api/*: stale-while-revalidate (briefings/forecast/tides work offline),
+ *    except NETWORK_FIRST paths (catalog, leg route, GPX export, departure windows)
  *  - map tiles (Carto/OSM/OpenSeaMap/EMODnet): cache-first, capped LRU
  *  POSTs are never cached — live-fetch features degrade; cached GETs + the
  *  forecast pre-warm cron are the offline data path.
@@ -13,6 +14,7 @@ const RUNTIME = `sw-runtime-${VERSION}`;
 const TILES = `sw-tiles-${VERSION}`;
 const TILE_MAX = 800;
 const PRECACHE = ["/", "/offline", "/icon.svg"];
+const NETWORK_FIRST = new Set(["/api/ports", "/api/port-areas", "/api/leg-route", "/api/export", "/api/departure-windows"]);
 
 const TILE_HOSTS = [
   "basemaps.cartocdn.com", "cartodb-basemaps", "tile.openstreetmap.org",
@@ -92,10 +94,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Same-origin API GETs. Catalog lists must be current → network-first (fall back
-  // to cache offline). Heavy/derived data (forecast, tides, lore) → stale-while-revalidate.
+  // Same-origin API GETs. Catalog lists, the leg route, GPX exports (they go to
+  // the plotter) and departure windows must be current → network-first (fall
+  // back to cache offline). Heavy/derived data (forecast, tides, lore) → stale-while-revalidate.
   if (url.pathname.startsWith("/api/")) {
-    const networkFirst = url.pathname === "/api/ports" || url.pathname === "/api/port-areas";
+    const networkFirst = NETWORK_FIRST.has(url.pathname);
     event.respondWith((async () => {
       const c = await caches.open(RUNTIME);
       if (networkFirst) {
