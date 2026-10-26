@@ -8,7 +8,15 @@ export default function SwRegister() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {});
+      // Dev chunk URLs aren't content-hashed, so a cache-first SW would serve
+      // stale code after every edit. Off in dev unless NEXT_PUBLIC_SW_DEV=1.
+      if (process.env.NODE_ENV === "production" || process.env.NEXT_PUBLIC_SW_DEV === "1") {
+        navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {});
+        // Top up the offline copy of this build's JS/CSS (new files after a deploy).
+        navigator.serviceWorker.ready.then((reg) => reg.active?.postMessage({ type: "precache" })).catch(() => {});
+      } else {
+        navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister())).catch(() => {});
+      }
     }
     const update = () => setOffline(!navigator.onLine);
     update();

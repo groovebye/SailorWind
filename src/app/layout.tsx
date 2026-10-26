@@ -33,6 +33,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#03080f",
+  // Full-screen PWA on the iPad (black-translucent status bar): draw under the
+  // status bar and pad with env(safe-area-inset-*) in CSS.
+  viewportFit: "cover",
 };
 
 async function getActivePassageId(): Promise<string | null> {
