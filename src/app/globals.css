@@ -225,6 +225,9 @@ body {
 .data-table tbody tr { transition: background 0.14s; cursor: pointer; }
 .data-table tbody tr:hover { background: var(--glass); }
 .data-table .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+/* Dense numeric tables (e.g. departure windows): one line per cell. */
+.data-table.compact th, .data-table.compact td { padding: 8px 9px; white-space: nowrap; }
+.data-table.compact td { font-size: 12.5px; }
 
 /* ===================== Inputs ===================== */
 .input, .select {
