@@ -1,6 +1,7 @@
 "use client";
 
 import { MapContainer, TileLayer, CircleMarker, Polyline, Polygon, Tooltip, useMap } from "react-leaflet";
+import { DARK_TILE_CLASS, OSM_ATTR, OSM_TILE_URL, SEAMARKS } from "@/lib/map-layers";
 import { useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -63,11 +64,11 @@ export default function MarinaMiniMap({ features, center, name }: {
   return (
     <div className="rounded-lg overflow-hidden" style={{ border: `1px solid var(--border-light)` }}>
       <MapContainer center={center} zoom={16} className="w-full" style={{ height: 240, background: "#0f172a" }}
-        zoomControl={false} attributionControl={false}>
+        zoomControl={false}>
         <FitToFeatures features={features} center={center} />
 
-        <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
-        <TileLayer url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png" opacity={0.8} />
+        <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTR} className={DARK_TILE_CLASS} />
+        <TileLayer url={SEAMARKS.url} attribution={SEAMARKS.attribution} opacity={0.8} />
 
         {features.map((f, i) => {
           if (!f.geometry?.coordinates) return null;

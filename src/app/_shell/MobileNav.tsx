@@ -13,7 +13,7 @@ export default function MobileNav({ activeId }: { activeId?: string | null }) {
   const items: [string, string, React.ReactNode, boolean][] = [
     ["/", "Home", <Compass key="h" size={19} />, onHome],
     [activeId ? `/p/${activeId}` : "/", "Passage", <Route key="p" size={19} />, onPassage],
-    [activeId ? `/p/${activeId}/map` : "/", "Chart", <Map key="c" size={19} />, onChart],
+    [activeId ? `/map?p=${activeId}` : "/map", "Map", <Map key="c" size={19} />, onChart],
   ];
   return (
     <nav className="mobile-nav">

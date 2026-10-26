@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import { buildSeaRoute } from "@/lib/coastline";
 import type { FeatureCollection } from "geojson";
 import { getStaticSeamarks, type StaticSeamark } from "@/lib/seamarks-static";
+import { DARK_TILE_CLASS, OSM_ATTR, OSM_TILE_URL, SEAMARKS } from "@/lib/map-layers";
 
 interface Port {
   name: string; lat: number; lon: number; type: string;
@@ -16,8 +17,6 @@ interface Waypoint { port: Port; isStop: boolean; isCape: boolean; }
 interface Hazard { name: string; lat: number; lon: number; type: string; severity: string; description: string; }
 interface Milestone { name: string; lat: number; lon: number; eta_offset_hours: number; bearing: string | null; visual_ref: string; type: string; notes?: string; }
 
-const DARK_TILES = "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
-const LIGHT_TILES = "https://{s}.basemaps.cartocdn.com/voyager/{z}/{x}/{y}{r}.png";
 const COLORS: Record<string, string> = {
   cape: "#facc15", marina: "#4ade80", port: "#60a5fa", anchorage: "#c084fc",
 };
@@ -127,7 +126,6 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
     routePositions = merged;
   }
 
-  const tileUrl = theme === "light" ? LIGHT_TILES : DARK_TILES;
   const legBounds = positions.length > 1
     ? L.latLngBounds(positions.map(p => L.latLng(p[0], p[1])))
     : null;
@@ -142,7 +140,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
       style={{ background: theme === "dark" ? "#0f172a" : "#f8fafc" }}>
       <FitBounds positions={routePositions.length > 0 ? routePositions : positions} />
 
-      <TileLayer url={tileUrl} attribution='&copy; OSM &copy; CARTO' />
+      <TileLayer url={OSM_TILE_URL} attribution={OSM_ATTR} className={theme === "light" ? undefined : DARK_TILE_CLASS} />
 
       {/* Depth contours (5/10/20/50/100/200m) from static GeoJSON — stable, no flicker */}
       {contours && (
@@ -172,7 +170,8 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
 
       {/* OpenSeaMap seamark tiles — may be unavailable (external service) */}
       <TileLayer
-        url="https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png"
+        url={SEAMARKS.url}
+        attribution={SEAMARKS.attribution}
         opacity={0.85}
         eventHandlers={{ tileerror: () => {
           if (!seamarksFailed) {

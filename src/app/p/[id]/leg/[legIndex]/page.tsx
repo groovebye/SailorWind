@@ -7,8 +7,9 @@ import dynamic from "next/dynamic";
 import { useTheme } from "@/lib/theme";
 import type { ForecastEntry } from "@/lib/weather";
 import { buildClientSchedule, toLocalInputValue } from "@/lib/passage-schedule-client";
-import { fitImportedRoute, parseGpx, pickImportRoute } from "@/lib/gpx";
-import DepartureWindows from "./DepartureWindows";
+import { prepareLegImport } from "@/lib/gpx";
+import { legRouteUrl } from "@/lib/offline-plan";
+import DepartureWindows from "@/components/DepartureWindows";
 
 const LegMap = dynamic(() => import("./LegMap"), { ssr: false });
 const MarinaMiniMap = dynamic(() => import("@/components/MarinaMiniMap"), { ssr: false });
@@ -366,7 +367,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     const fp = fromPort!;
     const dp = dest!;
     const c = new AbortController();
-    fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${encodeURIComponent(fp.name)}&fromLat=${fp.lat}&fromLon=${fp.lon}&toName=${encodeURIComponent(dp.name)}&toLat=${dp.lat}&toLon=${dp.lon}`, { signal: c.signal })
+    fetch(legRouteUrl(id, { index: legIndex, from: fp, to: dp }), { signal: c.signal })
       .then(r => r.json()).then(d => {
         if (d.mode) setRouteMode(d.mode);
         if (d.points?.length >= 2) {
@@ -489,34 +490,23 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   async function handleImportGpx(file: File) {
     const fp = fromPort, dp = dest;
     if (!fp || !dp) return;
-    let picked: ReturnType<typeof pickImportRoute>;
-    try {
-      picked = pickImportRoute(parseGpx(await file.text()));
-    } catch (e) {
-      setImportNote(`${file.name}: ${e instanceof Error ? e.message : "could not read"}`);
-      return;
-    }
-    if (!picked) { setImportNote(`${file.name}: no route, track or waypoints found`); return; }
-    const fitted = fitImportedRoute(picked.points, fp, dp);
-    if ("error" in fitted) { setImportNote(`${file.name}: ${fitted.error}`); return; }
-
-    const label = picked.name ?? file.name;
-    const nm = polylineDistanceNm(fitted.points);
-    const summary = `"${label}" — ${picked.source}, ${fitted.points.length} pts, ${nm.toFixed(1)} NM`;
-    if (!window.confirm(`Replace this leg's route with ${summary}?${fitted.warnings.length ? `\n\n${fitted.warnings.join("\n")}` : ""}`)) return;
+    const prepared = prepareLegImport(await file.text(), file.name, fp, dp);
+    if (!prepared.ok) { setImportNote(prepared.error); return; }
+    const { summary, warnings } = prepared;
+    if (!window.confirm(`Replace this leg's route with ${summary}?${warnings.length ? `\n\n${warnings.join("\n")}` : ""}`)) return;
 
     const response = await fetch("/api/leg-route", {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ passageId: id, legIndex, points: fitted.points, notes: `Imported from GPX: ${label}` }),
+      body: JSON.stringify({ passageId: id, legIndex, points: prepared.points, notes: `Imported from GPX: ${prepared.label}` }),
     });
     if (!response.ok) { setImportNote(`${file.name}: save failed`); return; }
 
-    setResolvedRoutePoints(fitted.points.map(p => ({ lat: p.lat, lon: p.lon })));
-    setResolvedRouteDistanceNm(nm);
+    setResolvedRoutePoints(prepared.points.map(p => ({ lat: p.lat, lon: p.lon })));
+    setResolvedRouteDistanceNm(prepared.distanceNm);
     setRouteMode("manual");
     setTimelineData(null);
     setRouteRefreshKey((prev) => prev + 1);
-    setImportNote(`Imported ${summary}${fitted.warnings.length ? ` · ${fitted.warnings.join(" · ")}` : ""}`);
+    setImportNote(`Imported ${summary}${warnings.length ? ` · ${warnings.join(" · ")}` : ""}`);
   }
 
   async function handleResetRoute() {

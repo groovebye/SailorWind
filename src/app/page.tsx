@@ -106,7 +106,7 @@ export default async function Home() {
             <div className="flex gap-12 wrap">
               <Link href="/new" className="btn btn-primary btn-lg"><Plus size={18} /> New passage</Link>
               {activeId && (
-                <Link href={`/p/${activeId}/map`} className="btn btn-lg"><MapIcon size={18} /> Open chart</Link>
+                <Link href={`/map?p=${activeId}`} className="btn btn-lg"><MapIcon size={18} /> Open map</Link>
               )}
             </div>
             <HeroStats passages={cards.length} nm={totalNm} ports={ports.length} />

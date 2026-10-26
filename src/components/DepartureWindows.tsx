@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { DepartureWindowsResult, DepartureWindowRow, ScenarioOutcome, WindowTag } from "@/lib/departure-windows";
+import { departureWindowsUrl } from "@/lib/offline-plan";
 
 type Response = DepartureWindowsResult & {
   leg: { from: string; to: string; distanceNm: number };
@@ -76,7 +77,7 @@ export default function DepartureWindows({ passageId, legIndex, refreshKey = 0, 
   useEffect(() => {
     if (!open) return;
     const c = new AbortController();
-    fetch(`/api/departure-windows?passageId=${passageId}&legIndex=${legIndex}&stepHours=${stepHours}&count=${count}`, { signal: c.signal })
+    fetch(departureWindowsUrl(passageId, legIndex, stepHours, count), { signal: c.signal })
       .then((r) => r.json())
       .then((d) => setResult(d.error ? { key, data: null, error: d.error } : { key, data: d, error: null }))
       .catch((e) => { if (e.name !== "AbortError") setResult({ key, data: null, error: "Could not load departure windows" }); });
