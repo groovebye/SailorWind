@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getLegRoute } from "@/lib/leg-route";
 import { prisma } from "@/lib/db";
+import { asciiName, buildGpx, plotterRoutes, type ExportLeg } from "@/lib/gpx";
 
 /**
  * GPX Export API
- * GET /api/export?passageId=&legIndex=&format=gpx
+ * GET /api/export?passageId=&legIndex=
  *
- * Exports route as GPX file for Navionics/OpenCPN/etc.
+ * Plotter-safe GPX 1.1 for the Raymarine Axiom (LightHouse, via microSD) and
+ * Navionics Boating: one <rte> per leg, short ASCII point names, long routes
+ * split into parts (see lib/gpx). Omit legIndex for the whole passage.
  */
 export async function GET(req: NextRequest) {
   const passageId = req.nextUrl.searchParams.get("passageId");
@@ -28,82 +31,34 @@ export async function GET(req: NextRequest) {
   }
 
   const stops = passage.waypoints.filter(w => w.isStop);
-
-  // Export single leg or full passage
-  let routePoints: { lat: number; lon: number; name?: string }[] = [];
-  let routeName = passage.name || "SailorWind Passage";
-
-  if (legIndexStr !== null && legIndexStr !== undefined) {
-    const legIndex = parseInt(legIndexStr, 10);
-    if (legIndex >= 0 && legIndex < stops.length - 1) {
-      const from = stops[legIndex].port;
-      const to = stops[legIndex + 1].port;
-      routeName = `${from.name} → ${to.name}`;
-
-      const route = await getLegRoute(
-        passage.id, legIndex,
-        { name: from.name, lat: from.lat, lon: from.lon },
-        { name: to.name, lat: to.lat, lon: to.lon },
-      );
-      routePoints = route.points.map((p, i) => ({
-        lat: p.lat, lon: p.lon,
-        name: i === 0 ? from.name : i === route.points.length - 1 ? to.name : `WP${i}`,
-      }));
-    }
-  } else {
-    // Full passage — concatenate all leg routes
-    for (let i = 0; i < stops.length - 1; i++) {
-      const from = stops[i].port;
-      const to = stops[i + 1].port;
-      const route = await getLegRoute(
-        passage.id, i,
-        { name: from.name, lat: from.lat, lon: from.lon },
-        { name: to.name, lat: to.lat, lon: to.lon },
-      );
-      const pts = route.points.map((p, j) => ({
-        lat: p.lat, lon: p.lon,
-        name: j === 0 ? from.name : j === route.points.length - 1 ? to.name : undefined,
-      }));
-      if (routePoints.length > 0) routePoints.push(...pts.slice(1));
-      else routePoints.push(...pts);
-    }
+  const legIndexes = legIndexStr !== null
+    ? [parseInt(legIndexStr, 10)]
+    : stops.slice(0, -1).map((_, i) => i);
+  if (legIndexes.some(i => !(i >= 0 && i < stops.length - 1))) {
+    return NextResponse.json({ error: "legIndex out of range" }, { status: 400 });
   }
 
-  // Build GPX XML
-  const gpx = buildGPX(routeName, routePoints);
+  const legs: ExportLeg[] = [];
+  for (const i of legIndexes) {
+    const from = stops[i].port;
+    const to = stops[i + 1].port;
+    const route = await getLegRoute(
+      passage.id, i,
+      { name: from.name, lat: from.lat, lon: from.lon },
+      { name: to.name, lat: to.lat, lon: to.lon },
+    );
+    legs.push({ from: from.name, to: to.name, points: route.points });
+  }
+
+  const name = legIndexStr !== null
+    ? `${legs[0].from}-${legs[0].to}`
+    : passage.name || `${legs[0]?.from ?? "SailorWind"}-${legs[legs.length - 1]?.to ?? "Passage"}`;
+  const gpx = buildGpx({ name, routes: plotterRoutes(legs) });
 
   return new NextResponse(gpx, {
     headers: {
       "Content-Type": "application/gpx+xml",
-      "Content-Disposition": `attachment; filename="${routeName.replace(/[^a-zA-Z0-9]/g, "_")}.gpx"`,
+      "Content-Disposition": `attachment; filename="${asciiName(name, 40).replace(/[^A-Za-z0-9_-]+/g, "_")}.gpx"`,
     },
   });
-}
-
-function buildGPX(name: string, points: { lat: number; lon: number; name?: string }[]): string {
-  const now = new Date().toISOString();
-  const wpts = points.filter(p => p.name).map(p =>
-    `  <wpt lat="${p.lat}" lon="${p.lon}"><name>${escXml(p.name!)}</name></wpt>`
-  ).join("\n");
-
-  const rtepts = points.map(p =>
-    `    <rtept lat="${p.lat}" lon="${p.lon}">${p.name ? `<name>${escXml(p.name)}</name>` : ""}</rtept>`
-  ).join("\n");
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="SailorWind" xmlns="http://www.topografix.com/GPX/1/1">
-  <metadata>
-    <name>${escXml(name)}</name>
-    <time>${now}</time>
-  </metadata>
-${wpts}
-  <rte>
-    <name>${escXml(name)}</name>
-${rtepts}
-  </rte>
-</gpx>`;
-}
-
-function escXml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
