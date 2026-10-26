@@ -2,6 +2,11 @@
 
 _Decisions recorded 2026-10-26, from the Sailing knowledge-base session with Alex. Licence and terms checks were done the same day. Companion: [roadmap-planning-brain.md](roadmap-planning-brain.md)._
 
+> **Update, later on 2026-10-26: personal use only.** SailorWind is now Alex's personal sailing hub, a PWA on the iPad and the Mac. There is no App Store and no public release ([spec-sailing-hub.md](spec-sailing-hub.md)).
+> - §2 (App Store / public-release constraints) and the EU product-liability notes are dormant. They come back only if a release is reconsidered.
+> - The data terms in §4 still apply. Personal use counts as non-commercial, so the free OSM, OpenSeaMap, Open-Meteo and EMODnet tiers fit.
+> - The tile etiquette still applies: attribution, no bulk or offline area downloads, and caching only what was viewed.
+
 ## 1. Positioning
 
 - **SailorWind is a passage-planning tool, not a chartplotter.** It does not compete with Navionics on charts.
@@ -133,7 +138,7 @@ Terms that matter:
 |---|---|---|---|
 | **OSM tiles** ([policy](https://operations.osmfoundation.org/policies/tiles/)) | No bulk "scraping", no prefetch, no .mbtiles, **no "download for offline"**. Attribution, a unique User-Agent and honouring cache headers are required. No SLA. | `sw.js` caches `tile.openstreetmap.org` tiles cache-first (LRU 800). Only viewed tiles, but an offline cache is exactly the grey zone. | Self-host or use a provider that permits offline use. Drop OSM hosts from the tile cache. |
 | **OpenSeaMap** ([FAQ](https://www.openseamap.org/index.php?id=faq&L=1)) | Tiles CC BY-SA 2.0, data ODbL. Commercial use is OK with attribution and share-alike. **No published tile-usage policy found.** | Seamark overlay from `tiles.openseamap.org`, also in the SW tile cache. **No "OpenSeaMap" attribution on the layer.** `MarinaMiniMap` sets `attributionControl={false}`, so there is **no attribution at all** there. | Add "© OpenStreetMap contributors, OpenSeaMap" on every map. Ask the project before any offline use. |
-| **CARTO basemaps** | Free tier is commonly described as non-commercial with a mapview cap. **Unverified here; check CARTO's terms.** | Default dark/voyager basemap. | Verify; budget for a commercial basemap or self-host. |
+| **CARTO basemaps** | **Now require an API key:** every style and zoom returns an "API KEY REQUIRED" watermark tile, and `voyager/` returns 404 (checked later on 2026-10-26). | **Removed.** All maps use OSM tiles; the dark look is OSM inverted in CSS. | — |
 | **Esri / ArcGIS Online** | Requires an ArcGIS account for commercial use. **Unverified.** | Host listed in the SW tile cache. | Verify or remove. |
 | **EMODnet Bathymetry** ([terms](https://emodnet.ec.europa.eu/en/terms-use-emodnet-online-services-data-and-data-products)) | **CC BY 4.0.** Credit "EMODnet Bathymetry Consortium, EMODnet Digital Bathymetry (DTM 2024)", [doi](https://doi.org/10.12770/cf51df64-56f9-4a99-b1aa-36b8d7b743a1). No liability; **not for navigation.** | Navgrid, contours and the depth overlay ("© EMODnet Bathymetry" on the chart view only). | Full credit line on every depth display and in the About screen. |
 
@@ -153,9 +158,9 @@ Terms that matter:
 - [ ] Legal review of the `react-leaflet` Hippocratic licence, or migrate to plain Leaflet or MapLibre.
 - [ ] Open-Meteo commercial plan; move the browser calls server-side; attribution next to the data.
 - [ ] Windy: confirm the key tier now. Otherwise drop Windy, or get Professional plus written OK for app use, with no paywall-only Windy features and no caching.
-- [ ] Map attribution everywhere, including the marina mini-map: OSM, OpenSeaMap, CARTO, EMODnet.
+- [x] Map attribution everywhere, including the marina mini-map: OSM, OpenSeaMap, EMODnet, Open-Meteo (done with the hub map).
 - [ ] Own tile hosting, or an offline-permitting provider, before any offline-maps feature. Remove OSM and OpenSeaMap from the SW tile cache.
-- [ ] Verify the CARTO and Esri terms.
+- [ ] Verify the Esri terms (CARTO is no longer used).
 - [ ] Keep proprietary data (curated marinas, prices, lore) in a separate DB from ODbL-derived data.
 - [ ] "Planning tool — not for navigation" on routes, exports and windows. Privacy policy. Background-location justification if location is ever tracked.
 - [ ] Company plus product-liability insurance before charging, given the PLD from 9 Dec 2026.

@@ -2,6 +2,8 @@
 
 _2026-10-26 · branch `claude/planning-brain-0f56b4` · companion: [product-strategy.md](product-strategy.md)_
 
+> **Update, later on 2026-10-26.** Alex widened the scope. SailorWind becomes his **personal all-in-one sailing app**: a PWA on the iPad and the Mac, with no App Store. It still plans rather than navigates, and now also covers map and weather layers, passage tracking and the logbook, places, notes and stories, and sail and course advice. The spec is [spec-sailing-hub.md](spec-sailing-hub.md). The hub phases are tracked in §4 below; the planning-brain items R3–R11 still apply and are slotted into them.
+
 **Principle.** SailorWind plans; it does not navigate. Charts stay Navionics on the Raymarine Axiom 9, and weather routing is done today in OpenCPN 5.14 + Weather Routing on the Mac. SailorWind's job is everything around the chart: weather and polars, scenarios, departure windows, day planning, fuel, and getting the chosen route onto the plotter.
 
 The targets below come from how Alex plans:
@@ -204,4 +206,45 @@ This affects the leg timeline as well as the windows.
 | **R10** | Calibrate ETA and comfort from debriefs, comparing plan with actual in the existing execution log. | Turns "assumed" into "measured". | M |
 | **R11** | GPX extras: optional bail-out ports as waypoints, one route per day (after R4), and a desktop check of the import on a real Axiom card. | Plotter UX. The import path has not been tested on hardware yet. | S |
 
-Release prerequisites (licences, data terms, liability) are in [product-strategy.md](product-strategy.md).
+Release prerequisites (licences, data terms, liability) are in [product-strategy.md](product-strategy.md). With the personal-use direction (§4) they apply only if a public release is ever reconsidered.
+
+---
+
+## 4. Sailing hub phases
+
+Details, data sources, licences and the offline strategy are in [spec-sailing-hub.md](spec-sailing-hub.md).
+
+| # | Phase | Status | Contents | Folds in |
+|---|---|---|---|---|
+| **H1** ✅ | **Map hub** `/map` | built on this branch | See the list below the table. | R1, R2 surfaced on the map |
+| **H1.x** | Map follow-ups | next | "Locate me"; new passage from the map (tap ports); ruler and bearing; current/tidal-stream layer from Open-Meteo marine. | R5 (tides/bars) as layers |
+| **H2** | **Passage tracking and logbook** `/log` | spec | Browser geolocation recorder (foreground only on iOS; Wake Lock; IndexedDB buffer), plan vs actual, logbook in the `Logbook.xlsx` layout with CSV/XLSX export and a one-time import. Optional Signal K source. | R9, R10 (tracks calibrate polars and ETAs) |
+| **H3** | **Knowledge**: places, notes, stories | spec | OSM POIs via a cached Overpass proxy (marinas, anchorages, chandleries, fuel); notes and stories with photos tied to places, legs and tracks. | — |
+| **H4** | **Advice** (deterministic) | spec | Sail plan per hour from polar + forecast + the reef/motor-sail thresholds; target TWA and VMG; tack/gybe timing; template explanations. | R6 (thresholds, tack/gybe) |
+| opt. | Navionics reference panel | after a key exists | Navionics Web API "Standard" (free, separate chart window, no overlays) beside the map. | — |
+
+**H1 contents:**
+- Layers:
+  - base OSM / Dark;
+  - OpenSeaMap seamarks;
+  - EMODnet depth shading and contours (~115 m grid, not for navigation);
+  - offline isobaths;
+  - orca rings;
+  - Open-Meteo wind barbs and waves with a time slider;
+  - Windy embed.
+- Legs drawn and editable (drag / insert / delete, land and < 20 m warnings), GPX in/out, departure windows in the panel.
+- Home berth Marina Porto Atlântico.
+- PWA:
+  - safe-area / `100dvh`;
+  - SW v5: app shell plus all build chunks, saved plans, tiles only as viewed.
+
+**Found while building H1 (fixed here):**
+- **CARTO tiles are dead.** CARTO's free basemaps now return an "API KEY REQUIRED" watermark for every request, and `voyager/` returns 404. The leg map and the marina mini-map were showing the watermark. All maps now use OSM (dark = OSM inverted in CSS).
+- **Missing OpenSeaMap attribution.** The marina mini-map had no attribution at all; added.
+- **Stale code from the service worker.** The SW cached `/_next/static` cache-first in dev, where chunk URLs aren't content-hashed, so after edits it served old code. It is now off in dev (`NEXT_PUBLIC_SW_DEV=1` turns it on).
+- **The old chart view's weather was fake.** Its "Wind flow" and "Wave heatmap" were a decorative sine-wave animation, not forecast data. `/p/[id]/map` now redirects to the hub, which draws real model data.
+
+**Still open:**
+- **R3, the leg-page refetch loop.** Seen again in the dev log: dozens of `POST /api/forecast/batch` per minute while a leg page is open.
+- **Basic Auth on prod vs the PWA install** (spec §3).
+- **The Turbopack workspace-root warning** (a stray `~/package-lock.json` makes Next pick `/Users/alexm` as root). It made the dev server serve stale CSS once; delete `.next` if styles don't update.

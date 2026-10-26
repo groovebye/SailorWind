@@ -5,7 +5,7 @@
 **Лодка:** Bossanova (Hallberg-Rassy Monsun 31, осадка 1.5м)
 **Маршрут:** Gijon (Испания) -> Греция, multi-year voyage
 
-Roadmap and product strategy: [docs/roadmap-planning-brain.md](docs/roadmap-planning-brain.md) · [docs/product-strategy.md](docs/product-strategy.md)
+Roadmap and product strategy: [docs/roadmap-planning-brain.md](docs/roadmap-planning-brain.md) · [docs/product-strategy.md](docs/product-strategy.md) · sailing-hub spec (map, tracking, logbook, places, advice): [docs/spec-sailing-hub.md](docs/spec-sailing-hub.md)
 
 ### Current Status (v1.5)
 
@@ -38,6 +38,8 @@ Roadmap and product strategy: [docs/roadmap-planning-brain.md](docs/roadmap-plan
 | **Forecast sampling** | Every ≤ 20 NM along the route | Timeline uses the nearest along-track sample (not just the ports) |
 | **GPX export** | Per leg + full passage | Plotter-safe for Raymarine Axiom (LightHouse) + Navionics: `<rte>` per leg, ≤ 16-char ASCII names |
 | **GPX import** | Route / track / waypoints | OpenCPN, Axiom, Navionics files → leg's manual route (oriented, joined to ports, thinned) |
+| **Hub map** `/map` | Layers + legs + weather | OSM/dark base, OpenSeaMap seamarks, EMODnet depth (shading + contours, not for navigation), offline isobaths, Open-Meteo wind barbs and waves with a time slider, Windy embed; legs editable on the map; departure windows, GPX, home berth |
+| **PWA / offline** | SW v5 | App shell + every build chunk precached, "Save offline" per passage, map tiles cached only as viewed (never bulk-downloaded) |
 
 ---
 
@@ -58,7 +60,7 @@ Roadmap and product strategy: [docs/roadmap-planning-brain.md](docs/roadmap-plan
 | Weather API | Open-Meteo (free) + Windy Point Forecast (GFS + gfsWave) |
 | Tides | Semi-diurnal harmonic model (HW Dover + port offsets) |
 | Bathymetry | EMODnet (free GeoTIFF via WCS) |
-| Chart overlay | OpenSeaMap tiles + local GeoJSON contours (5-200m) |
+| Chart overlay | OSM base (dark = inverted in CSS), OpenSeaMap seamarks, EMODnet depth tiles/WMS, local GeoJSON contours (5-200m) |
 | Webcams | Windy Webcams API v3 |
 | Routing | Coastal graph (64 nodes, 61 edges, Dijkstra) + manual overrides |
 | Vessel model | VesselProfile with polar-based performance model |
@@ -86,9 +88,12 @@ sailplanner-next/
 │   │   │   ├── leg/[legIndex]/
 │   │   │   │   ├── page.tsx   # Leg briefing page (17+ sections, 1600+ lines)
 │   │   │   │   └── LegMap.tsx # Leg map: route, contours, OpenSeaMap, orca zones, seamarks
-│   │   │   └── map/
-│   │   │       ├── page.tsx   # Full passage map page
-│   │   │       └── PassageMap.tsx  # Leaflet map component
+│   │   │   └── map/page.tsx   # Redirects to /map?p=[id]
+│   │   ├── map/
+│   │   │   ├── page.tsx       # Hub map (server: passages, waypoints, approaches)
+│   │   │   ├── MapHub.tsx     # Panels, layer state, route edit, departure windows, offline save
+│   │   │   ├── HubMap.tsx     # react-leaflet map: tiles, legs, edit handles, berth
+│   │   │   └── WeatherLayer.tsx  # Wind barbs + wave cells for one forecast hour
 │   │   ├── port/[slug]/
 │   │   │   └── page.tsx       # Port detail: marina comparison, recommendations, services
 │   │   └── api/
@@ -697,6 +702,8 @@ Separate from safety verdict (GO ≠ Comfortable):
 | `/api/seamarks` | GET | Curated seamarks (fallback for OpenSeaMap outages) |
 | `/api/webcams` | GET | Windy webcams nearby |
 | `/api/export` | GET | Plotter-safe GPX export (per-leg or full passage) |
+| `/api/weather-grid` | GET | Gridded wind + waves (Open-Meteo) for the map view: `south`, `west`, `north`, `east`, `model`; ≤ 12×12 nodes, 1 h cache |
+| `/sw-assets` | GET | The build's static files, for the service worker to precache |
 
 ---
 
