@@ -7,6 +7,7 @@ import {
   parseGpx,
   pickImportRoute,
   plotterRoutes,
+  prepareLegImport,
   PLOTTER_NAME_MAX,
 } from "@/lib/gpx";
 
@@ -201,5 +202,23 @@ describe("fitImportedRoute", () => {
     expect(res.points.length).toBeLessThanOrEqual(IMPORT_POINTS_MAX + 2);
     expect(res.points.length).toBeGreaterThanOrEqual(2);
     expect(res.warnings.join(" ")).toMatch(/Thinned 3000 →/);
+  });
+});
+
+describe("prepareLegImport", () => {
+  it("turns an OpenCPN route file into the leg's points and a summary", () => {
+    const res = prepareLegImport(OPENCPN_ROUTE, "wr.gpx", LEIXOES, CASCAIS);
+    if (!res.ok) throw new Error(res.error);
+    expect(res.label).toBe("Leixões → Cascais (WR 28/06)");
+    expect(res.points[0].label).toBe("Leixoes"); // joined to the port
+    expect(res.summary).toMatch(/^"Leixões → Cascais \(WR 28\/06\)" — route, 5 pts, \d+\.\d NM$/);
+    expect(res.distanceNm).toBeGreaterThan(150);
+  });
+
+  it("reports unreadable files and wrong legs with the file name", () => {
+    const bad = prepareLegImport("<kml/>", "x.kml", LEIXOES, CASCAIS);
+    expect(bad).toEqual({ ok: false, error: "x.kml: Not a GPX file" });
+    const far = prepareLegImport(OPENCPN_ROUTE, "wr.gpx", { name: "Gijon", lat: 43.55, lon: -5.67 }, CASCAIS);
+    expect(far.ok).toBe(false);
   });
 });

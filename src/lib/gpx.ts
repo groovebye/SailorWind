@@ -308,3 +308,36 @@ export function fitImportedRoute(
   }
   return { points: out, reversed, warnings };
 }
+
+export type LegImport =
+  | { ok: true; label: string; summary: string; points: { lat: number; lon: number; label?: string }[]; distanceNm: number; warnings: string[] }
+  | { ok: false; error: string };
+
+/**
+ * A GPX file's text → the points to save as a leg's manual route, with a
+ * one-line summary for the confirm dialog. Shared by the leg page and the map.
+ */
+export function prepareLegImport(xml: string, fileName: string, from: Place, to: Place): LegImport {
+  let picked: ReturnType<typeof pickImportRoute>;
+  try {
+    picked = pickImportRoute(parseGpx(xml));
+  } catch (e) {
+    return { ok: false, error: `${fileName}: ${e instanceof Error ? e.message : "could not read"}` };
+  }
+  if (!picked) return { ok: false, error: `${fileName}: no route, track or waypoints found` };
+  const fitted = fitImportedRoute(picked.points, from, to);
+  if ("error" in fitted) return { ok: false, error: `${fileName}: ${fitted.error}` };
+
+  const label = picked.name ?? fileName;
+  let nm = 0;
+  for (let i = 1; i < fitted.points.length; i++) nm += dist(fitted.points[i - 1], fitted.points[i]);
+  const distanceNm = Math.round(nm * 10) / 10;
+  return {
+    ok: true,
+    label,
+    summary: `"${label}" — ${picked.source}, ${fitted.points.length} pts, ${distanceNm.toFixed(1)} NM`,
+    points: fitted.points,
+    distanceNm,
+    warnings: fitted.warnings,
+  };
+}

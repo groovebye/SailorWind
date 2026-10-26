@@ -164,6 +164,57 @@ export function routeDistanceNm(wps: LL[]): number {
   return total;
 }
 
+const inGrid = (lat: number, lon: number) => {
+  const r = cellRow(lat), c = cellCol(lon);
+  return r >= 0 && r < rows && c >= 0 && c < cols;
+};
+
+export type ShallowStretch = { start: LL; end: LL; nm: number };
+
+/**
+ * Stretches of a hand-drawn route that cross land or water shallower than the
+ * grid's safe depth (20 m). The first and last `endClearNm` are ignored —
+ * harbour approaches are always shallow — and so is anything outside the
+ * grid. Sampled every ~0.1 NM; stretches shorter than `minNm` are dropped
+ * (corner-cutting noise). A warning aid for editing, not a safety check.
+ */
+export function shallowStretches(points: LL[], endClearNm = 3, minNm = 0.2): ShallowStretch[] {
+  const out: ShallowStretch[] = [];
+  let total = 0;
+  for (let i = 1; i < points.length; i++) total += haversineNm([points[i - 1].lat, points[i - 1].lon], [points[i].lat, points[i].lon]);
+
+  let open: { start: LL; startNm: number; end: LL; endNm: number } | null = null;
+  const close = () => {
+    if (open && open.endNm - open.startNm >= minNm) {
+      out.push({ start: open.start, end: open.end, nm: Math.round((open.endNm - open.startNm) * 10) / 10 });
+    }
+    open = null;
+  };
+
+  let along = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1], b = points[i];
+    const seg = haversineNm([a.lat, a.lon], [b.lat, b.lon]);
+    const n = Math.max(1, Math.ceil(seg / 0.1));
+    for (let k = i === 1 ? 0 : 1; k <= n; k++) {
+      const t = k / n;
+      const p = { lat: a.lat + (b.lat - a.lat) * t, lon: a.lon + (b.lon - a.lon) * t };
+      const d = along + seg * t;
+      const counted = d >= endClearNm && d <= total - endClearNm && inGrid(p.lat, p.lon);
+      const shallow = counted && !nav(cellRow(p.lat), cellCol(p.lon));
+      if (shallow) {
+        if (!open) open = { start: p, startNm: d, end: p, endNm: d };
+        else { open.end = p; open.endNm = d; }
+      } else {
+        close();
+      }
+    }
+    along += seg;
+  }
+  close();
+  return out;
+}
+
 /**
  * Along-track distance (nm from `from`) of each point, projected onto the routed
  * from→to polyline. One A* run, then cheap projection per point. Useful for
