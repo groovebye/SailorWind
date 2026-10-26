@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authed } from "@/lib/auth/api";
+import { ownedPassage } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 
 /**
@@ -11,6 +13,8 @@ function cacheKey(source: string, model: string) {
 }
 
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const passageId = req.nextUrl.searchParams.get("passageId");
   const source = req.nextUrl.searchParams.get("source");
   const model = req.nextUrl.searchParams.get("model");
@@ -20,7 +24,7 @@ export async function GET(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: passageId }, { id: passageId }] },
+    where: ownedPassage(passageId, user.id),
     select: { forecastCache: true },
   });
 
@@ -40,6 +44,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const body = await req.json();
   const { passageId, source, model, data } = body;
 
@@ -48,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: passageId }, { id: passageId }] },
+    where: ownedPassage(passageId, user.id),
     select: { id: true, forecastCache: true },
   });
 

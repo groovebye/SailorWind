@@ -2,20 +2,32 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { fetchForecast, type WeatherModel } from "@/lib/weather";
 import { setKv, getKv } from "@/lib/api-quota";
+import { timingSafeEqual } from "node:crypto";
 
 /**
  * Background forecast refresh — pre-warms Open-Meteo forecasts for recently-used
  * passages into Passage.forecastCache so the UI reads cache instantly (no upstream
  * call in the request path). Intended to be hit by the server cron, e.g.:
  *
- *   0 *\/3 * * * curl -fsS -X POST http://127.0.0.1:3000/api/forecast/refresh >/dev/null
+ *   0 *\/3 * * * curl -fsS -X POST -H "x-cron-secret: $CRON_SECRET" http://127.0.0.1:3001/api/forecast/refresh >/dev/null
+ *
+ * Requires the CRON_SECRET env var to match the x-cron-secret header.
  *
  * Open-Meteo only (free, no quota). Windy stays on-demand behind its rate-limit.
  */
 const MAX_PASSAGES = 25;
 const RECENT_DAYS = 14;
 
-export async function POST() {
+function cronAllowed(req: Request): boolean {
+  const secret = process.env.CRON_SECRET;
+  const given = req.headers.get("x-cron-secret");
+  if (!secret || !given) return false;
+  const a = Buffer.from(secret), b = Buffer.from(given);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+export async function POST(req: Request) {
+  if (!cronAllowed(req)) return NextResponse.json({ error: "Forbidden" }, { status: 401 });
   const since = new Date(Date.now() - RECENT_DAYS * 86400000);
   const passages = await prisma.passage.findMany({
     where: { updatedAt: { gte: since } },
@@ -51,7 +63,8 @@ export async function POST() {
   return NextResponse.json({ warmedPassages, warmedWaypoints, errors: errors.slice(0, 20) });
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!cronAllowed(req)) return NextResponse.json({ error: "Forbidden" }, { status: 401 });
   const last = await getKv("forecast_last_refresh");
   return NextResponse.json({ lastRefresh: last ? new Date(Number(last)).toISOString() : null });
 }

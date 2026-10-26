@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
+import { requireUser } from "@/lib/auth/dal";
 import { haversineNm } from "@/lib/geo";
 import { routeDistanceNm } from "@/lib/searoute";
 import ChartView from "./ChartView";
@@ -8,8 +9,9 @@ export const dynamic = "force-dynamic";
 
 export default async function ChartPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const passage = await prisma.passage.findUnique({
-    where: { shortId: id },
+  const user = await requireUser(`/p/${id}/map`);
+  const passage = await prisma.passage.findFirst({
+    where: { shortId: id, ownerId: user.id },
     include: { waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } } },
   });
   if (!passage) notFound();

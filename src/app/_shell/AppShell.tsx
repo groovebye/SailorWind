@@ -6,6 +6,8 @@ import WindField from "./WindField";
 import MobileNav from "./MobileNav";
 import ScrollReset from "./ScrollReset";
 
+export type ShellUser = { name: string; boat: { name: string; model: string | null } | null };
+
 /**
  * The persistent shell: dark-ocean backdrop + wind-field canvas + sticky topbar,
  * with the page rendered in the single scroll container. The Chart view is
@@ -15,9 +17,11 @@ import ScrollReset from "./ScrollReset";
 export default function AppShell({
   children,
   activeId,
+  user,
 }: {
   children: React.ReactNode;
   activeId?: string | null;
+  user?: ShellUser | null;
 }) {
   const path = usePathname() || "/";
   const isChart = path.endsWith("/map");
@@ -27,14 +31,14 @@ export default function AppShell({
       <div className="app-backdrop" />
       {!isChart && <WindField density={path === "/" ? 1 : 0.7} />}
       <div className="app-main">
-        <Topbar activeId={activeId} />
+        <Topbar activeId={activeId} user={user ?? null} />
         {isChart ? (
           <div className="chart-fill">{children}</div>
         ) : (
           <main className="view-scroll">{children}</main>
         )}
       </div>
-      {!isChart && <MobileNav activeId={activeId} />}
+      {!isChart && user && <MobileNav activeId={activeId} />}
       <ScrollReset />
     </div>
   );

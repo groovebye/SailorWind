@@ -1,3 +1,4 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 
 interface SeamarkFeature {
@@ -75,6 +76,8 @@ function extractFeature(element: Record<string, unknown>): SeamarkFeature | null
 }
 
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const south = parseFloat(req.nextUrl.searchParams.get("south") || "");
   const west = parseFloat(req.nextUrl.searchParams.get("west") || "");
   const north = parseFloat(req.nextUrl.searchParams.get("north") || "");

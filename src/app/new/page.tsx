@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, ArrowLeft, Sailboat } from "lucide-react";
+import { EVENTS, track } from "@/lib/analytics";
 import { routePolyline } from "@/lib/searoute";
 import { haversineNm, type LatLon } from "@/lib/geo";
 
@@ -78,6 +80,9 @@ export default function NewPassage() {
   // Step 2 state
   const [routePorts, setRoutePorts] = useState<(Port & { checked: boolean; dist: number })[]>([]);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [boats, setBoats] = useState<{ id: string; name: string; model: string | null; isDefault: boolean }[] | null>(null);
+  const [vesselId, setVesselId] = useState("");
 
   // Set default departure to tomorrow 08:00. Done in an effect (not a lazy
   // initializer) on purpose: `new Date()` differs between server render and
@@ -95,6 +100,17 @@ export default function NewPassage() {
     fetch("/api/ports")
       .then((r) => r.json())
       .then(setAllPorts);
+  }, []);
+
+  // Load the user's boats; the default one comes first and is preselected.
+  useEffect(() => {
+    fetch("/api/vessels")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list) => {
+        setBoats(list);
+        if (list[0]) setVesselId(list[0].id);
+      })
+      .catch(() => setBoats([]));
   }, []);
 
   // When from/to selected, compute route ports
@@ -169,6 +185,7 @@ export default function NewPassage() {
 
   async function handleSave() {
     setSaving(true);
+    setSaveError("");
 
     // Persist ONLY the selected stops. Unchecked ports must NOT be saved —
     // otherwise the chart would thread the polyline through every one of them
@@ -190,10 +207,17 @@ export default function NewPassage() {
         mode,
         model,
         waypoints,
+        vesselProfileId: vesselId || undefined,
       }),
     });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.shortId) {
+      setSaving(false);
+      setSaveError(data.error || "Could not save the passage. Please try again.");
+      return;
+    }
+    track(EVENTS.PASSAGE_CREATED, { mode, stops: waypoints.length });
     router.push(`/p/${data.shortId}`);
   }
 
@@ -211,8 +235,29 @@ export default function NewPassage() {
         <span className={`seg-opt${step === 2 ? " active" : ""}`}>2 · Waypoints</span>
       </div>
 
-      {step === 1 && (
+      {boats && boats.length === 0 && (
+        <div className="glass col gap-12" style={{ padding: 28 }}>
+          <div className="center gap-12">
+            <div className="sec-icon"><Sailboat size={18} /></div>
+            <h2 className="display" style={{ fontSize: 24, margin: 0 }}>First, add your boat</h2>
+          </div>
+          <p className="dim" style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6 }}>
+            Draft and motoring speed shape the route, harbour access and timings. It takes a minute — you&apos;ll come straight back here.
+          </p>
+          <div><Link href="/settings?next=/new#boats" className="btn btn-primary">Add a boat</Link></div>
+        </div>
+      )}
+
+      {step === 1 && boats && boats.length > 0 && (
         <div className="glass col gap-20" style={{ padding: 24 }}>
+          <div>
+            <label className="field-label" htmlFor="boat">Boat</label>
+            <select id="boat" className="select" style={{ maxWidth: 420 }} value={vesselId} onChange={(e) => setVesselId(e.target.value)}>
+              {boats.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}{b.model ? ` — ${b.model}` : ""}{b.isDefault ? " (default)" : ""}</option>
+              ))}
+            </select>
+          </div>
           <div className="grid" style={{ gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
               <label className="field-label">From</label>
@@ -282,7 +327,7 @@ export default function NewPassage() {
             Only your start and end are selected — a clean passage. The route rounds the headlands automatically through deep water. Tap any port to add it as a stop.
           </p>
           <p className="faint mono" style={{ fontSize: 11, margin: "-8px 0 0", lineHeight: 1.5 }}>
-            <span style={{ color: "var(--caution)" }}>★</span> marina size / services (3★ = major hub) · <span style={{ color: "var(--foam)" }}>Reeds</span> = in the almanac · ⛽ fuel · 💧 water · 🔧 repairs · 🚿 showers
+            <span style={{ color: "var(--caution)" }}>★</span>{" "}marina size / services (3★ = major hub) · <span style={{ color: "var(--foam)" }}>Reeds</span> = in the almanac · ⛽ fuel · 💧 water · 🔧 repairs · 🚿 showers
           </p>
 
           {legs.length > 0 && (
@@ -352,6 +397,7 @@ export default function NewPassage() {
           <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} onClick={handleSave} disabled={saving || legs.length === 0}>
             {saving ? "Saving…" : "Create passage & view forecast"}
           </button>
+          {saveError && <div className="form-alert error" role="alert">{saveError}</div>}
         </div>
       )}
     </div>

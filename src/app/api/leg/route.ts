@@ -1,8 +1,11 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
 // GET /api/leg?from=gijon&to=luarca — get leg guide
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const fromSlug = req.nextUrl.searchParams.get("from");
   const toSlug = req.nextUrl.searchParams.get("to");
 

@@ -1,21 +1,38 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { nanoid } from "@/lib/nanoid";
+import { authed } from "@/lib/auth/api";
+import { defaultVessel, ownedPassage } from "@/lib/auth/dal";
+
+/** A boat id is only accepted if it belongs to the user. */
+async function ownedVesselId(userId: string, vesselProfileId: unknown): Promise<string | null | undefined> {
+  if (typeof vesselProfileId !== "string" || !vesselProfileId) return null;
+  const v = await prisma.vesselProfile.findFirst({ where: { id: vesselProfileId, ownerId: userId }, select: { id: true } });
+  return v ? v.id : undefined; // undefined = not theirs
+}
 
 export async function POST(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const body = await req.json();
 
-  const { name, departure, speed, mode, model, waypoints } = body;
+  const { name, departure, speed, mode, model, waypoints, vesselProfileId } = body;
 
   if (!departure || !waypoints?.length) {
     return NextResponse.json({ error: "departure and waypoints required" }, { status: 400 });
   }
+
+  let vesselId = await ownedVesselId(user.id, vesselProfileId);
+  if (vesselId === undefined) return NextResponse.json({ error: "Boat not found" }, { status: 404 });
+  vesselId ??= (await defaultVessel(user.id))?.id ?? null;
 
   const shortId = nanoid(8);
 
   const passage = await prisma.passage.create({
     data: {
       shortId,
+      ownerId: user.id,
+      vesselProfileId: vesselId,
       name: name || null,
       departure: new Date(departure),
       speed: speed ?? 5.0,
@@ -37,10 +54,13 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const id = req.nextUrl.searchParams.get("id");
 
   if (!id) {
     const passages = await prisma.passage.findMany({
+      where: { ownerId: user.id },
       orderBy: { updatedAt: "desc" },
       take: 20,
       include: {
@@ -51,7 +71,7 @@ export async function GET(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: id }, { id }] },
+    where: ownedPassage(id, user.id),
     include: {
       waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } },
     },
@@ -65,6 +85,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const body = await req.json();
   const { id, departure, speed, mode, model, source, vesselProfileId } = body;
 
@@ -72,12 +94,16 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: id }, { id }] },
-  });
+  const passage = await prisma.passage.findFirst({ where: ownedPassage(id, user.id) });
 
   if (!passage) {
     return NextResponse.json({ error: "Passage not found" }, { status: 404 });
+  }
+
+  let vesselId: string | null | undefined;
+  if (vesselProfileId !== undefined) {
+    vesselId = await ownedVesselId(user.id, vesselProfileId);
+    if (vesselId === undefined) return NextResponse.json({ error: "Boat not found" }, { status: 404 });
   }
 
   const updated = await prisma.passage.update({
@@ -88,7 +114,7 @@ export async function PATCH(req: NextRequest) {
       ...(mode !== undefined && { mode }),
       ...(model !== undefined && { model }),
       ...(source !== undefined && { source }),
-      ...(vesselProfileId !== undefined && { vesselProfileId: vesselProfileId || null }),
+      ...(vesselProfileId !== undefined && { vesselProfileId: vesselId }),
     },
   });
 
@@ -96,15 +122,15 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const id = req.nextUrl.searchParams.get("id");
 
   if (!id) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: id }, { id }] },
-  });
+  const passage = await prisma.passage.findFirst({ where: ownedPassage(id, user.id) });
 
   if (!passage) {
     return NextResponse.json({ error: "Passage not found" }, { status: 404 });

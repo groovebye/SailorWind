@@ -1,3 +1,4 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
@@ -7,6 +8,8 @@ import { prisma } from "@/lib/db";
  * The client further filters by distance-to-route < radiusNm and orders along the leg.
  */
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const q = req.nextUrl.searchParams;
   const num = (k: string) => {
     const v = q.get(k);

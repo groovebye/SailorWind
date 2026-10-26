@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authed } from "@/lib/auth/api";
+import { defaultVessel, ownedPassage } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { computeLegTimelineFromContext, resolveLegTimelineContext } from "@/lib/passage-computation";
 import { Prisma } from "@/generated/prisma/client";
@@ -43,6 +45,8 @@ function parsePerformanceModel(raw: unknown) {
 }
 
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   try {
     const passageRef = req.nextUrl.searchParams.get("passageId") ?? req.nextUrl.searchParams.get("id");
     const legIndexRaw = req.nextUrl.searchParams.get("legIndex");
@@ -58,7 +62,7 @@ export async function GET(req: NextRequest) {
     }
 
     const passage = await prisma.passage.findFirst({
-      where: { OR: [{ id: passageRef }, { shortId: passageRef }] },
+      where: ownedPassage(passageRef, user.id),
       include: {
         waypoints: {
           include: { port: true },
@@ -71,36 +75,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Passage not found" }, { status: 404 });
     }
 
-    // Resolve the passage's vessel; fall back to Bossanova (and create if absent).
+    // Resolve the passage's boat; fall back to the owner's default boat.
     let vessel = passage.vesselProfileId
-      ? await prisma.vesselProfile.findUnique({ where: { id: passage.vesselProfileId } })
+      ? await prisma.vesselProfile.findFirst({ where: { id: passage.vesselProfileId, ownerId: user.id } })
       : null;
-    if (!vessel) vessel = await prisma.vesselProfile.findUnique({ where: { slug: "bossanova" } });
+    vessel ??= await defaultVessel(user.id);
     if (!vessel) {
-      vessel = await prisma.vesselProfile.create({
-        data: {
-          slug: "bossanova",
-          name: "Bossanova",
-          loaMeters: 9.5,
-          draftMeters: 1.45,
-          engineCruiseKt: 6.2,
-          engineMaxKt: 6.8,
-          fuelBurnLph: 2.5,
-          motorsailBurnLph: 1.75,
-          notes: "Hallberg-Rassy Monsun 31 — Bossanova polar assumptions (conservative cruising model)",
-          performanceModel: {
-            lightAirMotorThresholdKt: 7,
-            motorsailUpwindThresholdKt: 12,
-            closeHauledMinAngleDeg: 38,
-            efficientRunMinWindKt: 10,
-            reef1AtWindKt: 18,
-            reef2AtWindKt: 24,
-            reef1AtGustKt: 22,
-            reef2AtGustKt: 28,
-            harborApproachMotorRadiusNm: 1.2,
-          },
-        },
-      });
+      return NextResponse.json(
+        { error: "Add your boat in Settings to compute the timeline.", code: "NO_BOAT" },
+        { status: 409 },
+      );
     }
 
     // Load per-leg departure overrides

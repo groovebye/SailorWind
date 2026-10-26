@@ -1,3 +1,4 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 
 const WINDY_WEBCAMS_URL = "https://api.windy.com/webcams/api/v3/webcams";
@@ -7,6 +8,8 @@ const cache = new Map<string, { data: unknown; ts: number }>();
 const CACHE_TTL = 3600000;
 
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const lat = req.nextUrl.searchParams.get("lat");
   const lon = req.nextUrl.searchParams.get("lon");
   const radius = req.nextUrl.searchParams.get("radius") || "30"; // km

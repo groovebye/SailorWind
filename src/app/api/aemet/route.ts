@@ -1,3 +1,4 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -53,6 +54,8 @@ const PORT_TO_ZONE: Record<string, string> = {
 };
 
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const port = req.nextUrl.searchParams.get("port");
 
   if (port) {

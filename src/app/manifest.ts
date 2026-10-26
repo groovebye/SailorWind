@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "SailorWind — Passage Planner",
     short_name: "SailorWind",
-    description: "Weather-aware sailing passage planner for the Bossanova voyage",
+    description: "Weather-aware passage planner for coastal cruisers",
     start_url: "/",
     display: "standalone",
     orientation: "any",

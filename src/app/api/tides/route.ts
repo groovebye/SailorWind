@@ -1,3 +1,4 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 import { getTidePrediction, tideStateAt } from "@/lib/tides";
 
@@ -7,6 +8,8 @@ import { getTidePrediction, tideStateAt } from "@/lib/tides";
  * Returns HW/LW predictions + tide state at the given time.
  */
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const portSlug = req.nextUrl.searchParams.get("port");
   const dateStr = req.nextUrl.searchParams.get("date");
   const daysStr = req.nextUrl.searchParams.get("days") || "2";

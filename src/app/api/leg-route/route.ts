@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authed } from "@/lib/auth/api";
+import { ownedPassage } from "@/lib/auth/dal";
 import { getLegRoute, saveManualRoute, resetToAutoRoute, saveDepartureOverride } from "@/lib/leg-route";
 import { prisma } from "@/lib/db";
 
 // GET /api/leg-route?passageId=&legIndex=&fromName=&fromLat=&fromLon=&toName=&toLat=&toLon=
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const passageId = req.nextUrl.searchParams.get("passageId");
   const legIndex = parseInt(req.nextUrl.searchParams.get("legIndex") || "0", 10);
   const fromName = req.nextUrl.searchParams.get("fromName") || "";
@@ -18,7 +22,7 @@ export async function GET(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: passageId }, { id: passageId }] },
+    where: ownedPassage(passageId, user.id),
   });
   if (!passage) {
     return NextResponse.json({ error: "Passage not found" }, { status: 404 });
@@ -35,6 +39,8 @@ export async function GET(req: NextRequest) {
 
 // POST /api/leg-route — save manual route OR departure override
 export async function POST(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const body = await req.json();
   const { passageId, legIndex, points, notes, departureOverride } = body;
 
@@ -43,7 +49,7 @@ export async function POST(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: passageId }, { id: passageId }] },
+    where: ownedPassage(passageId, user.id),
   });
   if (!passage) {
     return NextResponse.json({ error: "Passage not found" }, { status: 404 });
@@ -69,6 +75,8 @@ export async function POST(req: NextRequest) {
 
 // DELETE /api/leg-route?passageId=&legIndex= — reset to auto
 export async function DELETE(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const passageId = req.nextUrl.searchParams.get("passageId");
   const legIndex = parseInt(req.nextUrl.searchParams.get("legIndex") || "0", 10);
 
@@ -77,7 +85,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: passageId }, { id: passageId }] },
+    where: ownedPassage(passageId, user.id),
   });
   if (!passage) {
     return NextResponse.json({ error: "Passage not found" }, { status: 404 });

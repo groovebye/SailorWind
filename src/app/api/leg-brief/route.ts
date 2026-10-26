@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authed } from "@/lib/auth/api";
+import { ownedPassage } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { getLegRoute } from "@/lib/leg-route";
 import { getTidePrediction, tideStateAt } from "@/lib/tides";
@@ -21,6 +23,8 @@ import { buildPassageSchedule } from "@/lib/passage-schedule";
  * This reduces the current 8+ parallel fetches to 1.
  */
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const passageId = req.nextUrl.searchParams.get("passageId");
   const legIndex = parseInt(req.nextUrl.searchParams.get("legIndex") || "0", 10);
 
@@ -29,7 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: passageId }, { id: passageId }] },
+    where: ownedPassage(passageId, user.id),
     include: {
       waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } },
     },

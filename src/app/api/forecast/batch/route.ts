@@ -1,3 +1,4 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 import { fetchForecast, clearCache, type WeatherModel } from "@/lib/weather";
 
@@ -9,6 +10,8 @@ interface WaypointReq {
 }
 
 export async function POST(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const body = await req.json();
   const waypoints: WaypointReq[] = body.waypoints ?? [];
   const model = (body.model ?? "ecmwf_ifs025") as WeatherModel;

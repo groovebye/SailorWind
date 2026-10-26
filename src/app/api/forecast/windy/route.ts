@@ -1,8 +1,11 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 import { fetchWindyForecast } from "@/lib/windy";
 import { windyStats, markWindyUpdate } from "@/lib/api-quota";
 
 export async function POST(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const body = await req.json();
   const { waypoints } = body;
 
@@ -36,6 +39,8 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(result);
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   return NextResponse.json(await windyStats());
 }

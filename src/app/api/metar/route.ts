@@ -1,3 +1,4 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -8,6 +9,8 @@ import { NextRequest, NextResponse } from "next/server";
 export const revalidate = 1800; // METAR refreshes ~hourly; cache 30 min
 
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const ids = (req.nextUrl.searchParams.get("ids") || "").replace(/[^A-Za-z0-9,]/g, "").toUpperCase();
   if (!ids) return NextResponse.json({ error: "ids required" }, { status: 400 });
 

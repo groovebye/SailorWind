@@ -111,8 +111,12 @@ model Passage {
   model       String   @default("ecmwf_ifs025")
   source      String   @default("openmeteo")  // "openmeteo" | "windy"
 
-  // Vessel for this passage (defaults to Bossanova when null). Resolved by id.
+  // Vessel for this passage (falls back to the owner's default boat). Resolved by id.
   vesselProfileId String?
+
+  // Owning account. Nullable only for legacy rows; every query filters by owner.
+  owner       User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String?
 
   // Cached forecasts — keyed by "{source}_{model}": { data: {...}, cachedAt: ISO }
   forecastCache Json?
@@ -125,6 +129,8 @@ model Passage {
   computations LegComputation[]
   legRoutes    PassageLegRoute[]
   executions   PassageExecution[]
+
+  @@index([ownerId, updatedAt])
 }
 
 enum PassageMode {
@@ -545,6 +551,10 @@ model VesselProfile {
   id              String   @id @default(cuid())
   slug            String   @unique
   name            String
+  model           String?  // make & model, e.g. "Hallberg-Rassy Monsun 31"
+  owner           User?    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId         String?
+  isDefault       Boolean  @default(false) // the owner's boat preselected for new passages
   loaMeters       Float
   draftMeters     Float
   engineCruiseKt  Float
@@ -563,6 +573,54 @@ model VesselProfile {
   updatedAt       DateTime @updatedAt
 
   computations    LegComputation[]
+
+  @@index([ownerId])
+}
+
+// ── Accounts ─────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique // stored lower-cased
+  name            String
+  passwordHash    String?   // scrypt; null until set (e.g. claimed legacy account)
+  emailVerifiedAt DateTime?
+  termsAcceptedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sessions   Session[]
+  authTokens AuthToken[]
+  vessels    VesselProfile[]
+  passages   Passage[]
+}
+
+// Database sessions: the cookie carries a random token, only its SHA-256 is stored.
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  expiresAt  DateTime
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+// Single-use email tokens (verification, password reset); only the hash is stored.
+model AuthToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  type      String    // "verify_email" | "reset_password"
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, type])
 }
 
 model LegComputation {

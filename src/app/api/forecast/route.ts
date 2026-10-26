@@ -1,7 +1,10 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 import { fetchForecast, clearCache, type WeatherModel } from "@/lib/weather";
 
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const sp = req.nextUrl.searchParams;
   const lat = parseFloat(sp.get("lat") ?? "0");
   const lon = parseFloat(sp.get("lon") ?? "0");

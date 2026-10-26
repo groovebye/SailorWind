@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authed } from "@/lib/auth/api";
+import { ownedPassage } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 
 // GET /api/execution?passageId=&legIndex=
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const passageId = req.nextUrl.searchParams.get("passageId");
   const legIndex = parseInt(req.nextUrl.searchParams.get("legIndex") || "0", 10);
 
   if (!passageId) return NextResponse.json({ error: "passageId required" }, { status: 400 });
 
   const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: passageId }, { id: passageId }] },
+    where: ownedPassage(passageId, user.id),
   });
   if (!passage) return NextResponse.json({ error: "Passage not found" }, { status: 404 });
 
@@ -40,11 +44,22 @@ export async function GET(req: NextRequest) {
 
 // POST /api/execution — dispatch by action
 export async function POST(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const body = await req.json();
   const { action } = body;
 
+  // Every action except "start" targets an existing execution — it must be on the user's passage.
+  if (action !== "start") {
+    const owned = await prisma.passageExecution.findFirst({
+      where: { id: String(body.executionId ?? ""), passage: { ownerId: user.id } },
+      select: { id: true },
+    });
+    if (!owned) return NextResponse.json({ error: "Execution not found" }, { status: 404 });
+  }
+
   switch (action) {
-    case "start": return handleStart(body);
+    case "start": return handleStart(body, user.id);
     case "stop": return handleStop(body);
     case "track-point": return handleTrackPoint(body);
     case "checkpoint": return handleCheckpoint(body);
@@ -53,13 +68,13 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function resolvePassageId(passageId: string): Promise<string | null> {
-  const p = await prisma.passage.findFirst({ where: { OR: [{ shortId: passageId }, { id: passageId }] } });
+async function resolvePassageId(passageId: string, userId: string): Promise<string | null> {
+  const p = await prisma.passage.findFirst({ where: ownedPassage(passageId, userId) });
   return p?.id || null;
 }
 
-async function handleStart(body: Record<string, unknown>) {
-  const pid = await resolvePassageId(body.passageId as string);
+async function handleStart(body: Record<string, unknown>, userId: string) {
+  const pid = await resolvePassageId(body.passageId as string, userId);
   if (!pid) return NextResponse.json({ error: "Passage not found" }, { status: 404 });
 
   const execution = await prisma.passageExecution.create({

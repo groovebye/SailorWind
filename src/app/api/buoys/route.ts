@@ -1,3 +1,4 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -68,6 +69,8 @@ async function fetchBuoyData(lat: number, lon: number, radiusKm: number): Promis
 }
 
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const lat = parseFloat(req.nextUrl.searchParams.get("lat") || "43.5");
   const lon = parseFloat(req.nextUrl.searchParams.get("lon") || "-5.7");
   const radius = parseInt(req.nextUrl.searchParams.get("radius") || "100", 10);

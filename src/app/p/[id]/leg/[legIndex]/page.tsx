@@ -1326,7 +1326,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           </div>
 
           <div className="mt-3 text-[10px]" style={{ color: "var(--text-muted)" }}>
-            Computed using Bossanova polar assumptions: conservative cruising polars, engine cruise 6.2kt / 2.5 L/h at 2500 rpm, motorsail 1.75 L/h at 2000 rpm. Polars are assumed — to be refined with real passage logs. Cached until {timelineData.validUntil ? fmtLocal(new Date(timelineData.validUntil), toTz) : "forecast refresh"}.
+            Computed from your boat&apos;s profile (motoring speed and fuel burn from Settings) with conservative cruising polars. Polars are assumed — to be refined with real passage logs. Cached until {timelineData.validUntil ? fmtLocal(new Date(timelineData.validUntil), toTz) : "forecast refresh"}.
           </div>
         </Section>
       )}

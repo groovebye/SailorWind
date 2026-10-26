@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { authed } from "@/lib/auth/api";
+import { ownedPassage } from "@/lib/auth/dal";
 import { getLegRoute } from "@/lib/leg-route";
 import { prisma } from "@/lib/db";
 
@@ -9,6 +11,8 @@ import { prisma } from "@/lib/db";
  * Exports route as GPX file for Navionics/OpenCPN/etc.
  */
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const passageId = req.nextUrl.searchParams.get("passageId");
   const legIndexStr = req.nextUrl.searchParams.get("legIndex");
 
@@ -17,7 +21,7 @@ export async function GET(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: { OR: [{ shortId: passageId }, { id: passageId }] },
+    where: ownedPassage(passageId, user.id),
     include: {
       waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } },
     },

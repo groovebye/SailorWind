@@ -1,14 +1,16 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { alongRouteNm } from "@/lib/searoute";
+import { defaultVessel, requireUser } from "@/lib/auth/dal";
 import PassageCockpit from "./_cockpit/PassageCockpit";
 
 export const dynamic = "force-dynamic";
 
 export default async function PassagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const passage = await prisma.passage.findUnique({
-    where: { shortId: id },
+  const user = await requireUser(`/p/${id}`);
+  const passage = await prisma.passage.findFirst({
+    where: { shortId: id, ownerId: user.id },
     include: { waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } } },
   });
   if (!passage) notFound();
@@ -62,16 +64,13 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
       .sort((a, b) => a.dist - b.dist);
   }
 
-  // Resolve the vessel name (defaults to Bossanova when unset).
-  let boat = "Bossanova";
-  const boatModel = "Hallberg-Rassy Monsun 31";
-  if (passage.vesselProfileId) {
-    const v = await prisma.vesselProfile.findUnique({
-      where: { id: passage.vesselProfileId },
-      select: { name: true },
-    }).catch(() => null);
-    if (v) boat = v.name;
-  }
+  // The passage's boat, else the owner's default boat.
+  const vessel =
+    (passage.vesselProfileId
+      ? await prisma.vesselProfile.findFirst({ where: { id: passage.vesselProfileId, ownerId: user.id } })
+      : null) ?? (await defaultVessel(user.id));
+  const boat = vessel?.name ?? "No boat yet";
+  const boatModel = vessel?.model ?? "";
 
   return (
     <PassageCockpit

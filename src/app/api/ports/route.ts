@@ -1,3 +1,4 @@
+import { authed } from "@/lib/auth/api";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { haversineNm } from "@/lib/geo";
@@ -6,6 +7,8 @@ import { haversineNm } from "@/lib/geo";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
+  const user = await authed(req);
+  if (user instanceof Response) return user;
   const segment = req.nextUrl.searchParams.get("segment");
 
   const where = segment ? { coastSegment: segment } : {};
