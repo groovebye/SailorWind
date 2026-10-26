@@ -12,7 +12,7 @@
  * Runs identically on server and client (grid is bundled), so the chart, the
  * distance readout and the cockpit ETAs all use the same path.
  */
-import { haversineNm, type LatLon } from "./geo";
+import { haversineNm, simplifyPolyline, type LatLon } from "./geo";
 import { NAVGRID_B64, NAVGRID_META } from "./navgrid.data";
 
 export type LL = { lat: number; lon: number };
@@ -129,32 +129,6 @@ function aStar(a: LL, b: LL): LatLon[] | null {
   return path;
 }
 
-/** Perpendicular distance (nm) of p from segment a→b, local planar approx. */
-function perpNm(p: LatLon, a: LatLon, b: LatLon): number {
-  const k = Math.cos((a[0] * Math.PI) / 180);
-  const ax = a[1] * k, ay = a[0], bx = b[1] * k, by = b[0], px = p[1] * k, py = p[0];
-  const dx = bx - ax, dy = by - ay;
-  const len2 = dx * dx + dy * dy;
-  if (len2 === 0) return haversineNm(p, a);
-  let t = ((px - ax) * dx + (py - ay) * dy) / len2;
-  t = Math.max(0, Math.min(1, t));
-  return haversineNm(p, [ay + dy * t, (ax + dx * t) / k]);
-}
-
-/** Douglas–Peucker simplification, epsilon in nm. */
-function simplify(pts: LatLon[], epsNm: number): LatLon[] {
-  if (pts.length <= 2) return pts;
-  let maxD = 0, idx = 0;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const d = perpNm(pts[i], pts[0], pts[pts.length - 1]);
-    if (d > maxD) { maxD = d; idx = i; }
-  }
-  if (maxD <= epsNm) return [pts[0], pts[pts.length - 1]];
-  const left = simplify(pts.slice(0, idx + 1), epsNm);
-  const right = simplify(pts.slice(idx), epsNm);
-  return [...left.slice(0, -1), ...right];
-}
-
 const cache = new Map<string, LatLon[]>();
 const key = (a: LL, b: LL) => `${a.lat.toFixed(3)},${a.lon.toFixed(3)}|${b.lat.toFixed(3)},${b.lon.toFixed(3)}`;
 
@@ -165,7 +139,7 @@ export function seaRoute(a: LL, b: LL): LatLon[] {
   if (hit) return hit;
   const cells = aStar(a, b);
   const line: LatLon[] = cells && cells.length > 1
-    ? [[a.lat, a.lon], ...simplify(cells, 0.15), [b.lat, b.lon]]
+    ? [[a.lat, a.lon], ...simplifyPolyline(cells, 0.15), [b.lat, b.lon]]
     : [[a.lat, a.lon], [b.lat, b.lon]]; // fallback: outside grid / no water path
   cache.set(k, line);
   return line;

@@ -101,3 +101,29 @@ export function positionAtDistance(
   }
   return route[route.length - 1];
 }
+
+/** Distance (nm) of p from segment a→b, local planar approximation. */
+export function distanceToSegmentNm(p: LatLon, a: LatLon, b: LatLon): number {
+  const k = Math.cos(toRad(a[0]));
+  const ax = a[1] * k, ay = a[0], bx = b[1] * k, by = b[0], px = p[1] * k, py = p[0];
+  const dx = bx - ax, dy = by - ay;
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return haversineNm(p, a);
+  let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return haversineNm(p, [ay + dy * t, (ax + dx * t) / k]);
+}
+
+/** Douglas–Peucker simplification; every dropped point stays within epsNm of the result. */
+export function simplifyPolyline(pts: LatLon[], epsNm: number): LatLon[] {
+  if (pts.length <= 2) return pts;
+  let maxD = 0, idx = 0;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const d = distanceToSegmentNm(pts[i], pts[0], pts[pts.length - 1]);
+    if (d > maxD) { maxD = d; idx = i; }
+  }
+  if (maxD <= epsNm) return [pts[0], pts[pts.length - 1]];
+  const left = simplifyPolyline(pts.slice(0, idx + 1), epsNm);
+  const right = simplifyPolyline(pts.slice(idx), epsNm);
+  return [...left.slice(0, -1), ...right];
+}
