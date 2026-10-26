@@ -5,6 +5,8 @@
 **Лодка:** Bossanova (Hallberg-Rassy Monsun 31, осадка 1.5м)
 **Маршрут:** Gijon (Испания) -> Греция, multi-year voyage
 
+Roadmap and product strategy: [docs/roadmap-planning-brain.md](docs/roadmap-planning-brain.md) · [docs/product-strategy.md](docs/product-strategy.md)
+
 ### Current Status (v1.5)
 
 | Component | Coverage | Details |
@@ -32,7 +34,10 @@
 | **Maintenance** | MaintenanceItem model | Pre-departure readiness check |
 | **Offline cache** | localStorage briefing | Recently viewed legs available offline |
 | **Wave power** | kW/m per waypoint + hour | Color-coded calm/moderate/rough/severe |
-| **GPX export** | Per leg + full passage | For Navionics/OpenCPN import |
+| **Departure windows** | Per leg, N starts × 3 scenarios | Pessimistic/realistic/optimistic runs of the timeline engine: arrival range, daylight, engine %, fuel vs tank, wind/Hs, verdict |
+| **Forecast sampling** | Every ≤ 20 NM along the route | Timeline uses the nearest along-track sample (not just the ports) |
+| **GPX export** | Per leg + full passage | Plotter-safe for Raymarine Axiom (LightHouse) + Navionics: `<rte>` per leg, ≤ 16-char ASCII names |
+| **GPX import** | Route / track / waypoints | OpenCPN, Axiom, Navionics files → leg's manual route (oriented, joined to ports, thinned) |
 
 ---
 
@@ -98,6 +103,7 @@ sailplanner-next/
 │   │       ├── leg/route.ts            # GET curated leg guide
 │   │       ├── leg-brief/route.ts      # GET aggregated leg briefing data
 │   │       ├── leg-route/route.ts      # GET/POST/DELETE manual route overrides
+│   │       ├── departure-windows/route.ts # GET departure-window comparison
 │   │       ├── leg-timeline/route.ts   # GET computed passage timeline
 │   │       ├── passage/route.ts        # CRUD: GET/POST/PATCH/DELETE
 │   │       ├── port-areas/route.ts     # GET port areas + marinas + services
@@ -113,7 +119,9 @@ sailplanner-next/
 │   │   ├── api-logger.ts      # Structured API request logging
 │   │   ├── coastline.ts       # Routing graph (64 nodes, 61 edges, Dijkstra)
 │   │   ├── db.ts              # Prisma client (singleton with pg adapter)
+│   │   ├── departure-windows.ts # Departure windows: N starts × pessimistic/realistic/optimistic
 │   │   ├── execution-debrief.ts # Debrief engine (planned vs actual comparison)
+│   │   ├── gpx.ts             # Plotter-safe GPX build + tolerant GPX parse/fit
 │   │   ├── leg-route.ts       # Route resolution + manual override CRUD
 │   │   ├── marina-recommendations.ts # 6-use-case recommendation engine
 │   │   ├── nanoid.ts          # Short ID generator (8 chars)
@@ -123,6 +131,7 @@ sailplanner-next/
 │   │   ├── seamarks-static.ts  # 24 curated seamarks (lighthouses, buoys, landmarks)
 │   │   ├── theme.tsx          # ThemeProvider context (dark/light, localStorage)
 │   │   ├── tides.ts           # Semi-diurnal tidal model (18 ports)
+│   │   ├── timeline-inputs.ts # Load passage + vessel for the timeline engine
 │   │   ├── weather.ts         # Open-Meteo client (ECMWF/GFS/ICON/AROME + marine)
 │   │   └── windy.ts           # Windy API client (GFS + gfsWave)
 │   └── generated/prisma/      # Generated Prisma client (gitignored)
@@ -668,7 +677,8 @@ Separate from safety verdict (GO ≠ Comfortable):
 | `/api/leg` | GET | Curated leg guide (pilotage, milestones, hazards) |
 | `/api/leg-brief` | GET | Aggregated briefing: guide + timeline + forecast + tides + webcams |
 | `/api/leg-timeline` | GET | Computed hourly passage timeline |
-| `/api/leg-route` | GET/POST/DELETE | Manual route override CRUD |
+| `/api/leg-route` | GET/POST/DELETE | Manual route override CRUD (GPX import saves through POST) |
+| `/api/departure-windows` | GET | Departure-window comparison: `start`, `count`, `stepHours`; 3 scenarios per start |
 
 ### Execution & Readiness
 | Endpoint | Method | Description |
@@ -686,7 +696,7 @@ Separate from safety verdict (GO ≠ Comfortable):
 | `/api/port-areas` | GET | Port areas + marinas + prices + nearby places |
 | `/api/seamarks` | GET | Curated seamarks (fallback for OpenSeaMap outages) |
 | `/api/webcams` | GET | Windy webcams nearby |
-| `/api/export` | GET | GPX export (per-leg or full passage) |
+| `/api/export` | GET | Plotter-safe GPX export (per-leg or full passage) |
 
 ---
 
