@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BASE_LAYERS, DEPTH_CONTOURS, HOME_BERTH, SEAMARKS, depthShaded, formatDdm, windyEmbedUrl } from "./map-layers";
+import {
+  BASE_LAYERS, DEPTH_CONTOURS, HOME_BERTH, IHM_ENC, SEAMARKS, depthShaded, formatDdm, ihmCoverageShare, inIhmEncArea, resolveBase,
+  windyEmbedUrl,
+} from "./map-layers";
 
 describe("layer catalogue", () => {
   it("attributes every source", () => {
@@ -11,9 +14,9 @@ describe("layer catalogue", () => {
     expect(depthShaded("mean_atlas_land").attribution).toContain("EMODnet Bathymetry Consortium");
   });
 
-  it("draws both bases from the OSM tiles, dark via CSS", () => {
-    expect(BASE_LAYERS.map((b) => b.url)).toEqual([BASE_LAYERS[0].url, BASE_LAYERS[0].url]);
-    expect(BASE_LAYERS[0].url).toBe("https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+  it("draws Dark and OSM from the OSM tiles, dark via CSS", () => {
+    const osm = BASE_LAYERS.filter((b) => b.id === "dark" || b.id === "osm");
+    expect(osm.map((b) => b.url)).toEqual(Array(2).fill("https://tile.openstreetmap.org/{z}/{x}/{y}.png"));
     expect(BASE_LAYERS.find((b) => b.id === "dark")?.className).toBe("lf-dark-tiles");
   });
 
@@ -50,5 +53,56 @@ describe("windyEmbedUrl", () => {
     expect(u.searchParams.get("zoom")).toBe("11");
     expect(u.searchParams.get("overlay")).toBe("waves");
     expect(u.searchParams.get("metricWind")).toBe("kt");
+  });
+});
+
+describe("IHM ENC charts", () => {
+  it("is the IHM cached WMTS, credited and marked not for navigation", () => {
+    expect(IHM_ENC.url).toBe("https://ideihm.covam.es/ihmcache/wmts/1.0.0/RasterENC/default/googlemapscompatible/{z}/{y}/{x}.png");
+    expect(IHM_ENC.attribution).toContain("© <a href=\"https://ideihm.covam.es/\">Instituto Hidrográfico de la Marina</a>");
+    expect(IHM_ENC.attribution).toContain("not for navigation");
+    expect(IHM_ENC.note).toMatch(/Spain \+ Portugal overview/);
+    expect(IHM_ENC.note).toMatch(/Portugal is general scale only and not updated/);
+    expect(IHM_ENC.className).toBeUndefined(); // the licence forbids altering the charts: no dark filter
+    expect(BASE_LAYERS).toContain(IHM_ENC);
+  });
+
+  it("knows where it has charts", () => {
+    expect(inIhmEncArea(41.186, -8.705)).toBe(true); // Leixões / Porto
+    expect(inIhmEncArea(38.69, -9.42)).toBe(true); // Cascais / Lisboa
+    expect(inIhmEncArea(36.14, -5.35)).toBe(true); // Gibraltar
+    expect(inIhmEncArea(39.57, 2.65)).toBe(true); // Palma
+    expect(inIhmEncArea(28.13, -15.43)).toBe(true); // Las Palmas
+    expect(inIhmEncArea(45.5, -4.0)).toBe(false); // Bay of Biscay
+    expect(inIhmEncArea(48.38, -4.49)).toBe(false); // Brest
+    expect(inIhmEncArea(43.3, 5.37)).toBe(false); // Marseille
+  });
+
+  // Views as the map reports them (south, west, north, east).
+  const box = (lat: number, lon: number, dLat: number, dLon: number) =>
+    ({ south: lat - dLat, north: lat + dLat, west: lon - dLon, east: lon + dLon });
+  const porto = box(41.18, -8.75, 0.15, 0.25);
+  const gibraltar = box(36.13, -5.36, 0.08, 0.12);
+  const passageFit = { south: 37.6, west: -14.9, north: 42.2, east: -7.6 }; // Leixões–Cascais fitted beside the panel
+  const biscay = box(45.5, -4, 1, 1.5);
+  const europe = { south: 30, west: -25, north: 62, east: 30 };
+
+  it("measures how much of a view the charts cover", () => {
+    expect(ihmCoverageShare(porto)).toBe(1);
+    expect(ihmCoverageShare(biscay)).toBe(0);
+    expect(ihmCoverageShare(passageFit)).toBeGreaterThan(0.3);
+    expect(ihmCoverageShare(europe)).toBeLessThan(0.2);
+  });
+
+  it("is the default over Iberia and Dark elsewhere; explicit choices win", () => {
+    expect(resolveBase("auto", porto).id).toBe("ihm");
+    expect(resolveBase("auto", gibraltar).id).toBe("ihm");
+    expect(resolveBase("auto", passageFit).id).toBe("ihm"); // centre is out at sea, view is mostly Portugal
+    expect(resolveBase("auto", null).id).toBe("ihm"); // the map opens on the berth in Leixões
+    expect(resolveBase("auto", biscay).id).toBe("dark");
+    expect(resolveBase("auto", europe).id).toBe("dark");
+    expect(resolveBase("osm", porto).id).toBe("osm");
+    expect(resolveBase("ihm", biscay).id).toBe("ihm");
+    expect(resolveBase("bogus", null).id).toBe("ihm");
   });
 });

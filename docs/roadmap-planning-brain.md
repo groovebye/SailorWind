@@ -217,7 +217,7 @@ Details, data sources, licences and the offline strategy are in [spec-sailing-hu
 | # | Phase | Status | Contents | Folds in |
 |---|---|---|---|---|
 | **H1** ✅ | **Map hub** `/map` | built on this branch | See the list below the table. | R1, R2 surfaced on the map |
-| **H1.x** | Map follow-ups | next | "Locate me"; new passage from the map (tap ports); ruler and bearing; current/tidal-stream layer from Open-Meteo marine. | R5 (tides/bars) as layers |
+| **H1.x** | Map follow-ups | next | "Locate me"; new passage from the map (tap ports); ruler and bearing; current/tidal-stream layer from Open-Meteo marine; Portuguese harbour-level charts via GeoGarage Pro (quote first). | R5 (tides/bars) as layers |
 | **H2** | **Passage tracking and logbook** `/log` | spec | Browser geolocation recorder (foreground only on iOS; Wake Lock; IndexedDB buffer), plan vs actual, logbook in the `Logbook.xlsx` layout with CSV/XLSX export and a one-time import. Optional Signal K source. | R9, R10 (tracks calibrate polars and ETAs) |
 | **H3** | **Knowledge**: places, notes, stories | spec | OSM POIs via a cached Overpass proxy (marinas, anchorages, chandleries, fuel); notes and stories with photos tied to places, legs and tracks. | — |
 | **H4** | **Advice** (deterministic) | spec | Sail plan per hour from polar + forecast + the reef/motor-sail thresholds; target TWA and VMG; tack/gybe timing; template explanations. | R6 (thresholds, tack/gybe) |
@@ -225,7 +225,7 @@ Details, data sources, licences and the offline strategy are in [spec-sailing-hu
 
 **H1 contents:**
 - Layers:
-  - base OSM / Dark;
+  - base IHM ENC official charts (Spanish Hydrographic Office; default over Iberia; Portugal at general scale only), OSM or Dark;
   - OpenSeaMap seamarks;
   - EMODnet depth shading and contours (~115 m grid, not for navigation);
   - offline isobaths;

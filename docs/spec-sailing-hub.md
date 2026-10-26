@@ -61,11 +61,12 @@ SailorWind becomes Alex's personal all-in-one sailing web app.
 
 ## 2. Map layers and data sources
 
-All tile hosts below answered with `Access-Control-Allow-Origin: *` on 2026-10-26. The map therefore loads tiles in CORS mode, and the service worker stores real responses instead of opaque ones. (Chrome counts each opaque response as several MB of quota.)
+All tile hosts below answered with `Access-Control-Allow-Origin: *` on 2026-10-26 (IHM on 2026-10-27). The map therefore loads tiles in CORS mode, and the service worker stores real responses instead of opaque ones. (Chrome counts each opaque response as several MB of quota.)
 
 | Layer | Source | Licence / terms | Attribution shown | Notes |
 |---|---|---|---|---|
-| **Base: OSM** | `tile.openstreetmap.org/{z}/{x}/{y}.png` | ODbL data; [OSMF tile usage policy](https://operations.osmfoundation.org/policies/tiles/): no bulk download or prefetch, honour caching, valid Referer/UA. | © OpenStreetMap contributors | Default. Personal, light use fits the policy. |
+| **Base: IHM ENC (official charts)** | Spanish Hydrographic Office (Instituto Hidrográfico de la Marina) ENC service, S-52 rendering (SevenCs ChartServer 5). Cached WMTS: `ideihm.covam.es/ihmcache/wmts/1.0.0/RasterENC/default/googlemapscompatible/{z}/{y}/{x}.png` (z 0–21). | Free ("Fees: no conditions apply"). **Non-commercial reuse only** under Ley 37/2007 / RD 1495/2011 ([licencias](http://ideihm.covam.es/licencias.html)). Conditions: don't alter the meaning; cite the source; give the update date when the document includes one (the tiles don't); don't imply IHM takes part in or endorses the site; not valid for navigation. Commercial use needs a contract with IHM (ihmesp@fn.mde.es). | © Instituto Hidrográfico de la Marina — not for navigation | **Default over Iberia.** Base choice "Auto" draws IHM when at least a fifth of the view lies in its coverage (mainland Spain and Portugal, Balearics, Strait, Canaries) and Dark elsewhere. It goes by area, not by the centre, because a passage fitted beside the Plan panel is centred out at sea. "ENC", "Dark" and "OSM" force one base. The layer picker notes: "IHM ENC (official charts, Spain + Portugal overview): Portugal is general scale only and not updated". |
+| **Base: OSM** | `tile.openstreetmap.org/{z}/{x}/{y}.png` | ODbL data; [OSMF tile usage policy](https://operations.osmfoundation.org/policies/tiles/): no bulk download or prefetch, honour caching, valid Referer/UA. | © OpenStreetMap contributors | Personal, light use fits the policy. |
 | **Base: Dark** | the same OSM tiles, inverted in CSS (`.lf-dark-tiles`) | as OSM | as OSM | **CARTO's free basemaps (used before) now return an "API KEY REQUIRED" watermark tile for every style and zoom; `voyager/` returns 404 (checked 2026-10-26).** The leg map and the marina mini-map were showing that watermark too; both now use OSM. |
 | **Seamarks** | `tiles.openseamap.org/seamark/{z}/{x}/{y}.png` (z ≤ 18) | CC BY-SA 2.0 tiles, ODbL data; no published usage policy, so treat as light use, no prefetch | © OpenSeaMap contributors | On by default. The mini-map previously had no attribution at all; fixed. |
 | **Depth shading** | EMODnet Bathymetry `emodnet:mean`, styles `mean_multicolour` / `mean_atlas_land`, served from EMODnet's pre-rendered WMTS: `tiles.emodnet-bathymetry.eu/latest/<style>/web_mercator/{z}/{x}/{y}.png` (z ≤ 14) | CC BY 4.0; no warranty | © EMODnet Bathymetry Consortium (DTM 2024, CC BY 4.0) | Labelled "**~115 m grid, not for navigation**". The WMS (`ows.emodnet-bathymetry.eu/wms`) has the same layer, but it answered 5× 502 and once took 15 s during the check; the WMTS tiles took ~0.5 s. |
@@ -79,6 +80,27 @@ All tile hosts below answered with `Access-Control-Allow-Origin: *` on 2026-10-2
 | **Home berth** | Marina Porto Atlântico (Marina de Leça), **41.18619 N, 8.70474 W** (41°11.171′N 008°42.284′W), OSM `leisure=marina` | — | — | Fixed ⚓ marker. "show" in the Plan panel. |
 | **POIs** (Phase 3) | OSM via Overpass API | ODbL | © OpenStreetMap contributors | See §5.3. |
 | **Navionics** (optional, later) | Navionics Web API "Standard" | free key; separate embedded chart window; no overlays (per Alex's check, not re-verified here). "Enhanced" (overlays) is paid. | Navionics' own | Reference panel only; build once Alex has a key from garmin.com/forms/navionics-web-api. |
+
+**IHM ENC, details (checked 2026-10-27).**
+- **Coverage.** The full Spanish ENC set, plus three Portuguese cells that IHPT supplied (PT221101, PT324205, PT324206). The service abstract says those cells are *sin actualizar* (not updated).
+  - On the Porto–Lisbon coast you get soundings, contours, TSS and lights. At Leixões that includes the Leça light Fl(3) W 14s 59m 28M and the moles.
+  - That coast is general/coastal scale only. Zoomed in, it shows S-52 overscale hatching and no harbour plans.
+  - Spanish waters reach harbour level; the Bay of Gibraltar at z15 shows the marinas, moles and lights.
+- **Tiles are opaque.** Outside coverage the service draws S-52 "no data" hatching, so ENC is a base, not an overlay. OpenSeaMap seamarks and EMODnet depths draw on top of it.
+- **No dark filter on this layer.** "Dark" inverts the OSM tiles in CSS, but the licence forbids altering the charts' meaning.
+- **WMTS vs WMS.**
+  - The WMS (`ideihm.covam.es/encwms/wms`, layer `ENC`, EPSG:3857) renders the same chart with a few more text labels.
+  - The cached WMTS draws the same chart with fewer labels, and the server keeps the tiles (`Cache-Control: max-age` ≈ 7 days), which spares the server.
+  - First renders take 0.5–3.6 s; cached tiles take ~0.5 s.
+  - Per-scale WMS services (`/wms/cartaENCp2` … `p5`) exist but aren't needed.
+- **Offline.** Tiles are cached only as viewed, like every other tile host. The service worker refreshes chart tiles after 7 days, matching their max-age, because ENCs change with Notices to Mariners.
+
+**Portuguese harbour-level charts: candidate, not built.** The [GeoGarage Pro chart streaming API](https://www.geogarage.com/pro/):
+- Raster tiles of official charts from about 20 hydrographic offices.
+- It holds Re-Use licences that include **Portugal IHPT (PT BV 002)**, Spain IHM (ES BV 003), UKHO and Croatia.
+- It speaks TMS / WMTS / TileJSON, so it would plug in as one more base in the catalogue (Leaflet now, MapLibre if ever).
+- Pricing is on request. Alex decides after quotes.
+- Until then, Portuguese harbour detail stays with Navionics on the Axiom.
 
 **Why Windy is an embed, not a layer.**
 - SailorWind's Windy integration is the **Point Forecast API**. It runs server-side, is rate-limited to one update per 6 h, and the testing key returns shuffled data (product-strategy §4). It cannot paint a map layer, and gridding it would burn the quota at once.
@@ -103,7 +125,7 @@ Rule: **cache what was used, never prefetch areas.** All of it lives in `public/
 | API GETs that must be current: ports, port areas, leg route, GPX export, departure windows, **weather grid** | Network-first, cache fallback offline | runtime | 400 |
 | Other API GETs: forecast, tides, lore… | Stale-while-revalidate | runtime | 400 |
 | **Saved plans** ("Save offline" in the Plan panel) | The page sends the passage's URLs, built by the same helpers the pages fetch with (`lib/offline-plan.ts`): passage page, map, every leg page and its JS/CSS, leg routes, GPX exports, default departure windows. | `sw-plans-1` | **never trimmed; survives SW updates**; "remove" per plan |
-| Map tiles (OSM, OpenSeaMap, EMODnet) | **Only as viewed.** Cache-first. Refreshed in the background when older than 14 days and online. | `sw-tiles-2` | 3,000 tiles (FIFO), ~50–100 MB |
+| Map tiles (OSM, OpenSeaMap, EMODnet, IHM ENC) | **Only as viewed.** Cache-first. Refreshed in the background when older than 14 days (IHM charts: 7) and online. | `sw-tiles-2` | 3,000 tiles (FIFO), ~50–100 MB |
 | POSTs (saves, forecast batch) | never cached | — | — |
 
 **Gaps:**
@@ -223,7 +245,7 @@ model Photo {
 
 **In:**
 - `/map` with a layer switcher:
-  - base OSM / Dark;
+  - base IHM ENC official charts (default over Iberia), OSM or Dark;
   - seamarks;
   - EMODnet depth shading (two styles) and contours;
   - offline isobaths;
@@ -368,3 +390,4 @@ model Photo {
 2. Logbook master: does SailorWind become the master, with the XLSX as export only, or stay a feeder into the sheet?
 3. Engine threshold (roadmap R6): 4.5 kn SOG under sail or OpenCPN's 3.5 kn VMG?
 4. Deploy: OK to change the Caddy config so the PWA installs cleanly (§3, prod caveat)?
+5. Portuguese harbour charts: ask GeoGarage for a Pro quote (IHPT re-use licence included)?

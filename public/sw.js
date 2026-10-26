@@ -10,9 +10,9 @@
  *    departure windows, weather grid) — those fall back to cache only offline
  *  - saved plans ("Save offline" on the map): pages + API GETs of one passage in
  *    PLANS, which is never trimmed and survives SW updates
- *  - map tiles: cached only as they are viewed (never prefetched), CORS mode so
- *    responses are real (non-opaque), capped, refreshed in the background
- *    after TILE_REFRESH_MS when online
+ *  - map tiles (incl. IHM ENC charts): cached only as they are viewed (never
+ *    prefetched), CORS mode so responses are real (non-opaque), capped,
+ *    refreshed in the background after 14 days (charts: 7) when online
  *  POSTs are never cached.
  */
 const VERSION = "v5";
@@ -24,6 +24,9 @@ const KEEP = new Set([SHELL, RUNTIME, TILES, PLANS]);
 const TILE_MAX = 3000;
 const RUNTIME_MAX = 400;
 const TILE_REFRESH_MS = 14 * 24 * 3600 * 1000;
+// IHM ENC charts change with Notices to Mariners; the server says max-age 7 days.
+const CHART_REFRESH_MS = 7 * 24 * 3600 * 1000;
+const CHART_HOSTS = ["ideihm.covam.es"];
 const SHELL_PAGES = ["/", "/map", "/offline"];
 const SHELL_FILES = ["/icon.svg", "/manifest.webmanifest", "/depth-contours.geojson"];
 const NETWORK_FIRST = new Set([
@@ -33,6 +36,7 @@ const NETWORK_FIRST = new Set([
 const TILE_HOSTS = [
   "tile.openstreetmap.org", "openseamap.org",
   "tiles.emodnet-bathymetry.eu", "ows.emodnet-bathymetry.eu",
+  ...CHART_HOSTS,
 ];
 const isTile = (url) => TILE_HOSTS.some((h) => url.hostname.endsWith(h));
 const isStatic = (url) =>
@@ -165,7 +169,9 @@ async function tile(request) {
   const hit = await c.match(request);
   if (hit) {
     const at = Number(hit.headers.get("sw-cached-at") || 0);
-    if (Date.now() - at > TILE_REFRESH_MS) {
+    const host = new URL(request.url).hostname;
+    const maxAge = CHART_HOSTS.some((h) => host.endsWith(h)) ? CHART_REFRESH_MS : TILE_REFRESH_MS;
+    if (Date.now() - at > maxAge) {
       fetch(request).then((r) => (r.ok && r.type !== "opaque" ? putTile(c, request, r) : null)).catch(() => {});
     }
     return hit;

@@ -36,12 +36,38 @@ export const EMODNET_ATTR =
   '© <a href="https://emodnet.ec.europa.eu/en/bathymetry">EMODnet Bathymetry Consortium</a> (DTM 2024, CC BY 4.0)';
 export const OPEN_METEO_ATTR = 'Weather: <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0)';
 
+export const IHM_ATTR =
+  '© <a href="https://ideihm.covam.es/">Instituto Hidrográfico de la Marina</a> — not for navigation';
+
 /**
- * Both bases are the standard OSM tiles; "Dark" inverts them in CSS. CARTO's
- * free basemaps (used before) now answer every request with an "API KEY
- * REQUIRED" watermark tile (checked 2026-10-26).
+ * Official ENC charts of the Spanish Hydrographic Office (IHM), S-52
+ * rendering, from its cached WMTS (layer RasterENC). Covers the full Spanish
+ * ENC set plus three Portuguese cells (PT221101, PT324205, PT324206) at
+ * general/coastal scale, not updated. Tiles are opaque ("no data" hatching
+ * outside coverage), so this is a base layer.
+ *
+ * Licence (ideihm.covam.es/licencias.html, Ley 37/2007): non-commercial
+ * reuse; cite "© Instituto Hidrográfico de la Marina"; don't alter the
+ * meaning (so no dark filter on it); don't imply IHM endorses the site;
+ * not valid for navigation.
+ */
+export const IHM_ENC: TileSource = {
+  id: "ihm",
+  label: "IHM ENC",
+  kind: "xyz",
+  url: "https://ideihm.covam.es/ihmcache/wmts/1.0.0/RasterENC/default/googlemapscompatible/{z}/{y}/{x}.png",
+  attribution: IHM_ATTR,
+  licence: "IHM, Spanish Law 37/2007 non-commercial reuse; cite IHM; no endorsement; not for navigation",
+  note: "IHM ENC (official charts, Spain + Portugal overview): Portugal is general scale only and not updated · not for navigation",
+};
+
+/**
+ * "Dark" and "OSM" are the standard OSM tiles; Dark inverts them in CSS.
+ * CARTO's free basemaps (used before) now answer every request with an "API
+ * KEY REQUIRED" watermark tile (checked 2026-10-26).
  */
 export const BASE_LAYERS: TileSource[] = [
+  IHM_ENC,
   {
     id: "dark",
     label: "Dark",
@@ -62,6 +88,48 @@ export const BASE_LAYERS: TileSource[] = [
     maxNativeZoom: 19,
   },
 ];
+
+/** Where the IHM ENC set has charts: mainland Spain and Portugal, Balearics, the Strait, Canaries. */
+export const IHM_ENC_AREAS: { south: number; west: number; north: number; east: number }[] = [
+  { south: 35.0, west: -10.6, north: 43.95, east: 4.6 },
+  { south: 27.3, west: -18.4, north: 29.7, east: -13.2 },
+];
+
+export const inIhmEncArea = (lat: number, lon: number) =>
+  IHM_ENC_AREAS.some((a) => lat >= a.south && lat <= a.north && lon >= a.west && lon <= a.east);
+
+export type BaseChoice = "auto" | "ihm" | "dark" | "osm";
+export const BASE_CHOICES: { id: BaseChoice; label: string; title: string }[] = [
+  { id: "auto", label: "Auto", title: "IHM ENC charts over Spain and Portugal, Dark elsewhere" },
+  { id: "ihm", label: "ENC", title: "IHM ENC official charts" },
+  { id: "dark", label: "Dark", title: "OpenStreetMap, dark" },
+  { id: "osm", label: "OSM", title: "OpenStreetMap" },
+];
+
+type Box = { south: number; west: number; north: number; east: number };
+
+/** Share of a view's area (in degrees², fine at these scales) covered by the IHM ENC set. */
+export function ihmCoverageShare(view: Box): number {
+  const area = (b: Box) => Math.max(0, b.north - b.south) * Math.max(0, b.east - b.west);
+  const total = area(view);
+  if (!total) return 0;
+  const covered = IHM_ENC_AREAS.reduce((sum, a) => sum + area({
+    south: Math.max(a.south, view.south), north: Math.min(a.north, view.north),
+    west: Math.max(a.west, view.west), east: Math.min(a.east, view.east),
+  }), 0);
+  return covered / total;
+}
+
+/**
+ * The base layer to draw. "auto" picks the IHM charts when at least a fifth
+ * of the view is in their coverage — by area, not by the centre, because a
+ * passage fitted beside the Plan panel is centred out at sea.
+ */
+export function resolveBase(choice: string, view: Box | null): TileSource {
+  const byId = (id: string) => BASE_LAYERS.find((b) => b.id === id);
+  if (choice === "auto") return view && ihmCoverageShare(view) < 0.2 ? byId("dark")! : IHM_ENC;
+  return byId(choice) ?? IHM_ENC;
+}
 
 export const SEAMARKS: TileSource = {
   id: "seamarks",

@@ -9,7 +9,7 @@ import {
   WMSTileLayer, ZoomControl, useMap, useMapEvents,
 } from "react-leaflet";
 import {
-  BASE_LAYERS, DEPTH_CONTOURS, EMODNET_ATTR, HOME_BERTH, SEAMARKS, depthShaded, formatDdm, type TileSource,
+  DEPTH_CONTOURS, EMODNET_ATTR, HOME_BERTH, SEAMARKS, depthShaded, formatDdm, type TileSource,
 } from "@/lib/map-layers";
 import { insertMidpoint, midpoints, moveVertex, removeVertex, type RoutePt } from "@/lib/route-edit";
 import type { ShallowStretch } from "@/lib/searoute";
@@ -36,6 +36,8 @@ const viewOf = (m: L.Map): MapView => {
 
 export default function HubMap(props: {
   layers: LayerState;
+  /** Resolved base layer ("auto" already decided by the view). */
+  base: TileSource;
   passage: HubPassage | null;
   routes: (LegRoute | null)[] | null;
   legIdx: number;
@@ -49,8 +51,7 @@ export default function HubMap(props: {
   fitTarget: FitTarget;
   onLayerError: (id: string) => void;
 }) {
-  const { layers, passage, routes, legIdx, draft, grid } = props;
-  const base = BASE_LAYERS.find((b) => b.id === layers.base) ?? BASE_LAYERS[0];
+  const { layers, base, passage, routes, legIdx, draft, grid } = props;
 
   return (
     <MapContainer center={[HOME_BERTH.lat, HOME_BERTH.lon]} zoom={11} zoomControl={false} className="hub-map">

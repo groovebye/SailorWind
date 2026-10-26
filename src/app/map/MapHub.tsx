@@ -13,8 +13,8 @@ import { windColor } from "@/components/design/helpers";
 import { polylineDistanceNm } from "@/lib/geo";
 import { prepareLegImport } from "@/lib/gpx";
 import {
-  BASE_LAYERS, DEPTH_CONTOURS, DEPTH_STYLES, HOME_BERTH, SEAMARKS, WINDY_OVERLAYS, depthShaded, formatDdm, windyEmbedUrl,
-  type DepthStyle, type WindyOverlay,
+  BASE_CHOICES, DEPTH_CONTOURS, DEPTH_STYLES, HOME_BERTH, IHM_ENC, SEAMARKS, WINDY_OVERLAYS, depthShaded, formatDdm, resolveBase,
+  windyEmbedUrl, type BaseChoice, type DepthStyle, type WindyOverlay,
 } from "@/lib/map-layers";
 import { dropPlanOffline, exportUrl, legRouteUrl, savePlanOffline, type PlanLeg, type SavedPlan } from "@/lib/offline-plan";
 import { sameRoute, type RoutePt } from "@/lib/route-edit";
@@ -41,7 +41,7 @@ export type MapView = { bounds: Bounds; lat: number; lon: number; zoom: number }
 export type FitTarget = { key: string; points: [number, number][] } | null;
 
 export type LayerState = {
-  base: string;
+  base: BaseChoice;
   seamarks: boolean;
   depth: boolean;
   depthStyle: DepthStyle;
@@ -53,7 +53,7 @@ export type LayerState = {
   model: WeatherGridModel;
 };
 const DEFAULT_LAYERS: LayerState = {
-  base: "dark", seamarks: true, depth: false, depthStyle: "mean_multicolour", contours: false,
+  base: "auto", seamarks: true, depth: false, depthStyle: "mean_multicolour", contours: false,
   isobaths: false, wind: false, waves: false, orca: true, model: "best_match",
 };
 const NO_PLANS: Record<string, SavedPlan> = {};
@@ -77,7 +77,8 @@ export default function MapHub({ passages, passage, initialLeg }: {
   initialLeg: number;
 }) {
   const router = useRouter();
-  const [layers, setLayers] = useStoredState("sw_map_layers", DEFAULT_LAYERS);
+  // v2: the stored base used to be "dark" by default; IHM charts ("auto") are the new default.
+  const [layers, setLayers] = useStoredState("sw_map_layers_v2", DEFAULT_LAYERS);
   const [savedPlans, setSavedPlans] = useStoredState("sw_saved_plans", NO_PLANS);
   const [panel, setPanel] = useState<Panel>("plan");
   const [legIdx, setLegIdx] = useState(initialLeg);
@@ -121,6 +122,8 @@ export default function MapHub({ passages, passage, initialLeg }: {
     const pts = fit.target === "all" ? legRoutes.flatMap((r) => r?.points ?? []) : legRoutes[fit.target]?.points ?? [];
     return pts.length ? { key: `${passage?.id}:${fit.key}`, points: pts.map((p) => [p.lat, p.lon]) } : null;
   }, [fit, legRoutes, passage]);
+
+  const base = resolveBase(layers.base, view?.bounds ?? null);
 
   // ── Weather grid for the visible area ─────────────────────────────────────
   const weatherOn = layers.wind || layers.waves;
@@ -269,6 +272,7 @@ export default function MapHub({ passages, passage, initialLeg }: {
     <div className="map-wrap hub">
       <HubMap
         layers={layers}
+        base={base}
         passage={passage}
         routes={legRoutes}
         legIdx={legIdx}
@@ -399,11 +403,15 @@ export default function MapHub({ passages, passage, initialLeg }: {
           <PanelHead title="Layers" onClose={() => setPanel(null)} />
           <div className="field-label">Base map</div>
           <div className="hub-seg" role="radiogroup" aria-label="Base map">
-            {BASE_LAYERS.map((b) => (
+            {BASE_CHOICES.map((b) => (
               <button key={b.id} role="radio" aria-checked={layers.base === b.id} className={layers.base === b.id ? "on" : ""}
-                onClick={() => setLayers((s) => ({ ...s, base: b.id }))} title={b.licence}>{b.label}</button>
+                onClick={() => setLayers((s) => ({ ...s, base: b.id }))} title={b.title}>{b.label}</button>
             ))}
           </div>
+          <p className="faint" style={{ fontSize: 11, lineHeight: 1.45, margin: "2px 2px 0" }}>
+            {layers.base === "auto" && <>Showing {base.id === "ihm" ? "IHM charts" : "Dark"} here: IHM ENC over Spain and Portugal, Dark elsewhere.<br /></>}
+            {base.id === "ihm" && IHM_ENC.note}
+          </p>
 
           <div className="field-label" style={{ marginTop: 12 }}>Chart</div>
           <LayerRow on={layers.seamarks} onClick={() => toggle("seamarks")} label="Seamarks" sub="OpenSeaMap" title={SEAMARKS.licence} error={layerErrors.seamarks} />

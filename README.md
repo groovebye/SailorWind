@@ -60,7 +60,7 @@ Roadmap and product strategy: [docs/roadmap-planning-brain.md](docs/roadmap-plan
 | Weather API | Open-Meteo (free) + Windy Point Forecast (GFS + gfsWave) |
 | Tides | Semi-diurnal harmonic model (HW Dover + port offsets) |
 | Bathymetry | EMODnet (free GeoTIFF via WCS) |
-| Chart overlay | OSM base (dark = inverted in CSS), OpenSeaMap seamarks, EMODnet depth tiles/WMS, local GeoJSON contours (5-200m) |
+| Chart overlay | IHM ENC official charts (Spanish Hydrographic Office WMTS; default over Iberia), OSM base (dark = inverted in CSS), OpenSeaMap seamarks, EMODnet depth tiles/WMS, local GeoJSON contours (5-200m) |
 | Webcams | Windy Webcams API v3 |
 | Routing | Coastal graph (64 nodes, 61 edges, Dijkstra) + manual overrides |
 | Vessel model | VesselProfile with polar-based performance model |
