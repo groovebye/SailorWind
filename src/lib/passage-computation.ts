@@ -15,7 +15,7 @@ import { buildClientSchedule } from "@/lib/passage-schedule-client";
 
 type RoutePoint = { name: string; slug: string; lat: number; lon: number; coastlineNm: number; type: string };
 type RouteWaypoint = { port: RoutePoint; isStop: boolean; isCape: boolean; sortOrder: number };
-type PassageLike = {
+export type PassageLike = {
   id: string;
   departure: Date;
   speed: number;
@@ -43,7 +43,7 @@ export type PolarResult = {
   polarSource: "table" | "fallback";
 };
 
-type VesselPerformanceModel = {
+export type VesselPerformanceModel = {
   lightAirMotorThresholdKt: number;
   motorsailUpwindThresholdKt: number;
   closeHauledMinAngleDeg: number;
@@ -62,7 +62,7 @@ type VesselPerformanceModel = {
   minimumSailingSpeedKt?: number;         // default 3.5
 };
 
-type VesselLike = {
+export type VesselLike = {
   id: string;
   slug: string;
   name: string;
@@ -175,11 +175,19 @@ export interface LegTimelineContext {
   routeCumulative: number[];
   routeDistanceNm: number;
   forecasts: Record<string, ForecastEntry[]>;
+  /**
+   * Forecast sample points along the route geometry (keys into `forecasts`).
+   * When present, each hour uses the sample nearest along-track; otherwise the
+   * nearest leg waypoint (port/cape) by coastline position.
+   */
+  forecastSamples?: ForecastSample[];
   streamContexts: TideContext[];
   forecastSignature: string;
   routeSignature: string;
   vesselSignature: string;
 }
+
+export type ForecastSample = { key: string; lat: number; lon: number; alongNm: number };
 
 type TideContext = {
   prediction: TidePrediction;
@@ -189,6 +197,10 @@ type TideContext = {
 };
 
 const HALF_TIDE_HOURS = 6.2;
+// Forecast sampled at least this often along the route. Ports alone leave the
+// middle of a long coastal leg on near-shore model cells (lighter, land-
+// influenced wind) — offshore conditions need offshore samples.
+const FORECAST_SAMPLE_SPACING_NM = 20;
 const PORT_AREA_NAMES = new Set(["Arrival", "Departure"]);
 
 function directionToDegrees(direction: string | null): number | null {
@@ -755,6 +767,20 @@ function buildStreamContexts(from: RouteWaypoint, to: RouteWaypoint, capes: Rout
   });
 }
 
+/** Evenly spaced points along the route (≤ FORECAST_SAMPLE_SPACING_NM apart), both ends included. */
+export function buildForecastSamples(routeGeometry: LatLon[], routeCumulative: number[], routeDistanceNm: number): ForecastSample[] {
+  const segments = Math.max(1, Math.ceil(routeDistanceNm / FORECAST_SAMPLE_SPACING_NM));
+  return Array.from({ length: segments + 1 }, (_, i) => {
+    const alongNm = (routeDistanceNm * i) / segments;
+    const [lat, lon] = positionAtDistance(routeGeometry, routeCumulative, alongNm);
+    return { key: `route-${i}`, lat: Math.round(lat * 1e4) / 1e4, lon: Math.round(lon * 1e4) / 1e4, alongNm };
+  });
+}
+
+function nearestForecastSample(samples: ForecastSample[], alongNm: number) {
+  return samples.reduce((best, s) => (Math.abs(s.alongNm - alongNm) < Math.abs(best.alongNm - alongNm) ? s : best));
+}
+
 function nearestStreamContext(streams: TideContext[], fraction: number) {
   let best: TideContext | null = null;
   let delta = Number.POSITIVE_INFINITY;
@@ -817,17 +843,12 @@ export async function resolveLegTimelineContext(
   const routeCumulative = buildCumulativeRoute(routeGeometry);
   const routeDistanceNm = routeCumulative[routeCumulative.length - 1] ?? leg.nm;
 
+  const forecastSamples = buildForecastSamples(routeGeometry, routeCumulative, routeDistanceNm);
   const forecasts = Object.fromEntries(
     await Promise.all(
-      legWaypoints.map(async (waypoint) => [
-        waypoint.port.slug,
-        await fetchForecast(
-          waypoint.port.lat,
-          waypoint.port.lon,
-          passage.model as WeatherModel,
-          waypoint.isCape,
-          false
-        ),
+      forecastSamples.map(async (sample) => [
+        sample.key,
+        await fetchForecast(sample.lat, sample.lon, passage.model as WeatherModel, false, false),
       ])
     )
   );
@@ -856,10 +877,26 @@ export async function resolveLegTimelineContext(
     routeCumulative,
     routeDistanceNm,
     forecasts,
+    forecastSamples,
     streamContexts,
     forecastSignature,
     routeSignature,
     vesselSignature,
+  };
+}
+
+/**
+ * Same leg, different departure. Route and forecasts are reused as-is (the
+ * forecast series already spans ~10 days); only time-dependent inputs — the
+ * departure instant and the tidal-stream anchors — are re-derived. Lets the
+ * departure-window planner run many start times off one resolved context.
+ */
+export function retimeLegTimelineContext(context: LegTimelineContext, departTime: Date): LegTimelineContext {
+  const plannedMs = context.leg.arriveTime.getTime() - context.leg.departTime.getTime();
+  return {
+    ...context,
+    leg: { ...context.leg, departTime, arriveTime: new Date(departTime.getTime() + plannedMs) },
+    streamContexts: buildStreamContexts(context.leg.from, context.leg.to, context.capes, departTime),
   };
 }
 
@@ -868,7 +905,7 @@ export function computeLegTimelineFromContext(
   passage: PassageLike,
   vessel: VesselLike,
 ): LegTimelineComputation {
-  const { leg, legWaypoints, capes, routeGeometry, routeCumulative, routeDistanceNm, forecasts, streamContexts } = context;
+  const { leg, legWaypoints, capes, routeGeometry, routeCumulative, routeDistanceNm, forecasts, forecastSamples, streamContexts } = context;
   const timeline: TimelineEntry[] = [];
   let elapsedHours = 0;
   let distanceFromStartNm = 0;
@@ -892,9 +929,10 @@ export function computeLegTimelineFromContext(
       return Math.abs(waypointFraction - fraction) < Math.abs(bestFraction - fraction) ? waypoint : best;
     }, legWaypoints[0]);
 
-    const forecastEntry = closestForecast(forecasts[nearestWaypoint.port.slug] ?? [], sampleTime);
+    const sample = forecastSamples?.length ? nearestForecastSample(forecastSamples, distanceFromStartNm) : null;
+    const forecastEntry = closestForecast(forecasts[sample ? sample.key : nearestWaypoint.port.slug] ?? [], sampleTime);
     if (!forecastEntry) {
-      throw new Error(`Missing forecast for ${nearestWaypoint.port.name}`);
+      throw new Error(`Missing forecast for ${sample ? `route sample at ${Math.round(sample.alongNm)} NM` : nearestWaypoint.port.name}`);
     }
 
     const twa = absoluteAngleDiff(forecastEntry.windDirDeg, courseTrue);

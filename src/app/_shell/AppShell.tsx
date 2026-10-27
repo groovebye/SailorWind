@@ -10,9 +10,9 @@ export type ShellUser = { name: string; boat: { name: string; model: string | nu
 
 /**
  * The persistent shell: dark-ocean backdrop + wind-field canvas + sticky topbar,
- * with the page rendered in the single scroll container. The Chart view is
- * full-bleed (its own map manages height) and suppresses the backdrop wind, since
- * the map has its own animated overlay.
+ * with the page rendered in the single scroll container. The map (/map) is
+ * full-bleed (it manages its own height) and skips the backdrop wind and the
+ * bottom tab bar, which would sit on top of the chart.
  */
 export default function AppShell({
   children,

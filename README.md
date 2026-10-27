@@ -5,6 +5,8 @@
 **Лодка:** Bossanova (Hallberg-Rassy Monsun 31, осадка 1.5м)
 **Маршрут:** Gijon (Испания) -> Греция, multi-year voyage
 
+Roadmap and product strategy: [docs/roadmap-planning-brain.md](docs/roadmap-planning-brain.md) · [docs/product-strategy.md](docs/product-strategy.md) · sailing-hub spec (map, tracking, logbook, places, advice): [docs/spec-sailing-hub.md](docs/spec-sailing-hub.md)
+
 ### Current Status (v1.5)
 
 | Component | Coverage | Details |
@@ -32,7 +34,12 @@
 | **Maintenance** | MaintenanceItem model | Pre-departure readiness check |
 | **Offline cache** | localStorage briefing | Recently viewed legs available offline |
 | **Wave power** | kW/m per waypoint + hour | Color-coded calm/moderate/rough/severe |
-| **GPX export** | Per leg + full passage | For Navionics/OpenCPN import |
+| **Departure windows** | Per leg, N starts × 3 scenarios | Pessimistic/realistic/optimistic runs of the timeline engine: arrival range, daylight, engine %, fuel vs tank, wind/Hs, verdict |
+| **Forecast sampling** | Every ≤ 20 NM along the route | Timeline uses the nearest along-track sample (not just the ports) |
+| **GPX export** | Per leg + full passage | Plotter-safe for Raymarine Axiom (LightHouse) + Navionics: `<rte>` per leg, ≤ 16-char ASCII names |
+| **GPX import** | Route / track / waypoints | OpenCPN, Axiom, Navionics files → leg's manual route (oriented, joined to ports, thinned) |
+| **Hub map** `/map` | Layers + legs + weather | OSM/dark base, OpenSeaMap seamarks, EMODnet depth (shading + contours, not for navigation), offline isobaths, Open-Meteo wind barbs and waves with a time slider, Windy embed; legs editable on the map; departure windows, GPX, home berth |
+| **PWA / offline** | SW v5 | App shell + every build chunk precached, "Save offline" per passage, map tiles cached only as viewed (never bulk-downloaded) |
 
 ---
 
@@ -53,7 +60,7 @@
 | Weather API | Open-Meteo (free) + Windy Point Forecast (GFS + gfsWave) |
 | Tides | Semi-diurnal harmonic model (HW Dover + port offsets) |
 | Bathymetry | EMODnet (free GeoTIFF via WCS) |
-| Chart overlay | OpenSeaMap tiles + local GeoJSON contours (5-200m) |
+| Chart overlay | IHM ENC official charts (Spanish Hydrographic Office WMTS; default over Iberia), OSM base (dark = inverted in CSS), OpenSeaMap seamarks, EMODnet depth tiles/WMS, local GeoJSON contours (5-200m) |
 | Webcams | Windy Webcams API v3 |
 | Routing | Coastal graph (64 nodes, 61 edges, Dijkstra) + manual overrides |
 | Vessel model | VesselProfile with polar-based performance model |
@@ -81,9 +88,12 @@ sailplanner-next/
 │   │   │   ├── leg/[legIndex]/
 │   │   │   │   ├── page.tsx   # Leg briefing page (17+ sections, 1600+ lines)
 │   │   │   │   └── LegMap.tsx # Leg map: route, contours, OpenSeaMap, orca zones, seamarks
-│   │   │   └── map/
-│   │   │       ├── page.tsx   # Full passage map page
-│   │   │       └── PassageMap.tsx  # Leaflet map component
+│   │   │   └── map/page.tsx   # Redirects to /map?p=[id]
+│   │   ├── map/
+│   │   │   ├── page.tsx       # Hub map (server: passages, waypoints, approaches)
+│   │   │   ├── MapHub.tsx     # Panels, layer state, route edit, departure windows, offline save
+│   │   │   ├── HubMap.tsx     # react-leaflet map: tiles, legs, edit handles, berth
+│   │   │   └── WeatherLayer.tsx  # Wind barbs + wave cells for one forecast hour
 │   │   ├── port/[slug]/
 │   │   │   └── page.tsx       # Port detail: marina comparison, recommendations, services
 │   │   └── api/
@@ -98,6 +108,7 @@ sailplanner-next/
 │   │       ├── leg/route.ts            # GET curated leg guide
 │   │       ├── leg-brief/route.ts      # GET aggregated leg briefing data
 │   │       ├── leg-route/route.ts      # GET/POST/DELETE manual route overrides
+│   │       ├── departure-windows/route.ts # GET departure-window comparison
 │   │       ├── leg-timeline/route.ts   # GET computed passage timeline
 │   │       ├── passage/route.ts        # CRUD: GET/POST/PATCH/DELETE
 │   │       ├── port-areas/route.ts     # GET port areas + marinas + services
@@ -113,7 +124,9 @@ sailplanner-next/
 │   │   ├── api-logger.ts      # Structured API request logging
 │   │   ├── coastline.ts       # Routing graph (64 nodes, 61 edges, Dijkstra)
 │   │   ├── db.ts              # Prisma client (singleton with pg adapter)
+│   │   ├── departure-windows.ts # Departure windows: N starts × pessimistic/realistic/optimistic
 │   │   ├── execution-debrief.ts # Debrief engine (planned vs actual comparison)
+│   │   ├── gpx.ts             # Plotter-safe GPX build + tolerant GPX parse/fit
 │   │   ├── leg-route.ts       # Route resolution + manual override CRUD
 │   │   ├── marina-recommendations.ts # 6-use-case recommendation engine
 │   │   ├── nanoid.ts          # Short ID generator (8 chars)
@@ -123,6 +136,7 @@ sailplanner-next/
 │   │   ├── seamarks-static.ts  # 24 curated seamarks (lighthouses, buoys, landmarks)
 │   │   ├── theme.tsx          # ThemeProvider context (dark/light, localStorage)
 │   │   ├── tides.ts           # Semi-diurnal tidal model (18 ports)
+│   │   ├── timeline-inputs.ts # Load passage + vessel for the timeline engine
 │   │   ├── weather.ts         # Open-Meteo client (ECMWF/GFS/ICON/AROME + marine)
 │   │   └── windy.ts           # Windy API client (GFS + gfsWave)
 │   └── generated/prisma/      # Generated Prisma client (gitignored)
@@ -668,7 +682,8 @@ Separate from safety verdict (GO ≠ Comfortable):
 | `/api/leg` | GET | Curated leg guide (pilotage, milestones, hazards) |
 | `/api/leg-brief` | GET | Aggregated briefing: guide + timeline + forecast + tides + webcams |
 | `/api/leg-timeline` | GET | Computed hourly passage timeline |
-| `/api/leg-route` | GET/POST/DELETE | Manual route override CRUD |
+| `/api/leg-route` | GET/POST/DELETE | Manual route override CRUD (GPX import saves through POST) |
+| `/api/departure-windows` | GET | Departure-window comparison: `start`, `count`, `stepHours`; 3 scenarios per start |
 
 ### Execution & Readiness
 | Endpoint | Method | Description |
@@ -686,7 +701,9 @@ Separate from safety verdict (GO ≠ Comfortable):
 | `/api/port-areas` | GET | Port areas + marinas + prices + nearby places |
 | `/api/seamarks` | GET | Curated seamarks (fallback for OpenSeaMap outages) |
 | `/api/webcams` | GET | Windy webcams nearby |
-| `/api/export` | GET | GPX export (per-leg or full passage) |
+| `/api/export` | GET | Plotter-safe GPX export (per-leg or full passage) |
+| `/api/weather-grid` | GET | Gridded wind + waves (Open-Meteo) for the map view: `south`, `west`, `north`, `east`, `model`; ≤ 12×12 nodes, 1 h cache |
+| `/sw-assets` | GET | The build's static files, for the service worker to precache |
 
 ---
 

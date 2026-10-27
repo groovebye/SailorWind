@@ -12,7 +12,7 @@
  * Runs identically on server and client (grid is bundled), so the chart, the
  * distance readout and the cockpit ETAs all use the same path.
  */
-import { haversineNm, type LatLon } from "./geo";
+import { haversineNm, simplifyPolyline, type LatLon } from "./geo";
 import { NAVGRID_B64, NAVGRID_META } from "./navgrid.data";
 
 export type LL = { lat: number; lon: number };
@@ -129,32 +129,6 @@ function aStar(a: LL, b: LL): LatLon[] | null {
   return path;
 }
 
-/** Perpendicular distance (nm) of p from segment a→b, local planar approx. */
-function perpNm(p: LatLon, a: LatLon, b: LatLon): number {
-  const k = Math.cos((a[0] * Math.PI) / 180);
-  const ax = a[1] * k, ay = a[0], bx = b[1] * k, by = b[0], px = p[1] * k, py = p[0];
-  const dx = bx - ax, dy = by - ay;
-  const len2 = dx * dx + dy * dy;
-  if (len2 === 0) return haversineNm(p, a);
-  let t = ((px - ax) * dx + (py - ay) * dy) / len2;
-  t = Math.max(0, Math.min(1, t));
-  return haversineNm(p, [ay + dy * t, (ax + dx * t) / k]);
-}
-
-/** Douglas–Peucker simplification, epsilon in nm. */
-function simplify(pts: LatLon[], epsNm: number): LatLon[] {
-  if (pts.length <= 2) return pts;
-  let maxD = 0, idx = 0;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const d = perpNm(pts[i], pts[0], pts[pts.length - 1]);
-    if (d > maxD) { maxD = d; idx = i; }
-  }
-  if (maxD <= epsNm) return [pts[0], pts[pts.length - 1]];
-  const left = simplify(pts.slice(0, idx + 1), epsNm);
-  const right = simplify(pts.slice(idx), epsNm);
-  return [...left.slice(0, -1), ...right];
-}
-
 const cache = new Map<string, LatLon[]>();
 const key = (a: LL, b: LL) => `${a.lat.toFixed(3)},${a.lon.toFixed(3)}|${b.lat.toFixed(3)},${b.lon.toFixed(3)}`;
 
@@ -165,7 +139,7 @@ export function seaRoute(a: LL, b: LL): LatLon[] {
   if (hit) return hit;
   const cells = aStar(a, b);
   const line: LatLon[] = cells && cells.length > 1
-    ? [[a.lat, a.lon], ...simplify(cells, 0.15), [b.lat, b.lon]]
+    ? [[a.lat, a.lon], ...simplifyPolyline(cells, 0.15), [b.lat, b.lon]]
     : [[a.lat, a.lon], [b.lat, b.lon]]; // fallback: outside grid / no water path
   cache.set(k, line);
   return line;
@@ -188,6 +162,57 @@ export function routeDistanceNm(wps: LL[]): number {
   let total = 0;
   for (let i = 1; i < line.length; i++) total += haversineNm(line[i - 1], line[i]);
   return total;
+}
+
+const inGrid = (lat: number, lon: number) => {
+  const r = cellRow(lat), c = cellCol(lon);
+  return r >= 0 && r < rows && c >= 0 && c < cols;
+};
+
+export type ShallowStretch = { start: LL; end: LL; nm: number };
+
+/**
+ * Stretches of a hand-drawn route that cross land or water shallower than the
+ * grid's safe depth (20 m). The first and last `endClearNm` are ignored —
+ * harbour approaches are always shallow — and so is anything outside the
+ * grid. Sampled every ~0.1 NM; stretches shorter than `minNm` are dropped
+ * (corner-cutting noise). A warning aid for editing, not a safety check.
+ */
+export function shallowStretches(points: LL[], endClearNm = 3, minNm = 0.2): ShallowStretch[] {
+  const out: ShallowStretch[] = [];
+  let total = 0;
+  for (let i = 1; i < points.length; i++) total += haversineNm([points[i - 1].lat, points[i - 1].lon], [points[i].lat, points[i].lon]);
+
+  let open: { start: LL; startNm: number; end: LL; endNm: number } | null = null;
+  const close = () => {
+    if (open && open.endNm - open.startNm >= minNm) {
+      out.push({ start: open.start, end: open.end, nm: Math.round((open.endNm - open.startNm) * 10) / 10 });
+    }
+    open = null;
+  };
+
+  let along = 0;
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1], b = points[i];
+    const seg = haversineNm([a.lat, a.lon], [b.lat, b.lon]);
+    const n = Math.max(1, Math.ceil(seg / 0.1));
+    for (let k = i === 1 ? 0 : 1; k <= n; k++) {
+      const t = k / n;
+      const p = { lat: a.lat + (b.lat - a.lat) * t, lon: a.lon + (b.lon - a.lon) * t };
+      const d = along + seg * t;
+      const counted = d >= endClearNm && d <= total - endClearNm && inGrid(p.lat, p.lon);
+      const shallow = counted && !nav(cellRow(p.lat), cellCol(p.lon));
+      if (shallow) {
+        if (!open) open = { start: p, startNm: d, end: p, endNm: d };
+        else { open.end = p; open.endNm = d; }
+      } else {
+        close();
+      }
+    }
+    along += seg;
+  }
+  close();
+  return out;
 }
 
 /**

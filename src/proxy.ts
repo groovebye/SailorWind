@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * getSessionUser() in pages, Server Actions and Route Handlers.
  */
 const SESSION_COOKIE = "sw_session"; // keep in sync with src/lib/auth/session.ts
-const PROTECTED = ["/new", "/p", "/port", "/settings"];
+const PROTECTED = ["/new", "/p", "/port", "/map", "/settings"];
 
 export default function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;

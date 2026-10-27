@@ -177,7 +177,7 @@ export default function PassageCockpit(props: {
         </div>
         <div className="flex gap-8 wrap">
           <span className="pill"><Sailboat size={13} /> {props.boat} · {props.boatModel}</span>
-          <Link href={`/p/${props.passageId}/map`} className="btn btn-sm"><MapIcon size={15} /> Map</Link>
+          <Link href={`/map?p=${props.passageId}`} className="btn btn-sm"><MapIcon size={15} /> Map</Link>
           <a className="btn btn-sm btn-ghost" href="https://www.windy.com" target="_blank" rel="noreferrer"><ExternalLink size={15} /> Windy</a>
           <button className="btn btn-sm btn-primary" onClick={() => { setSeries(null); setReloadKey((k) => k + 1); }}><RefreshCw size={15} /> Update</button>
         </div>
@@ -460,7 +460,7 @@ export default function PassageCockpit(props: {
                 </div>
               );
             }) : <div className="dim" style={{ fontSize: 13, padding: "4px 0" }}>No elevated zones flagged on this route.</div>}
-            <Link href={`/p/${props.passageId}/map`} className="btn btn-sm" style={{ width: "100%", marginTop: 12 }}>
+            <Link href={`/map?p=${props.passageId}`} className="btn btn-sm" style={{ width: "100%", marginTop: 12 }}>
               <MapPin size={14} /> View zones on chart
             </Link>
           </div>

@@ -18,7 +18,7 @@ export default function Topbar({ activeId, user }: { activeId?: string | null; u
   const onPassage = path.startsWith("/p/") && !onChart;
 
   const passageHref = activeId ? `/p/${activeId}` : "/new";
-  const chartHref = activeId ? `/p/${activeId}/map` : "/new";
+  const chartHref = activeId ? `/map?p=${activeId}` : "/map";
 
   return (
     <header className="topbar">
@@ -40,7 +40,7 @@ export default function Topbar({ activeId, user }: { activeId?: string | null; u
             <Route /> Passage
           </Link>
           <Link href={chartHref} className={`nav-link${onChart ? " active" : ""}`}>
-            <Map /> Chart
+            <Map /> Map
           </Link>
         </nav>
       )}

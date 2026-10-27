@@ -1,50 +1,8 @@
-import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth/dal";
-import { haversineNm } from "@/lib/geo";
-import { routeDistanceNm } from "@/lib/searoute";
-import ChartView from "./ChartView";
+import { redirect } from "next/navigation";
+import { mapUrl } from "@/lib/offline-plan";
 
-export const dynamic = "force-dynamic";
-
+/** The per-passage chart now lives in the hub map. */
 export default async function ChartPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await requireUser(`/p/${id}/map`);
-  const passage = await prisma.passage.findFirst({
-    where: { shortId: id, ownerId: user.id },
-    include: { waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } } },
-  });
-  if (!passage) notFound();
-
-  // Reeds approach waypoints (seaward entrance points) — attach to each passage
-  // waypoint by nearest catalogued PortArea so the route threads in safely.
-  const approaches = await prisma.portArea.findMany({
-    where: { approachLat: { not: null }, approachLon: { not: null } },
-    select: { lat: true, lon: true, approachLat: true, approachLon: true, approachNote: true },
-  });
-  const approachFor = (lat: number, lon: number) => {
-    let best: (typeof approaches)[number] | null = null;
-    let bestNm = 3; // only match within 3 nm
-    for (const a of approaches) {
-      const d = haversineNm([lat, lon], [a.lat, a.lon]);
-      if (d < bestNm) { bestNm = d; best = a; }
-    }
-    return best && best.approachLat != null && best.approachLon != null
-      ? { lat: best.approachLat, lon: best.approachLon, note: best.approachNote }
-      : null;
-  };
-
-  const wps = passage.waypoints.map((w) => ({
-    name: w.port.name, slug: w.port.slug, lat: w.port.lat, lon: w.port.lon,
-    isStop: w.isStop, isCape: w.isCape, orcaRisk: w.port.orcaRisk,
-    approach: approachFor(w.port.lat, w.port.lon),
-  }));
-  const stops = passage.waypoints.filter((w) => w.isStop);
-  const from = (stops[0] ?? passage.waypoints[0])?.port.name ?? "?";
-  const to = (stops[stops.length - 1] ?? passage.waypoints[passage.waypoints.length - 1])?.port.name ?? "?";
-  // Corridor-aware distance: rounds the headlands through the deep-water track
-  // (matches the drawn route) instead of summing land-crossing straight lines.
-  const nm = routeDistanceNm(passage.waypoints.map((w) => ({ lat: w.port.lat, lon: w.port.lon })));
-
-  return <ChartView passageId={passage.shortId} from={from} to={to} nm={nm} wps={wps} />;
+  redirect(mapUrl(id));
 }

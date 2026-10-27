@@ -7,6 +7,9 @@ import dynamic from "next/dynamic";
 import { useTheme } from "@/lib/theme";
 import type { ForecastEntry } from "@/lib/weather";
 import { buildClientSchedule, toLocalInputValue } from "@/lib/passage-schedule-client";
+import { prepareLegImport } from "@/lib/gpx";
+import { legRouteUrl } from "@/lib/offline-plan";
+import DepartureWindows from "@/components/DepartureWindows";
 
 const LegMap = dynamic(() => import("./LegMap"), { ssr: false });
 const MarinaMiniMap = dynamic(() => import("@/components/MarinaMiniMap"), { ssr: false });
@@ -262,6 +265,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   const [resolvedRouteDistanceNm, setResolvedRouteDistanceNm] = useState<number | null>(null);
   const [isSavingRoute, setIsSavingRoute] = useState(false);
   const [routeRefreshKey, setRouteRefreshKey] = useState(0);
+  const [importNote, setImportNote] = useState<string | null>(null);
   const [lore, setLore] = useState<Poi[]>([]);
 
   // Execution state
@@ -363,7 +367,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     const fp = fromPort!;
     const dp = dest!;
     const c = new AbortController();
-    fetch(`/api/leg-route?passageId=${id}&legIndex=${legIndex}&fromName=${encodeURIComponent(fp.name)}&fromLat=${fp.lat}&fromLon=${fp.lon}&toName=${encodeURIComponent(dp.name)}&toLat=${dp.lat}&toLon=${dp.lon}`, { signal: c.signal })
+    fetch(legRouteUrl(id, { index: legIndex, from: fp, to: dp }), { signal: c.signal })
       .then(r => r.json()).then(d => {
         if (d.mode) setRouteMode(d.mode);
         if (d.points?.length >= 2) {
@@ -479,6 +483,30 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
     } finally {
       setIsSavingRoute(false);
     }
+  }
+
+  // GPX import (e.g. an OpenCPN weather route): parsed and fitted to this leg
+  // in the browser, then saved as the leg's manual route.
+  async function handleImportGpx(file: File) {
+    const fp = fromPort, dp = dest;
+    if (!fp || !dp) return;
+    const prepared = prepareLegImport(await file.text(), file.name, fp, dp);
+    if (!prepared.ok) { setImportNote(prepared.error); return; }
+    const { summary, warnings } = prepared;
+    if (!window.confirm(`Replace this leg's route with ${summary}?${warnings.length ? `\n\n${warnings.join("\n")}` : ""}`)) return;
+
+    const response = await fetch("/api/leg-route", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ passageId: id, legIndex, points: prepared.points, notes: `Imported from GPX: ${prepared.label}` }),
+    });
+    if (!response.ok) { setImportNote(`${file.name}: save failed`); return; }
+
+    setResolvedRoutePoints(prepared.points.map(p => ({ lat: p.lat, lon: p.lon })));
+    setResolvedRouteDistanceNm(prepared.distanceNm);
+    setRouteMode("manual");
+    setTimelineData(null);
+    setRouteRefreshKey((prev) => prev + 1);
+    setImportNote(`Imported ${summary}${warnings.length ? ` · ${warnings.join(" · ")}` : ""}`);
   }
 
   async function handleResetRoute() {
@@ -1115,6 +1143,13 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 <button onClick={startRouteEditing} className="px-2 py-1 rounded" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }}>
                   Modify Route
                 </button>
+                <label className="px-2 py-1 rounded cursor-pointer" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)` }} title="Use a route or track from a GPX file (OpenCPN, Axiom, Navionics) for this leg">
+                  Import GPX
+                  <input type="file" accept=".gpx,application/gpx+xml" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) handleImportGpx(f); }} />
+                </label>
+                <a href={`/api/export?passageId=${id}&legIndex=${legIndex}`} download className="px-2 py-1 rounded" style={{ color: "var(--text-blue-light)", border: `1px solid var(--border)`, textDecoration: "none" }} title="Plotter-safe GPX for Raymarine Axiom / Navionics">
+                  Export GPX
+                </a>
                 {routeMode === "manual" && (
                   <button onClick={handleResetRoute} className="px-2 py-1 rounded" style={{ color: "var(--text-muted)", border: `1px solid var(--border)` }}>
                     Reset to Auto
@@ -1137,6 +1172,12 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
         {isEditingRoute && (
           <div className="px-3 py-1.5 text-[11px]" style={{ background: "var(--accent-caution)", color: "var(--text-yellow)" }}>
             Click on the map to add route points in order. Click any existing point to remove it.
+          </div>
+        )}
+        {importNote && !isEditingRoute && (
+          <div className="px-3 py-1.5 text-[11px] flex items-center justify-between gap-2" style={{ background: "var(--bg-card)", color: "var(--text-secondary)", borderBottom: `1px solid var(--border-light)` }}>
+            <span>📥 {importNote}</span>
+            <button onClick={() => setImportNote(null)} className="no-print" style={{ color: "var(--text-muted)" }} aria-label="Dismiss">✕</button>
           </div>
         )}
         <div className="rounded-b-xl overflow-hidden" style={{ border: `1px solid var(--border-light)`, borderTop: "none", height: 400 }}>
@@ -1330,6 +1371,9 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
           </div>
         </Section>
       )}
+
+      {/* ══════ DEPARTURE WINDOWS ══════ */}
+      <DepartureWindows passageId={id} legIndex={legIndex} refreshKey={routeRefreshKey} onPick={saveDepartureOverride} />
 
       {/* ══════ DECISION INTELLIGENCE ══════ */}
       {timelineData && (
