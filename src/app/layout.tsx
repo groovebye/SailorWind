@@ -3,7 +3,7 @@ import { Spectral, Hanken_Grotesk, IBM_Plex_Mono } from "next/font/google";
 import { ThemeProvider } from "@/lib/theme";
 import Script from "next/script";
 import { prisma } from "@/lib/db";
-import { defaultVessel, getCurrentUser } from "@/lib/auth/dal";
+import { defaultVessel, getCurrentUser, visibleTo } from "@/lib/auth/dal";
 import AppShell, { type ShellUser } from "./_shell/AppShell";
 import SwRegister from "./sw-register";
 import "./globals.css";
@@ -48,7 +48,7 @@ async function getShellData(): Promise<{ user: ShellUser | null; activeId: strin
     if (!me) return { user: null, activeId: null };
     const [boat, passage] = await Promise.all([
       defaultVessel(me.id),
-      prisma.passage.findFirst({ where: { ownerId: me.id }, orderBy: { updatedAt: "desc" }, select: { shortId: true } }),
+      prisma.passage.findFirst({ where: visibleTo(me.id), orderBy: { updatedAt: "desc" }, select: { shortId: true } }),
     ]);
     return {
       user: { name: me.name, boat: boat ? { name: boat.name, model: boat.model } : null },

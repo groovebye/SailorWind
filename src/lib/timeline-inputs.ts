@@ -5,6 +5,7 @@
  */
 
 import { prisma } from "@/lib/db";
+import { crewPassage, passageVessel } from "@/lib/auth/dal";
 import type { PassageLike, VesselLike, VesselPerformanceModel } from "@/lib/passage-computation";
 
 const DEFAULT_PERFORMANCE_MODEL = {
@@ -52,12 +53,12 @@ export type TimelineInputs = { passage: PassageLike; vessel: VesselLike };
 
 /**
  * The user's passage (by id or shortId) + its boat, shaped for the timeline engine.
- * The boat is the passage's own (if the user owns it) or the user's default boat.
- * Null when the passage doesn't exist or isn't theirs; "NO_BOAT" when they have no boat yet.
+ * The boat is the passage's own or the owner's default boat (same for all crew).
+ * Null when the passage doesn't exist or the user isn't on it; "NO_BOAT" when the owner has no boat yet.
  */
 export async function loadTimelineInputs(passageRef: string, userId: string): Promise<TimelineInputs | "NO_BOAT" | null> {
   const passage = await prisma.passage.findFirst({
-    where: { OR: [{ id: passageRef }, { shortId: passageRef }], ownerId: userId },
+    where: crewPassage(passageRef, userId),
     include: {
       waypoints: {
         include: { port: true },
@@ -68,14 +69,8 @@ export async function loadTimelineInputs(passageRef: string, userId: string): Pr
 
   if (!passage) return null;
 
-  const vessel =
-    (passage.vesselProfileId
-      ? await prisma.vesselProfile.findFirst({ where: { id: passage.vesselProfileId, ownerId: userId } })
-      : null) ??
-    (await prisma.vesselProfile.findFirst({
-      where: { ownerId: userId },
-      orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
-    }));
+  // Always the owner's boat, whoever on the crew is looking.
+  const vessel = await passageVessel(passage);
   if (!vessel) return "NO_BOAT";
 
   // Load per-leg departure overrides

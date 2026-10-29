@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { LAKE_SEGMENTS, lakeCorridorNm, projectAlongRoute } from "@/lib/searoute";
-import { defaultVessel, requireUser } from "@/lib/auth/dal";
+import { crewPassage, passageVessel, requireUser } from "@/lib/auth/dal";
 import PassageCockpit from "./_cockpit/PassageCockpit";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +10,12 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
   const { id } = await params;
   const user = await requireUser(`/p/${id}`);
   const passage = await prisma.passage.findFirst({
-    where: { shortId: id, ownerId: user.id },
-    include: { waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } } },
+    where: crewPassage(id, user.id),
+    include: {
+      waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } },
+      owner: { select: { name: true } },
+      members: { orderBy: { createdAt: "asc" }, select: { user: { select: { id: true, name: true, email: true } } } },
+    },
   });
   if (!passage) notFound();
 
@@ -76,13 +80,20 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
       .sort((a, b) => a.dist - b.dist);
   }
 
-  // The passage's boat, else the owner's default boat.
-  const vessel =
-    (passage.vesselProfileId
-      ? await prisma.vesselProfile.findFirst({ where: { id: passage.vesselProfileId, ownerId: user.id } })
-      : null) ?? (await defaultVessel(user.id));
+  // The passage's boat (the owner's), else the owner's default boat.
+  const vessel = await passageVessel(passage);
   const boat = vessel?.name ?? "No boat yet";
   const boatModel = vessel?.model ?? "";
+
+  // Crew: emails are shown only to the owner (and to each member for themselves).
+  const isOwner = passage.ownerId === user.id;
+  const crew = {
+    isOwner,
+    owner: { name: passage.owner?.name ?? "Owner" },
+    members: passage.members.map(({ user: m }) => ({
+      id: m.id, name: m.name, email: isOwner || m.id === user.id ? m.email : null, isMe: m.id === user.id,
+    })),
+  };
 
   return (
     <PassageCockpit
@@ -97,6 +108,7 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
       departure={passage.departure.toISOString()}
       wps={wps}
       refuges={refuges}
+      crew={crew}
     />
   );
 }

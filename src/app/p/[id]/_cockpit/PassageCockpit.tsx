@@ -10,6 +10,7 @@ import {
 import { Verdict } from "@/components/design/Primitives";
 import { windColor, bfColor, beaufort, overallVerdict, marinaStars, type VerdictV } from "@/components/design/helpers";
 import AICoskipper from "./AICoskipper";
+import CrewPanel, { type CrewInfo } from "../_crew/CrewPanel";
 import MetarCard from "./MetarCard";
 import { nearestAirport } from "./airports";
 import {
@@ -35,6 +36,7 @@ export default function PassageCockpit(props: {
   speed: number; mode: string; model: string; wps: WP[]; refuges?: Refuge[];
   /** Saved departure, ISO instant. */
   departure: string;
+  crew?: CrewInfo;
 }) {
   const { wps } = props;
   // null until the skipper picks a start; until then the saved departure is used.
@@ -415,6 +417,8 @@ export default function PassageCockpit(props: {
           )}
 
           {/* bail-out ports — every catalogued shelter along the route */}
+          {props.crew && <CrewPanel passageId={props.passageId} crew={props.crew} />}
+
           {props.refuges && props.refuges.length > 0 && (
             <div className="glass fade-up" style={{ padding: 22, animationDelay: ".24s" }}>
               <div className="center gap-10" style={{ marginBottom: 14 }}>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authed } from "@/lib/auth/api";
-import { ownedPassage } from "@/lib/auth/dal";
+import { crewPassage } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 import { getLegRoute } from "@/lib/leg-route";
 import { getTidePrediction, tideStateAt } from "@/lib/tides";
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: ownedPassage(passageId, user.id),
+    where: crewPassage(passageId, user.id),
     include: {
       waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } },
     },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authed } from "@/lib/auth/api";
-import { ownedPassage } from "@/lib/auth/dal";
+import { crewPassage } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 
 /**
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: ownedPassage(passageId, user.id),
+    where: crewPassage(passageId, user.id),
     select: { forecastCache: true },
   });
 
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: ownedPassage(passageId, user.id),
+    where: crewPassage(passageId, user.id),
     select: { id: true, forecastCache: true },
   });
 

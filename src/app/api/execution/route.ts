@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authed } from "@/lib/auth/api";
-import { ownedPassage } from "@/lib/auth/dal";
+import { crewPassage, visibleTo } from "@/lib/auth/dal";
 import { prisma } from "@/lib/db";
 
 // GET /api/execution?passageId=&legIndex=
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   if (!passageId) return NextResponse.json({ error: "passageId required" }, { status: 400 });
 
   const passage = await prisma.passage.findFirst({
-    where: ownedPassage(passageId, user.id),
+    where: crewPassage(passageId, user.id),
   });
   if (!passage) return NextResponse.json({ error: "Passage not found" }, { status: 404 });
 
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
   // Every action except "start" targets an existing execution — it must be on the user's passage.
   if (action !== "start") {
     const owned = await prisma.passageExecution.findFirst({
-      where: { id: String(body.executionId ?? ""), passage: { ownerId: user.id } },
+      where: { id: String(body.executionId ?? ""), passage: visibleTo(user.id) },
       select: { id: true },
     });
     if (!owned) return NextResponse.json({ error: "Execution not found" }, { status: 404 });
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 }
 
 async function resolvePassageId(passageId: string, userId: string): Promise<string | null> {
-  const p = await prisma.passage.findFirst({ where: ownedPassage(passageId, userId) });
+  const p = await prisma.passage.findFirst({ where: crewPassage(passageId, userId) });
   return p?.id || null;
 }
 

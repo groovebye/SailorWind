@@ -129,8 +129,23 @@ model Passage {
   computations LegComputation[]
   legRoutes    PassageLegRoute[]
   executions   PassageExecution[]
+  members      PassageMember[]
 
   @@index([ownerId, updatedAt])
+}
+
+// Crew: other accounts the owner shared a passage with. They see and edit it;
+// only the owner deletes it or changes the crew.
+model PassageMember {
+  id        String   @id @default(cuid())
+  passage   Passage  @relation(fields: [passageId], references: [id], onDelete: Cascade)
+  passageId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@unique([passageId, userId])
+  @@index([userId])
 }
 
 enum PassageMode {
@@ -593,6 +608,7 @@ model User {
   authTokens AuthToken[]
   vessels    VesselProfile[]
   passages   Passage[]
+  crewOn     PassageMember[]
 }
 
 // Database sessions: the cookie carries a random token, only its SHA-256 is stored.

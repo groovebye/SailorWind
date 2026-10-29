@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { nanoid } from "@/lib/nanoid";
 import { authed } from "@/lib/auth/api";
-import { defaultVessel, ownedPassage } from "@/lib/auth/dal";
+import { crewPassage, defaultVessel, ownedPassage, visibleTo } from "@/lib/auth/dal";
 
 /** A boat id is only accepted if it belongs to the user. */
 async function ownedVesselId(userId: string, vesselProfileId: unknown): Promise<string | null | undefined> {
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 
   if (!id) {
     const passages = await prisma.passage.findMany({
-      where: { ownerId: user.id },
+      where: visibleTo(user.id),
       orderBy: { updatedAt: "desc" },
       take: 20,
       include: {
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
   }
 
   const passage = await prisma.passage.findFirst({
-    where: ownedPassage(id, user.id),
+    where: crewPassage(id, user.id),
     include: {
       waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } },
     },
@@ -94,7 +94,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  const passage = await prisma.passage.findFirst({ where: ownedPassage(id, user.id) });
+  const passage = await prisma.passage.findFirst({ where: crewPassage(id, user.id) });
 
   if (!passage) {
     return NextResponse.json({ error: "Passage not found" }, { status: 404 });
@@ -102,6 +102,8 @@ export async function PATCH(req: NextRequest) {
 
   let vesselId: string | null | undefined;
   if (vesselProfileId !== undefined) {
+    // The boat is the owner's: crew can retime the passage but not swap the boat.
+    if (passage.ownerId !== user.id) return NextResponse.json({ error: "Only the owner can change the boat" }, { status: 403 });
     vesselId = await ownedVesselId(user.id, vesselProfileId);
     if (vesselId === undefined) return NextResponse.json({ error: "Boat not found" }, { status: 404 });
   }

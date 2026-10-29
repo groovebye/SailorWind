@@ -8,6 +8,8 @@ import { Navigation, Clock, MapPin, Triangle, Trash2 } from "lucide-react";
 export type PassageCard = {
   id: string; from: string; to: string; date: string;
   nm: number; hours: number; capes: number; wp: number; mode: string;
+  /** Owner's name when the viewer is crew (not the owner) — then no delete. */
+  sharedBy?: string | null;
 };
 
 export default function RecentPassages({ cards }: { cards: PassageCard[] }) {
@@ -37,7 +39,7 @@ export default function RecentPassages({ cards }: { cards: PassageCard[] }) {
           {/* full-card click target → open passage */}
           <Link href={`/p/${p.id}`} aria-label={`${p.from} to ${p.to}`} style={{ position: "absolute", inset: 0, zIndex: 1, borderRadius: "inherit" }} />
 
-          <button
+          {!p.sharedBy && <button
             type="button"
             className="passage-del"
             aria-label="Delete passage"
@@ -45,11 +47,14 @@ export default function RecentPassages({ cards }: { cards: PassageCard[] }) {
             style={{ position: "absolute", top: 10, right: 10, zIndex: 2 }}
           >
             <Trash2 size={15} />
-          </button>
+          </button>}
 
           <div className="between" style={{ marginBottom: 16 }}>
             <span className="mono faint" style={{ fontSize: 12 }}>{p.date}</span>
-            <span className="pill" style={{ marginRight: 30 }}>{p.mode}</span>
+            <span className="flex gap-6" style={{ marginRight: p.sharedBy ? 0 : 30 }}>
+              {p.sharedBy && <span className="pill" title={`Shared with you by ${p.sharedBy}`}>shared · {p.sharedBy}</span>}
+              <span className="pill">{p.mode}</span>
+            </span>
           </div>
           <div className="route-line">
             <span className="route-port">{p.from}</span>

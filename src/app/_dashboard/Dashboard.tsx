@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus, Map as MapIcon, Route, Anchor } from "lucide-react";
 import { prisma } from "@/lib/db";
+import { visibleTo } from "@/lib/auth/dal";
 import { haversineNm } from "@/lib/geo";
 import { routeDistanceNm } from "@/lib/searoute";
 import HeroStats from "./HeroStats";
@@ -29,10 +30,13 @@ export default async function Dashboard({
   });
 
   const passages = await prisma.passage.findMany({
-    where: { ownerId: userId },
+    where: visibleTo(userId),
     orderBy: { updatedAt: "desc" },
     take: 6,
-    include: { waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } } },
+    include: {
+      waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } },
+      owner: { select: { id: true, name: true } },
+    },
   });
 
   // Card stats from real geometry (nm from coords, hours from speed, capes flagged).
@@ -54,6 +58,7 @@ export default async function Dashboard({
       capes: wps.filter((w) => w.isCape).length,
       wp: wps.length,
       mode: p.mode === "nonstop" ? "Non-stop" : "Day-hops",
+      sharedBy: p.ownerId !== userId ? p.owner?.name ?? "crew" : null,
     };
   });
 

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
-import { defaultVessel, requireUser } from "@/lib/auth/dal";
+import { crewPassage, defaultVessel, requireUser, visibleTo } from "@/lib/auth/dal";
 import { haversineNm } from "@/lib/geo";
 import MapHub, { type HubPassage, type HubPassageSummary } from "./MapHub";
 
@@ -21,7 +21,7 @@ export default async function MapPage({ searchParams }: { searchParams: Promise<
   let passage: HubPassage | null = null;
   try {
     const list = await prisma.passage.findMany({
-      where: { ownerId: user.id },
+      where: visibleTo(user.id),
       orderBy: { updatedAt: "desc" },
       take: 30,
       select: {
@@ -38,7 +38,7 @@ export default async function MapPage({ searchParams }: { searchParams: Promise<
     const id = want ?? passages[0]?.id;
     const row = id
       ? await prisma.passage.findFirst({
-          where: { OR: [{ shortId: id }, { id }], ownerId: user.id },
+          where: crewPassage(id, user.id),
           include: { waypoints: { include: { port: true }, orderBy: { sortOrder: "asc" } } },
         })
       : null;
