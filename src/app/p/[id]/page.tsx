@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { alongRouteNm } from "@/lib/searoute";
+import { LAKE_SEGMENTS, lakeCorridorNm, projectAlongRoute } from "@/lib/searoute";
 import { defaultVessel, requireUser } from "@/lib/auth/dal";
 import PassageCockpit from "./_cockpit/PassageCockpit";
 
@@ -40,19 +40,31 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
   }[] = [];
   if (fromWp && toWp) {
     const fp = fromWp.port, tp = toWp.port;
+    // Coast: shelters between the endpoints by coastlineNm. Lake: shelters of the
+    // same lake within a corridor either side of the routed line.
+    const lake = fp.coastSegment === tp.coastSegment && LAKE_SEGMENTS.has(fp.coastSegment);
     const lo = Math.min(fp.coastlineNm, tp.coastlineNm);
     const hi = Math.max(fp.coastlineNm, tp.coastlineNm);
-    const cand = await prisma.port.findMany({
-      where: { type: { not: "cape" }, coastlineNm: { gte: lo, lte: hi }, slug: { notIn: [fp.slug, tp.slug] } },
+    const all = await prisma.port.findMany({
+      where: {
+        type: { not: "cape" },
+        slug: { notIn: [fp.slug, tp.slug] },
+        ...(lake ? { coastSegment: fp.coastSegment } : { coastlineNm: { gte: lo, lte: hi } }),
+      },
       orderBy: { coastlineNm: "asc" },
     });
     const reeds = new Set(
       (await prisma.portArea.findMany({ where: { inReeds: true }, select: { slug: true } })).map((a) => a.slug),
     );
-    const dists = alongRouteNm(
+    const proj = projectAlongRoute(
       { lat: fp.lat, lon: fp.lon }, { lat: tp.lat, lon: tp.lon },
-      cand.map((p) => ({ lat: p.lat, lon: p.lon })),
+      all.map((p) => ({ lat: p.lat, lon: p.lon })),
     );
+    const keep = all.map((_, i) =>
+      !lake || (proj[i].off <= lakeCorridorNm(proj[i].total) && proj[i].along > 0 && proj[i].along < proj[i].total),
+    );
+    const cand = all.filter((_, i) => keep[i]);
+    const dists = proj.filter((_, i) => keep[i]).map((p) => p.along);
     refuges = cand
       .map((p, i) => ({
         name: p.name, slug: p.slug, type: p.type, dist: Math.round(dists[i]),

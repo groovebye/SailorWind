@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth/dal";
 import { safeNext } from "@/lib/auth/safe-redirect";
 import { Alert, SubmitButton } from "@/components/forms";
 import { logoutEverywhere } from "./actions";
-import { BoatForm, BoatRow, DeleteAccountForm, PasswordForm, ProfileForm, type BoatDTO } from "./SettingsForms";
+import { BoatForm, BoatRow, DeleteAccountForm, LogoutEverywhereForm, PasswordForm, ProfileForm, type BoatDTO } from "./SettingsForms";
 
 export const metadata: Metadata = { title: "Settings — SailorWind" };
 export const dynamic = "force-dynamic";
@@ -82,9 +82,9 @@ export default async function SettingsPage({
             <PasswordForm />
             <div className="between wrap gap-12" style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
               <span className="dim" style={{ fontSize: 14 }}>Lost a phone or used a shared computer?</span>
-              <form action={logoutEverywhere}>
+              <LogoutEverywhereForm action={logoutEverywhere}>
                 <SubmitButton className="btn btn-sm" pendingLabel="Signing out…"><LogOut /> Sign out of all devices</SubmitButton>
-              </form>
+              </LogoutEverywhereForm>
             </div>
           </section>
 

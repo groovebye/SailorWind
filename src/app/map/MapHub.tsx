@@ -428,7 +428,7 @@ export default function MapHub({ passages, passage, initialLeg, showBerth }: {
             </div>
           )}
           <LayerRow on={layers.contours} onClick={() => toggle("contours")} label="Depth contours" sub={`EMODnet · ${DEPTH_CONTOURS.note}`} title={DEPTH_CONTOURS.licence} error={layerErrors.contours} />
-          <LayerRow on={layers.isobaths} onClick={() => toggle("isobaths")} label="Isobaths 5–200 m" sub="from EMODnet, works offline · not for navigation" />
+          <LayerRow on={layers.isobaths} onClick={() => toggle("isobaths")} label="Isobaths" sub="5–200 m EMODnet · 2/3/5 m IJsselmeer (Rijkswaterstaat) · not for navigation" />
           <LayerRow on={layers.orca} onClick={() => toggle("orca")} label="Orca risk" sub="8 km rings at waypoints with reports" />
 
           <div className="field-label" style={{ marginTop: 12 }}>Weather</div>

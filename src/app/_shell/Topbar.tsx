@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Navigation2, Compass, Route, Map, Sailboat, Settings, LogOut, Plus } from "lucide-react";
 import { logout } from "@/app/(auth)/actions";
+import { clearPrivateOfflineData } from "@/lib/offline-cache";
 import type { ShellUser } from "./AppShell";
 
 /**
@@ -65,7 +66,7 @@ export default function Topbar({ activeId, user }: { activeId?: string | null; u
           <Link href="/settings" className="btn btn-sm btn-ghost" aria-label="Settings" title={`Settings · ${user.name}`}>
             <Settings />
           </Link>
-          <form action={logout}>
+          <form action={logout} onSubmit={clearPrivateOfflineData}>
             <button type="submit" className="btn btn-sm btn-ghost" aria-label="Log out" title="Log out">
               <LogOut />
             </button>

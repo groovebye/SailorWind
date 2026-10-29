@@ -27,7 +27,7 @@ const END_ICON = L.divIcon({ className: "", iconSize: [36, 36], iconAnchor: [18,
 const MID_ICON = L.divIcon({ className: "", iconSize: [30, 30], iconAnchor: [15, 15], html: `<div class="hub-mid">+</div>` });
 
 // Isobath colours shared with the leg map: 5 m red (danger) → 20 m yellow → blues.
-const ISOBATH: Record<number, string> = { 5: "#e11d2e", 10: "#ff8a00", 20: "#ffd400", 50: "#2ec6e6", 100: "#2f7fe6", 200: "#1f3f9e" };
+const ISOBATH: Record<number, string> = { 2: "#ff2bd6", 3: "#ff6fa8", 5: "#e11d2e", 10: "#ff8a00", 20: "#ffd400", 50: "#2ec6e6", 100: "#2f7fe6", 200: "#1f3f9e" };
 
 const viewOf = (m: L.Map): MapView => {
   const b = m.getBounds(), c = m.getCenter();
@@ -172,7 +172,7 @@ function Isobaths() {
   if (!fc) return null;
   return (
     <Pane name="isobaths" style={{ zIndex: 350 }}>
-      <GeoJSON data={fc} interactive={false} attribution={EMODNET_ATTR}
+      <GeoJSON data={fc} interactive={false} attribution={`${EMODNET_ATTR} · IJsselmeer: Rijkswaterstaat`}
         style={(f) => {
           const d = f?.properties?.d as number;
           return { color: ISOBATH[d] ?? "#2f7fe6", weight: d <= 5 ? 1.8 : d <= 20 ? 1.4 : 1.1, opacity: 0.9 };

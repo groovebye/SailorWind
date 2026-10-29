@@ -79,3 +79,19 @@ export function getCacheStatus(passageId: string, legIndex: number): {
   if (cached.isFresh) return { available: true, label: `Cached ${cached.ageMinutes}min ago`, color: "var(--text-green)" };
   return { available: true, label: `Stale (${Math.round(cached.ageMinutes / 60)}h ago)`, color: "var(--text-yellow)" };
 }
+
+/**
+ * On sign-out: drop everything personal kept for offline use — cached leg
+ * briefs (localStorage) and the service worker's page/plan/API caches — so the
+ * next person on a shared device can't read it offline. Public map tiles stay.
+ */
+export function clearPrivateOfflineData(): void {
+  if (typeof window === "undefined") return;
+  clearAllBriefCache();
+  if ("caches" in window) {
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => !k.startsWith("sw-tiles")).map((k) => caches.delete(k))))
+      .catch(() => {});
+  }
+}

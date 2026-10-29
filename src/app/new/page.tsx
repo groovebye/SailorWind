@@ -5,26 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Sailboat } from "lucide-react";
 import { EVENTS, track } from "@/lib/analytics";
-import { routePolyline } from "@/lib/searoute";
-import { haversineNm, type LatLon } from "@/lib/geo";
+import { LAKE_SEGMENTS, cumulativeNm, lakeCorridorNm, projectOnRoute, routePolyline } from "@/lib/searoute";
 
 // Along-track distance (nm) of a port on the departure→destination route:
 // project the port onto the routed polyline and read the cumulative distance.
-function alongTrackNm(p: { lat: number; lon: number }, line: LatLon[], cum: number[]): number {
-  let best = 0, bestD = Infinity;
-  for (let i = 0; i < line.length - 1; i++) {
-    const a = line[i], b = line[i + 1];
-    const k = Math.cos((((a[0] + b[0]) / 2) * Math.PI) / 180);
-    const ax = a[1] * k, ay = a[0], bx = b[1] * k, by = b[0], px = p.lon * k, py = p.lat;
-    const dx = bx - ax, dy = by - ay, len2 = dx * dx + dy * dy;
-    let t = len2 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
-    t = Math.max(0, Math.min(1, t));
-    const d = haversineNm([p.lat, p.lon], [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
-    if (d < bestD) { bestD = d; best = cum[i] + t * (cum[i + 1] - cum[i]); }
-  }
-  return best;
-}
-
 interface Port {
   id: string;
   name: string;
@@ -120,30 +104,37 @@ export default function NewPassage() {
     const to = allPorts.find((p) => p.id === toPort);
     if (!from || !to) return;
 
-    const minNm = Math.min(from.coastlineNm, to.coastlineNm);
-    const maxNm = Math.max(from.coastlineNm, to.coastlineNm);
-
-    // Candidate stops between the endpoints. Capes are excluded entirely — the
-    // deep-water corridor rounds the headlands automatically, so they're never
-    // selectable stops.
-    const between = allPorts
-      .filter((p) => p.type !== "cape" && p.coastlineNm >= minNm && p.coastlineNm <= maxNm)
-      .sort((a, b) => a.coastlineNm - b.coastlineNm);
-
     // Real routed distances from the departure (not coastlineNm ordering): run
     // the A* sea route once for from→to, then project each candidate onto it for
     // its along-track distance. Departure = 0; destination = the true total.
     const line = routePolyline([{ lat: from.lat, lon: from.lon }, { lat: to.lat, lon: to.lon }]);
-    const cum = [0];
-    for (let i = 1; i < line.length; i++) cum[i] = cum[i - 1] + haversineNm(line[i - 1], line[i]);
+    const cum = cumulativeNm(line);
     const total = cum[cum.length - 1] ?? 0;
+
+    // Candidate stops between the endpoints. Capes are excluded entirely — the
+    // deep-water corridor rounds the headlands automatically, so they're never
+    // selectable stops. On the coast "between" follows coastlineNm; on a lake it
+    // means "within a corridor either side of the routed line".
+    const lake = from.coastSegment === to.coastSegment && LAKE_SEGMENTS.has(from.coastSegment);
+    const minNm = Math.min(from.coastlineNm, to.coastlineNm);
+    const maxNm = Math.max(from.coastlineNm, to.coastlineNm);
+    const between = lake
+      ? allPorts
+          .filter((p) => p.type !== "cape" && p.coastSegment === from.coastSegment)
+          .map((p) => ({ p, at: projectOnRoute(p, line, cum) }))
+          .filter(({ p, at }) => p.id === fromPort || p.id === toPort || (at.off <= lakeCorridorNm(total) && at.along > 0 && at.along < total))
+          .sort((a, b) => a.at.along - b.at.along)
+          .map(({ p }) => p)
+      : allPorts
+          .filter((p) => p.type !== "cape" && p.coastlineNm >= minNm && p.coastlineNm <= maxNm)
+          .sort((a, b) => a.coastlineNm - b.coastlineNm);
 
     // Default selection: ONLY start + end. No intermediate ports are pre-checked
     // — the skipper adds stops deliberately; everything else is a clean passage.
     const checked = between.map((p) => ({
       ...p,
       checked: p.id === fromPort || p.id === toPort,
-      dist: p.id === fromPort ? 0 : p.id === toPort ? total : alongTrackNm(p, line, cum),
+      dist: p.id === fromPort ? 0 : p.id === toPort ? total : projectOnRoute(p, line, cum).along,
     }));
 
     setRoutePorts(checked);

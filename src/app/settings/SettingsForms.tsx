@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import { Star, Trash2, Pencil } from "lucide-react";
 import { Alert, Field, SubmitButton } from "@/components/forms";
 import { EVENTS, track } from "@/lib/analytics";
+import { clearPrivateOfflineData } from "@/lib/offline-cache";
 import {
   addBoat,
   changePassword,
@@ -155,11 +156,16 @@ export function BoatRow({ boat }: { boat: BoatDTO }) {
   );
 }
 
+/** Plain form for a no-state Server Action that also clears offline data on submit. */
+export function LogoutEverywhereForm({ action, children }: { action: () => Promise<void>; children: React.ReactNode }) {
+  return <form action={action} onSubmit={clearPrivateOfflineData}>{children}</form>;
+}
+
 export function DeleteAccountForm() {
   const [state, action] = useActionState<SettingsState, FormData>(deleteAccount, undefined);
   const f = state?.fields ?? {};
   return (
-    <form action={action} className="form-stack" noValidate>
+    <form action={action} className="form-stack" noValidate onSubmit={clearPrivateOfflineData}>
       <div className="form-row">
         <Field label="Your password" name="password" type="password" autoComplete="current-password" error={f.password} required />
         <Field label='Type "DELETE"' name="confirm" autoComplete="off" error={f.confirm} required />

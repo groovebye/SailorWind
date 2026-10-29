@@ -21,8 +21,10 @@ const COLORS: Record<string, string> = {
   cape: "#facc15", marina: "#4ade80", port: "#60a5fa", anchorage: "#c084fc",
 };
 
-// Matches the Chart page palette: 5 m dark-red (danger) → 20 m yellow → cyan → blue.
+// Matches the Chart page palette: (lakes: 2 m magenta, 3 m pink) 5 m dark-red (danger) → 20 m yellow → cyan → blue.
 const CONTOUR_STYLES: Record<number, { color: string; weight: number; dash?: string }> = {
+  2:   { color: "#ff2bd6", weight: 1.7 }, // IJsselmeer / Markermeer only
+  3:   { color: "#ff6fa8", weight: 1.5 }, // IJsselmeer / Markermeer only
   5:   { color: "#e11d2e", weight: 1.6 },
   10:  { color: "#ff8a00", weight: 1.2 },
   20:  { color: "#ffd400", weight: 1.1 },
@@ -312,7 +314,7 @@ export default function LegMap({ waypoints, fromPort, toPort, theme, hazards = [
       {/* Depth contour legend */}
       <div style={{ position: "absolute", bottom: 8, left: 8, zIndex: 1000, background: "rgba(0,0,0,0.8)", borderRadius: 6, padding: "6px 8px", fontSize: 10, lineHeight: 1.6, pointerEvents: "none" }}>
         <div style={{ color: "#94a3b8", fontWeight: 700, marginBottom: 2 }}>Depth</div>
-        {[[5, "5m"], [10, "10m"], [20, "20m"], [50, "50m"], [100, "100m"], [200, "200m+"]].map(([d, label]) => (
+        {[[2, "2m"], [3, "3m"], [5, "5m"], [10, "10m"], [20, "20m"], [50, "50m"], [100, "100m"], [200, "200m+"]].map(([d, label]) => (
           <div key={d} style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ width: 16, height: 2, borderRadius: 1, background: CONTOUR_STYLES[d as number].color, display: "inline-block" }} />
             <span style={{ color: CONTOUR_STYLES[d as number].color }}>{label}</span>
