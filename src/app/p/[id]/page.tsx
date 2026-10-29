@@ -94,6 +94,7 @@ export default async function PassagePage({ params }: { params: Promise<{ id: st
       speed={passage.speed}
       mode={passage.mode}
       model={passage.model}
+      departure={passage.departure.toISOString()}
       wps={wps}
       refuges={refuges}
     />

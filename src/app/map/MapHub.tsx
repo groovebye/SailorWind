@@ -68,7 +68,7 @@ function toLegRoute(d: unknown): LegRoute | null {
 
 const nmOf = (pts: RoutePt[]) => Math.round(polylineDistanceNm(pts.map((p) => [p.lat, p.lon])) * 10) / 10;
 const fmtUtc = (ms: number) =>
-  new Date(ms).toLocaleString("en-GB", { timeZone: "UTC", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).replace(",", "");
+  new Date(ms).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).replace(",", "");
 const errMsg = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export default function MapHub({ passages, passage, initialLeg, showBerth }: {

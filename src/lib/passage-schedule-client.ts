@@ -44,12 +44,20 @@ export function normalizeDeparture(input: string | Date): Date {
 }
 
 /**
- * Format a Date's UTC wall-clock as a `datetime-local` input value
- * ("YYYY-MM-DDTHH:mm"). Mirror of normalizeDeparture for the edit UI.
+ * Format a Date as a `datetime-local` input value ("YYYY-MM-DDTHH:mm") in the
+ * viewer's local time — what the skipper reads on their own clock.
  */
 export function toLocalInputValue(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+/**
+ * A `datetime-local` value typed in the viewer's local time → the stored
+ * convention (UTC wall-clock "YYYY-MM-DDTHH:mm", read back by normalizeDeparture).
+ */
+export function localInputToUtcWall(value: string): string {
+  return new Date(value).toISOString().slice(0, 16);
 }
 
 export function buildClientSchedule(

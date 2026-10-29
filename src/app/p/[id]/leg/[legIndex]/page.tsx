@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useTheme } from "@/lib/theme";
 import type { ForecastEntry } from "@/lib/weather";
-import { buildClientSchedule, toLocalInputValue } from "@/lib/passage-schedule-client";
+import { buildClientSchedule, localInputToUtcWall, toLocalInputValue } from "@/lib/passage-schedule-client";
 import { prepareLegImport } from "@/lib/gpx";
 import { legRouteUrl } from "@/lib/offline-plan";
 import DepartureWindows from "@/components/DepartureWindows";
@@ -87,7 +87,8 @@ interface Webcam { id: string; title: string; lat: number; lon: number; city: st
 
 // Always-local: render every time in UTC wall-clock (see dashboard note). Keeps
 // leg display consistent with the UTC night-detection logic used below.
-function tzForPort(_lon: number) { return "UTC"; }
+// Times are shown on the viewer's own clock (stored values are UTC instants).
+function tzForPort(_lon: number) { return Intl.DateTimeFormat().resolvedOptions().timeZone; }
 function fmtLocal(d: Date, tz: string) { return d.toLocaleString("en-GB", { timeZone: tz, weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).replace(" at ", " "); }
 function parseJson(val: unknown): PlaceInfo[] { if (!val) return []; if (typeof val === "string") try { return JSON.parse(val); } catch { return []; } if (Array.isArray(val)) return val; return []; }
 function parseJsonTyped<T>(val: unknown): T[] { if (!val) return []; if (typeof val === "string") try { return JSON.parse(val); } catch { return []; } if (Array.isArray(val)) return val; return []; }
@@ -697,7 +698,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
   else if (resolvedLegHours > 7) { comfortScore -= 5; comfortReasons.push(`${resolvedLegHours.toFixed(0)}h passage`); }
 
   // Night sailing discomfort
-  const arrHour = resolvedArriveTime?.getUTCHours() ?? leg.arriveTime.getUTCHours();
+  const arrHour = resolvedArriveTime?.getHours() ?? leg.arriveTime.getHours();
   if (arrHour >= 21 || arrHour <= 6) { comfortScore -= 15; comfortReasons.push("Night arrival — reduced visibility, cold"); }
   else if (arrHour >= 20) { comfortScore -= 5; comfortReasons.push("Dusk arrival"); }
 
@@ -794,7 +795,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                       autoFocus
                     />
                     <button
-                      onClick={() => saveDepartureOverride(departureInput)}
+                      onClick={() => saveDepartureOverride(localInputToUtcWall(departureInput))}
                       className="text-[10px] px-2 py-0.5 rounded"
                       style={{ background: "var(--accent-go)", color: "var(--text-green)", border: `1px solid var(--text-green)40` }}
                     >Save</button>
@@ -1249,7 +1250,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 key={entry.hourIndex}
                 className="rounded-lg px-3 py-2"
                 style={{
-                  background: (() => { const h = new Date(entry.time).getUTCHours(); return (h >= 21 || h < 6) ? "rgba(15,23,42,0.6)" : segmentAccent(entry.segmentName).bg; })(),
+                  background: (() => { const h = new Date(entry.time).getHours(); return (h >= 21 || h < 6) ? "rgba(15,23,42,0.6)" : segmentAccent(entry.segmentName).bg; })(),
                   border: `1px solid var(--border-light)`,
                   boxShadow: `inset 3px 0 0 ${segmentAccent(entry.segmentName).border}`,
                 }}
@@ -1257,7 +1258,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                   <div>
                     <div className="font-semibold text-xs" style={{ color: "var(--text-heading)" }}>
-                      {(() => { const h = new Date(entry.time).getUTCHours(); return (h >= 21 || h < 6) ? "🌙 " : ""; })()}
+                      {(() => { const h = new Date(entry.time).getHours(); return (h >= 21 || h < 6) ? "🌙 " : ""; })()}
                       {fmtLocal(new Date(entry.time), toTz)} · {entry.segmentName}
                     </div>
                     <div className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
@@ -1425,7 +1426,7 @@ export default function LegDetailPage({ params }: { params: Promise<{ id: string
             <div className="font-semibold" style={{ color: "var(--text-yellow)" }}>Departure +2h late</div>
             <div style={{ color: "var(--text-secondary)" }}>
               Arrival shifts to {fmtLocal(new Date(leg.arriveTime.getTime() + 2 * 3600000), toTz)}.
-              {new Date(leg.arriveTime.getTime() + 2 * 3600000).getUTCHours() >= 20 ? " ⚠ Night arrival risk!" : " Still daylight."}
+              {new Date(leg.arriveTime.getTime() + 2 * 3600000).getHours() >= 20 ? " ⚠ Night arrival risk!" : " Still daylight."}
             </div>
           </div>
           <div className="rounded-lg px-3 py-2" style={{ background: "var(--bg-primary)", border: `1px solid var(--border-light)` }}>

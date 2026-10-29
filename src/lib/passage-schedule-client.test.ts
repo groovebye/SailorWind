@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildClientSchedule,
+  localInputToUtcWall,
   normalizeDeparture,
   toLocalInputValue,
 } from "@/lib/passage-schedule-client";
@@ -29,10 +30,17 @@ describe("normalizeDeparture", () => {
   });
 });
 
-describe("toLocalInputValue", () => {
-  it("round-trips with normalizeDeparture", () => {
-    const v = "2026-06-15T08:00";
-    expect(toLocalInputValue(normalizeDeparture(v))).toBe(v);
+describe("toLocalInputValue / localInputToUtcWall", () => {
+  // The input shows the viewer's local clock; storage keeps the UTC instant.
+  it("round-trips an instant through the local-time input, in any host TZ", () => {
+    const instant = new Date(Date.UTC(2026, 5, 15, 8, 0));
+    const typed = toLocalInputValue(instant);
+    expect(normalizeDeparture(localInputToUtcWall(typed)).getTime()).toBe(instant.getTime());
+  });
+
+  it("formats the local wall-clock of the instant", () => {
+    const d = new Date(2026, 9, 31, 10, 0); // Sat 31 Oct 10:00 local
+    expect(toLocalInputValue(d)).toBe("2026-10-31T10:00");
   });
 });
 

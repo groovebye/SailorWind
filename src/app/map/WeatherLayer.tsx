@@ -30,7 +30,7 @@ export default function WeatherLayer({ grid, timeIdx, wind, waves }: {
 
   const h = grid.step / 2;
   const when = new Date(grid.times[timeIdx]).toLocaleString("en-GB", {
-    timeZone: "UTC", weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+    weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
   });
 
   return (

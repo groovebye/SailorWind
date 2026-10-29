@@ -62,11 +62,11 @@ export async function fetchSeries(wps: WP[], model: string): Promise<LocSeries[]
   const mp = modelParam(model);
   const fcUrl =
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-    `&hourly=wind_speed_10m,wind_gusts_10m&daily=sunrise,sunset&wind_speed_unit=kn&forecast_days=4&timezone=GMT` +
+    `&hourly=wind_speed_10m,wind_gusts_10m&daily=sunrise,sunset&wind_speed_unit=kn&forecast_days=${HORIZON_DAYS}&timezone=GMT` +
     (mp ? `&models=${mp}` : "");
   const marUrl =
     `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}` +
-    `&hourly=wave_height,wave_period,swell_wave_height,swell_wave_period,ocean_current_velocity,ocean_current_direction&forecast_days=4&timezone=GMT`;
+    `&hourly=wave_height,wave_period,swell_wave_height,swell_wave_period,ocean_current_velocity,ocean_current_direction&forecast_days=${HORIZON_DAYS}&timezone=GMT`;
 
   const [fcRes, marRes] = await Promise.allSettled([
     fetch(fcUrl).then((r) => r.json()),
@@ -185,20 +185,26 @@ export function powerFor(wind: number, gust: number, wave: number | null): numbe
   return Math.max(0, Math.min(14, Math.round(p * 10) / 10));
 }
 
+/** How far ahead the cockpit can plan a departure (Open-Meteo forecast days). */
+export const HORIZON_DAYS = 7;
+
 export type TimelineHour = {
   h: number; epoch: number; label: string; wind: number; gust: number;
   score: number; verdict: VerdictV; tod: number; daylight: boolean; spread: number;
 };
 
 /**
- * 48h departure-window scores at the start point. Night penalty uses the real
+ * Hourly departure-window scores at the start point, from `base` to the end of
+ * the forecast (at most HORIZON_DAYS). Night penalty uses the real
  * sunset/sunrise for that day; model disagreement (consensus spread) lowers
  * confidence so the score reflects genuine forecast certainty.
  */
 export function buildTimeline(start: LocSeries, base: number, consensus?: Consensus | null): TimelineHour[] {
   const out: TimelineHour[] = [];
-  for (let h = 0; h < 48; h++) {
+  const end = start.time[start.time.length - 1] ?? 0;
+  for (let h = 0; h < HORIZON_DAYS * 24; h++) {
     const epoch = base + h * 3600_000;
+    if (epoch > end) break; // no forecast beyond the model run
     const i = nearestIdx(start.time, epoch);
     if (i < 0) break;
     const wind = start.wind[i] ?? 0;
@@ -213,9 +219,10 @@ export function buildTimeline(start: LocSeries, base: number, consensus?: Consen
     score -= Math.min(2, spread * 0.25);    // models disagree → less confidence
     score = Math.max(0.5, Math.min(10, score));
     const verdict: VerdictV = score >= 7 ? "GO" : score >= 4.5 ? "CAUTION" : "NOGO";
-    const label = d.toLocaleString("en-GB", {
-      timeZone: "UTC", weekday: "short", hour: "2-digit", minute: "2-digit", hour12: false,
-    });
+    // Viewer's local clock (the stored departure is a UTC instant).
+    const label = d
+      .toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false })
+      .replace(",", "");
     out.push({ h, epoch, label, wind, gust, score: Math.round(score * 10) / 10, verdict, tod, daylight, spread });
   }
   return out;

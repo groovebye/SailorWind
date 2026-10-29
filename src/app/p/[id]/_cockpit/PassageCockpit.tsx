@@ -13,7 +13,7 @@ import AICoskipper from "./AICoskipper";
 import MetarCard from "./MetarCard";
 import { nearestAirport } from "./airports";
 import {
-  buildLegs, fetchSeries, fetchConsensus, sunForDay, nearestIdx, fmtMS, verdictFor, powerFor, buildTimeline,
+  buildLegs, fetchSeries, fetchConsensus, sunForDay, nearestIdx, fmtMS, verdictFor, powerFor, buildTimeline, HORIZON_DAYS,
   type WP, type LocSeries, type TimelineHour, type Consensus,
 } from "./forecast";
 import { moon, isDaylight } from "@/lib/astro";
@@ -21,7 +21,7 @@ import { moon, isDaylight } from "@/lib/astro";
 const MODEL_SHORT: Record<string, string> = { gfs: "GFS_SEAMLESS", ecmwf: "ECMWF_IFS025", ens: "BEST_MATCH" };
 const VC_HEX: Record<VerdictV, string> = { GO: "#36d399", CAUTION: "#ffc24b", NOGO: "#ff6b8a" };
 const fmtHM = (epoch: number | null): string =>
-  epoch == null ? "—" : new Date(epoch).toLocaleString("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: false });
+  epoch == null ? "—" : new Date(epoch).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
 
 type Refuge = {
   name: string; slug: string; type: string; dist: number;
@@ -33,9 +33,12 @@ type Refuge = {
 export default function PassageCockpit(props: {
   passageId: string; from: string; to: string; boat: string; boatModel: string;
   speed: number; mode: string; model: string; wps: WP[]; refuges?: Refuge[];
+  /** Saved departure, ISO instant. */
+  departure: string;
 }) {
   const { wps } = props;
-  const [depIdx, setDepIdx] = useState(0);
+  // null until the skipper picks a start; until then the saved departure is used.
+  const [pickedIdx, setPickedIdx] = useState<number | null>(null);
   const [speed, setSpeed] = useState(props.speed || 6);
   const [mode, setMode] = useState<"Non-stop" | "Day-hops">(props.mode === "nonstop" ? "Non-stop" : "Day-hops");
   const [model, setModel] = useState<"gfs" | "ecmwf" | "ens">(
@@ -68,7 +71,32 @@ export default function PassageCockpit(props: {
     () => (series && baseTime ? buildTimeline(series[0], baseTime, consensus) : []),
     [series, baseTime, consensus],
   );
+  // The saved departure, placed on the forecast timeline (clamped), until the skipper picks another.
+  const savedDep = useMemo(() => new Date(props.departure).getTime(), [props.departure]);
+  const savedIdx = baseTime ? Math.round((savedDep - baseTime) / 3600_000) : 0;
+  const depIdx = pickedIdx ?? Math.max(0, Math.min(savedIdx, Math.max(0, timeline.length - 1)));
+  const depNote: "past" | "beyond" | null =
+    pickedIdx !== null || !timeline.length ? null : savedIdx < 0 ? "past" : savedIdx > timeline.length - 1 ? "beyond" : null;
   const depEpoch = baseTime + depIdx * 3600_000;
+
+  // Persist what the skipper picks (departure, speed, mode), debounced.
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persist = useCallback((patch: Record<string, unknown>) => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      fetch("/api/passage", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: props.passageId, ...patch }),
+      }).catch(() => {});
+    }, 600);
+  }, [props.passageId]);
+  const chooseDep = useCallback((i: number) => {
+    setPickedIdx(i);
+    persist({ departure: new Date(baseTime + i * 3600_000).toISOString() });
+  }, [baseTime, persist]);
+  const chooseSpeed = (v: number) => { setSpeed(v); persist({ speed: v }); };
+  const chooseMode = (m: "Non-stop" | "Day-hops") => { setMode(m); persist({ mode: m === "Non-stop" ? "nonstop" : "daily" }); };
 
   const rows = useMemo(() => {
     if (!series || !baseTime) return [];
@@ -88,7 +116,7 @@ export default function PassageCockpit(props: {
       const type: "STOP" | "CAPE" | "PORT" = w.isStop ? "STOP" : w.isCape ? "CAPE" : "PORT";
       return {
         name: w.name, slug: w.slug, type,
-        eta: new Date(etaEpoch).toLocaleString("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: false }),
+        eta: new Date(etaEpoch).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }),
         etaEpoch, wind, gust, bf: beaufort(wind),
         wave: fmtMS(wave, period), swell: fmtMS(swell, swellP),
         cur, curDir, daylight: isDaylight(etaEpoch, sunrise, sunset),
@@ -135,7 +163,7 @@ export default function PassageCockpit(props: {
       const wind = idx >= 0 ? s.wind[idx] ?? 0 : 0;
       const gust = idx >= 0 ? s.gust[idx] ?? wind + 4 : wind + 4;
       return {
-        time: new Date(epoch).toLocaleString("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: false }),
+        time: new Date(epoch).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }),
         wind, gust, bf: beaufort(wind),
       };
     });
@@ -186,22 +214,36 @@ export default function PassageCockpit(props: {
       {/* config bar */}
       <div className="glass config-bar fade-up" style={{ animationDelay: ".05s" }}>
         <ConfigField label="Departure" icon={<Calendar size={12} />}>
-          <select className="select" value={depIdx} onChange={(e) => setDepIdx(+e.target.value)}>
-            {(timeline.length ? timeline.slice(0, 24) : [{ label: "loading…" }]).map((t, i) => (
-              <option key={i} value={i}>{t.label}</option>
-            ))}
+          <select className="select" value={depIdx} onChange={(e) => chooseDep(+e.target.value)} disabled={!timeline.length}>
+            {timeline.length ? (
+              groupByDay(timeline).map(([day, hours]) => (
+                <optgroup key={day} label={day}>
+                  {hours.map(({ t, i }) => (
+                    <option key={i} value={i}>{t.label}</option>
+                  ))}
+                </optgroup>
+              ))
+            ) : (
+              <option value={0}>{new Date(savedDep).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).replace(",", "")}</option>
+            )}
           </select>
+          {depNote && (
+            <div className="faint mono" style={{ fontSize: 11, marginTop: 6, color: "var(--caution)" }}>
+              Saved {new Date(savedDep).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false }).replace(",", "")}
+              {depNote === "past" ? " is in the past — pick a new start" : " is beyond the forecast — showing the last forecast hour"}
+            </div>
+          )}
         </ConfigField>
         <ConfigField label="Boat speed" icon={<Gauge size={12} />}>
           <div className="center gap-10">
-            <input type="range" min={3} max={9} step={0.5} value={speed} onChange={(e) => setSpeed(+e.target.value)} className="range" />
+            <input type="range" min={3} max={9} step={0.5} value={speed} onChange={(e) => chooseSpeed(+e.target.value)} className="range" />
             <span className="mono" style={{ fontSize: 16, fontWeight: 600, minWidth: 52 }}>{speed} kt</span>
           </div>
         </ConfigField>
         <ConfigField label="Mode" icon={<Route size={12} />}>
           <div className="seg">
             {(["Non-stop", "Day-hops"] as const).map((m) => (
-              <button key={m} className={`seg-opt${mode === m ? " active" : ""}`} onClick={() => setMode(m)}>{m}</button>
+              <button key={m} className={`seg-opt${mode === m ? " active" : ""}`} onClick={() => chooseMode(m)}>{m}</button>
             ))}
           </div>
         </ConfigField>
@@ -244,13 +286,13 @@ export default function PassageCockpit(props: {
                 <div className="sec-icon" style={{ width: 32, height: 32 }}><Activity size={16} /></div>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: 16 }}>Departure window</div>
-                  <div className="faint mono" style={{ fontSize: 11 }}>next 48h · drag to choose your start</div>
+                  <div className="faint mono" style={{ fontSize: 11 }}>next {Math.round(timeline.length / 24) || HORIZON_DAYS} days · your local time · drag to choose your start</div>
                 </div>
               </div>
               <span className="pill"><Info size={12} /> aggregate GO/NO-GO score</span>
             </div>
             {timeline.length ? (
-              <DepartureTimeline timeline={timeline} depIdx={depIdx} setDepIdx={setDepIdx} />
+              <DepartureTimeline timeline={timeline} depIdx={depIdx} setDepIdx={chooseDep} />
             ) : (
               <div className="faint mono" style={{ padding: "30px 0", textAlign: "center" }}>
                 {err ? "offline — no live forecast" : "loading forecast…"}
@@ -510,6 +552,17 @@ function PowerBar({ v }: { v: number }) {
   );
 }
 
+/** Timeline hours grouped by local calendar day, for the departure <select>. */
+function groupByDay(timeline: TimelineHour[]): [string, { t: TimelineHour; i: number }[]][] {
+  const groups = new Map<string, { t: TimelineHour; i: number }[]>();
+  timeline.forEach((t, i) => {
+    const day = new Date(t.epoch).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+    if (!groups.has(day)) groups.set(day, []);
+    groups.get(day)!.push({ t, i });
+  });
+  return [...groups];
+}
+
 function DepartureTimeline({ timeline, depIdx, setDepIdx }: { timeline: TimelineHour[]; depIdx: number; setDepIdx: (n: number) => void }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const drag = useRef(false);
@@ -559,7 +612,12 @@ function DepartureTimeline({ timeline, depIdx, setDepIdx }: { timeline: Timeline
           <div className="tl-handle"><Navigation size={13} style={{ transform: "rotate(90deg)" }} /></div>
         </div>
       </div>
-      <div className="tl-axis"><span>Now</span><span>+12h</span><span>+24h</span><span>+36h</span><span>+48h</span></div>
+      <div className="tl-axis">
+        {[0, 0.25, 0.5, 0.75, 1].map((p) => {
+          const h = Math.round(p * (timeline.length - 1));
+          return <span key={p}>{p === 0 ? "Now" : timeline.length > 49 ? `+${Math.round(h / 24 * 10) / 10}d` : `+${h}h`}</span>;
+        })}
+      </div>
     </div>
   );
 }

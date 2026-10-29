@@ -6,6 +6,8 @@ import { Verdict } from "@/components/design/Primitives";
 import type { VerdictV } from "@/components/design/helpers";
 import { bestWindow, type TimelineHour, type WP } from "./forecast";
 
+const horizonText = (hours: number) => (hours > 48 ? `${Math.round(hours / 24)} days` : `${hours} h`);
+
 const ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
   "alert-triangle": AlertTriangle, shield: Shield, radio: Radio, sunrise: Sunrise,
   sun: Sun, sunset: Sunset, moon: Moon, wind: Wind, waves: Waves, clock: Clock,
@@ -73,7 +75,7 @@ function answerFor(q: string, ctx: Ctx): Answer {
   }
   // default: best window
   if (!bw) {
-    return { verdict: "NOGO", title: "No clean window in the next 48 h", body: "Every hour in the next two days scores NO-GO on the current model — too much wind/gust. Re-check after the next model run or widen the horizon.", chips: [["trending-up", "Re-check later"]] };
+    return { verdict: "NOGO", title: `No clean window in the next ${horizonText(ctx.timeline.length)}`, body: "Every hour in the forecast scores NO-GO on the current model — too much wind/gust. Re-check after the next model run or widen the horizon.", chips: [["trending-up", "Re-check later"]] };
   }
   const maxGust = Math.round(Math.max(...ctx.timeline.slice(bw.start, bw.end + 1).map((t) => t.gust)));
   const agree = ctx.consensusModels.length > 1
@@ -82,7 +84,7 @@ function answerFor(q: string, ctx: Ctx): Answer {
   return {
     verdict: "GO",
     title: `Depart ${ctx.timeline[bw.start].label} for the cleanest run`,
-    body: `I scanned the next 48 h on ${ctx.modelShort}. The strongest window opens ${ctx.timeline[bw.start].label} and holds ${bw.len} h at a mean confidence of ${bw.mean.toFixed(1)}/10, gusts under ${maxGust} kt.${agree} Drag the timeline to line your departure up inside it.`,
+    body: `I scanned the next ${horizonText(ctx.timeline.length)} on ${ctx.modelShort}. The strongest window opens ${ctx.timeline[bw.start].label} and holds ${bw.len} h at a mean confidence of ${bw.mean.toFixed(1)}/10, gusts under ${maxGust} kt.${agree} Drag the timeline to line your departure up inside it.`,
     chips: [["clock", `Window ${bw.len}h`], ["gauge", `Conf ${bw.mean.toFixed(1)}/10`], ...(ctx.consensusModels.length > 1 ? [["activity", `±${ctx.depSpread}kt spread`] as [string, string]] : [])],
   };
 }

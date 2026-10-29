@@ -22,7 +22,7 @@ const TAG_LABEL: Record<WindowTag, string> = {
 };
 
 function fmtUtc(iso: string) {
-  return new Date(iso).toLocaleString("en-GB", { timeZone: "UTC", weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).replace(",", "");
+  return new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).replace(",", "");
 }
 
 function toInputValue(iso: string) {
@@ -30,7 +30,7 @@ function toInputValue(iso: string) {
 }
 
 function fmtHm(iso: string) {
-  return new Date(iso).toLocaleString("en-GB", { timeZone: "UTC", hour: "2-digit", minute: "2-digit", hour12: false });
+  return new Date(iso).toLocaleString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 /**

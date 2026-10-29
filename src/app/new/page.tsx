@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, ArrowLeft, Sailboat } from "lucide-react";
 import { EVENTS, track } from "@/lib/analytics";
+import { toLocalInputValue } from "@/lib/passage-schedule-client";
 import { LAKE_SEGMENTS, cumulativeNm, lakeCorridorNm, projectOnRoute, routePolyline } from "@/lib/searoute";
 
 // Along-track distance (nm) of a port on the departure→destination route:
@@ -76,7 +77,7 @@ export default function NewPassage() {
     d.setDate(d.getDate() + 1);
     d.setHours(8, 0, 0, 0);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only default, see above
-    setDeparture(d.toISOString().slice(0, 16));
+    setDeparture(toLocalInputValue(d)); // the input shows the skipper's local clock
   }, []);
 
   // Load all ports
@@ -193,7 +194,7 @@ export default function NewPassage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: `${from?.name} → ${to?.name}`,
-        departure,
+        departure: new Date(departure).toISOString(), // local input → UTC instant
         speed,
         mode,
         model,
